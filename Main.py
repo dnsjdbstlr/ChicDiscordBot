@@ -5,8 +5,18 @@ import re
 import requests
 
 # 기본설정
+client = discord.Client()
 app = commands.Bot(command_prefix='!')
 token = os.environ['token']
+
+@client.event
+async def on_ready():
+    await client.change_presence(status=discord.Status.online, activity=discord.Game('클라'))
+
+@client.event
+async def on_message(msg):
+    if msg.content == '!핑':
+        await msg.channel.send('퐁!')
 
 @app.event
 async def on_ready():
@@ -14,10 +24,10 @@ async def on_ready():
 
 @app.event
 async def on_message(msg):
-    await app.process_commands(msg)
-
     if msg.author.bot:
         return None
+
+    await app.process_commands(msg)
 
 @app.command()
 async def 도움말(ctx):
@@ -103,4 +113,4 @@ async def 도움말(ctx):
 #     await ctx.channel.send(embed=embed)
 
 app.remove_command('help')
-app.run(token)
+client.run(token)
