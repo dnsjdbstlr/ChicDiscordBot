@@ -7,7 +7,6 @@ import requests
 print('뭐라도 출력해봐!!')
 
 # 기본설정
-client = discord.Client()
 bot = commands.Bot(command_prefix='!')
 token = os.environ['BOT_TOKEN']
 
