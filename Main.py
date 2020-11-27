@@ -4,6 +4,8 @@ import os
 import re
 import requests
 
+print('뭐라도 출력해봐!!')
+
 # 기본설정
 client = discord.Client()
 bot = commands.Bot(command_prefix='!')
