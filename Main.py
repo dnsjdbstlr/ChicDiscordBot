@@ -7,8 +7,7 @@ import requests
 # 기본설정
 client = discord.Client()
 bot = commands.Bot(command_prefix='!')
-#token = os.environ['token']
-token = '1'
+token = os.environ['BOT_TOKEN']
 
 @bot.event
 async def on_ready():
