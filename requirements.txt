@@ -1,4 +1,4 @@
-discord.py==1.0.1
+discord.py==1.5.1
 asyncio
-requests~=2.25.0
-discord~=1.0.1
+requests
+pip
