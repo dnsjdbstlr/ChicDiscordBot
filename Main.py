@@ -1,14 +1,12 @@
-# 디스코드 API
 import discord
 from discord.ext import commands
-
-# 웹 파싱
+import os
 import re
 import requests
 
 # 기본설정
 app = commands.Bot(command_prefix='!')
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.ZD6ikZmpPOk50gewtTWPFjifzcE'
+token = os.getenv('token')
 
 @app.event
 async def on_ready():
