@@ -6,7 +6,7 @@ import requests
 
 # 기본설정
 app = commands.Bot(command_prefix='!')
-token = os.getenv('token')
+token = os.environ['token']
 
 @app.event
 async def on_ready():
