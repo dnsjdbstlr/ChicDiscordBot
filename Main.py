@@ -8,7 +8,7 @@ import requests
 
 # 기본설정
 app = commands.Bot(command_prefix='!')
-token = "NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.AB9ydqMshTmeb__1LhS13iJqqdw"
+token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.ZD6ikZmpPOk50gewtTWPFjifzcE'
 
 @app.event
 async def on_ready():
