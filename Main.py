@@ -1,6 +1,5 @@
 # 디스코드 API
 import discord
-import asyncio
 from discord.ext import commands
 
 # 웹 파싱
