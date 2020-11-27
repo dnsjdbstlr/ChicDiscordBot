@@ -21,8 +21,8 @@ async def on_disconnect():
 async def on_message(msg):
     await app.process_commands(msg)
 
-    if msg.author.bot:
-        return None
+    #if msg.author.bot:
+    #    return None
 
 @app.command()
 async def 도움말(ctx):
