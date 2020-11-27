@@ -11,18 +11,13 @@ token = os.environ['token']
 @app.event
 async def on_ready():
     await app.change_presence(status=discord.Status.online, activity=discord.Game('공부'))
-    print('로그인 완료!')
-
-@app.event
-async def on_disconnect():
-    await app.change_presence(status=discord.Status.offline)
 
 @app.event
 async def on_message(msg):
     await app.process_commands(msg)
 
-    #if msg.author.bot:
-    #    return None
+    if msg.author.bot:
+        return None
 
 @app.command()
 async def 도움말(ctx):
