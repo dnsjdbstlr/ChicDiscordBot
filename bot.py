@@ -1,111 +1,41 @@
+# discord 라이브러리 사용 선언
 import discord
-from discord.ext import commands
-import requests
 import os
-import re
 
-# 기본설정
-bot = commands.Bot(command_prefix='!')
-token = os.environ['BOT_TOKEN']
+class chatbot(discord.Client):
+    # 프로그램이 처음 실행되었을 때 초기 구성
+    async def on_ready(self):
+        # 상태 메시지 설정
+        # 종류는 3가지: Game, Streaming, CustomActivity
+        game = discord.Game("내용")
 
-class ChicDiscordBot():
+        # 계정 상태를 변경한다.
+        # 온라인 상태, game 중으로 설정
+        await client.change_presence(status=discord.Status.online, activity=game)
 
-    @bot.event
-    async def on_ready():
-        await bot.change_presence(status=discord.Status.online, activity=discord.Game('공부'))
+        # 준비가 완료되면 콘솔 창에 "READY!"라고 표시
+        print("READY")
 
-    @bot.event
-    async def on_message(msg):
-        if msg.author.bot:
+    # 봇에 메시지가 오면 수행 될 액션
+    async def on_message(self, message):
+        # SENDER가 BOT일 경우 반응을 하지 않도록 한다.
+        if message.author.bot:
             return None
 
-        await bot.process_commands(msg)
+        # message.content = message의 내용
+        if message.content == "!바보":
+            # 현재 채널을 받아옴
+            channel = message.channel
+            # 답변 내용 구성
+            msg = "너도 바보"
+            # msg에 지정된 내용대로 메시지를 전송
+            await channel.send(msg)
+            return None
 
-    @bot.command()
-    async def 도움말(ctx):
-        await ctx.channel.purge(limit=1)
-        embed = discord.Embed(title='시크봇의 도움말을 알려드릴게요!')
-        embed.add_field(name='!등급', value='오늘의 장비 등급을 알려드릴게요.', inline=False)
-        embed.add_field(name='!기린력 <서버> <닉네임>', value='당신의 기린력을 알려드릴게요.', inline=False)
-        await ctx.channel.send(embed=embed)
 
-    @bot.command()
-    async def 기린력(ctx, server='None', name='None'):
-        if (server == 'None' or name == 'None'):
-            await ctx.channel.purge(limit=1)
-            await ctx.channel.send('!기린력 <서버> <닉네임> 의 형태로 적어야해!')
-            return
-        else:
-            await ctx.channel.purge(limit=1)
-            await ctx.channel.send(name + '님의 기린력을 측정하고 있어요!')
-
-        # URL만들기
-        url = 'http://duntoki.xyz/giraffe?serverNm=' + server + '&charNm=' + name
-        response = requests.get(url=url)
-        if response.status_code == 200:
-            # 패턴 정의
-            pat1 = [None, None, None, None]
-            pat1[0] = re.compile('(?P<date>\d\d\d\d-\d\d-\d\d) 대비-(?P<delta>\d.\d\d점 하락)')
-            pat1[1] = re.compile('(?P<date>\d\d\d\d-\d\d-\d\d) 대비-(?P<delta>\d\d.\d\d점 하락)')
-            pat1[2] = re.compile('(?P<date>\d\d\d\d-\d\d-\d\d) 대비(?P<delta>\d.\d\d점 상승)')
-            pat1[3] = re.compile('(?P<date>\d\d\d\d-\d\d-\d\d) 대비(?P<delta>\d\d.\d\d점 상승)')
-
-            pat2 = [None, None, None]
-            pat2[0] = re.compile('<td>(?P<grade>\d\.\d점)</td>')
-            pat2[1] = re.compile('<td>(?P<grade>\d\.\d\d점)</td>')
-            pat2[2] = re.compile('<td>(?P<grade>\d\d\.\d\d점)</td>')
-
-            # 결과
-            result0 = None
-            for i in range(4):
-                result0 = pat1[i].search(response.text)
-                if result0 != None: break
-
-            result1 = None
-            for i in range(3):
-                result1 = pat2[i].search(response.text)
-                if result1 != None: break
-
-            # 출력
-            await ctx.channel.purge(limit=1)
-            try:
-                if result0 is not None:
-                    embed = discord.Embed(title='기린력 측정 결과가 나왔어요!',
-                                          description=name + '님의 기린력은 ' + result0.group('date') + '때 보다 ' + result0.group('delta') + '한 ' + result1.group('grade') + '입니다!')
-                    await ctx.channel.send(embed=embed)
-                else:
-                    await ctx.channel.send(name + '님의 기린력은 ' + result1.group('grade') + '입니다!')
-            except:
-                await ctx.channel.send('기린력을 읽어오지 못했어...')
-        else:
-            await ctx.channel.purge(limit=1)
-            await ctx.channel.send('뭔가 오류가 났어...')
-
-    @bot.command()
-    async def 등급(ctx):
-        url = 'http://dnfnow.xyz/class'
-        response = requests.get(url=url)
-
-        # 계산
-        pat = []
-        pat.append(re.compile('<span class="badge badge-warning">'))
-        pat.append(re.compile('</span>'))
-
-        temp0 = pat[0].search(response.text)
-        start0, end0 = temp0.start(), temp0.end()
-
-        temp1 = pat[1].search(response.text[end0:])
-        start1, end1 = temp1.start(), temp1.end()
-
-        result = response.text[end0 + 1 : end0 + start1 - 1].replace(' ', '').replace('\n', '')
-
-        # 출력
-        await ctx.channel.purge(limit=1)
-        embed = discord.Embed(title='아이템 등급을 알려드릴게요!', description='오늘의 등급은 천공의 유산 - 소검을 기준으로 ' + result + '이예요!')
-        await ctx.channel.send(embed=embed)
-
-bot.remove_command('help')
-bot.run(token)
-
-if __name__ == '__main__':
-    ChicDiscordBot()
+# 프로그램이 실행되면 제일 처음으로 실행되는 함수
+if __name__ == "__main__":
+    # 객체를 생성
+    client = chatbot()
+    # TOKEN 값을 통해 로그인하고 봇을 실행
+    client.run(os.environ["BOT_TOKEN"])
