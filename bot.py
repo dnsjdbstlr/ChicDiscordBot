@@ -8,6 +8,7 @@ import re
 
 # 기본설정
 bot = commands.Bot(command_prefix='!')
+#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 
 @bot.event
@@ -25,10 +26,11 @@ async def on_message(msg):
 @bot.command()
 async def 도움말(ctx):
     await ctx.channel.send("```cs\r\n" +
-                           "#시크봇의 명령어들을 알려드릴게요!\r\n" +
-                           "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n" +
-                           "'!기린력 <서버> <닉네임>' : 캐릭터가 얼마나 기린인지 알려드릴게요.\r\n" +
+                           "#최근 업데이트 날짜 : 2020/12/10\r\n"
+                           "#시크봇의 명령어들을 알려드릴게요!\r\n"
+                           "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n"
                            "'!캐릭터 <닉네임>' : 캐릭터가 장착한 장비와 세트를 알려드릴게요.\r\n"
+                           "'!기린력 <서버> <닉네임>' : 캐릭터가 얼마나 기린인지 알려드릴게요.\r\n"
                            "'!장비 <장비아이템이름>' : 궁금하신 장비템의 옵션을 검색해서 알려드릴게요.\r\n"
                            "'!세트 <세트아이템이름>' : 궁금하신 세트템의 옵션을 검색해서 알려드릴게요.\r\n"
                            "```")
@@ -74,7 +76,7 @@ async def 기린력(ctx, server='None', name='None'):
             await ctx.channel.purge(limit=1)
             if result0 is not None:
                 embed = discord.Embed(title='기린력 측정 결과가 나왔어요!',
-                                      description=name + '님의 기린력은 ' + result0.group('date') + '때 보다 ' + result0.group('delta') + '한 ' + result1.group('grade') + '입예요!')
+                                      description=name + '님의 기린력은 ' + result0.group('date') + '때 보다 ' + result0.group('delta') + '한 ' + result1.group('grade') + '이예요!')
                 await ctx.channel.send(embed=embed)
             else:
                 embed = discord.Embed(title='기린력 측정 결과가 나왔어요!',
@@ -87,24 +89,27 @@ async def 기린력(ctx, server='None', name='None'):
 
 @bot.command()
 async def 등급(ctx):
-    url = 'http://dnfnow.xyz/class'
-    response = requests.get(url=url)
+    itemName, itemGradeName, itemGradeValue = DNFAPI.getShopItemInfo('10f619989d70a8f21b6dd8da40f48faf')
+    _itemName, _itemGradeName, _itemGradeValue = DNFAPI.getShopItemInfo('0b71d3990dd08a6945cff1dd5d1b20bb')
+    __itemName, __itemGradeName, __itemGradeValue = DNFAPI.getShopItemInfo('675a13e96276653391a845e041d3acf9')
 
-    # 계산
-    pat = []
-    pat.append(re.compile('<span class="badge badge-warning">'))
-    pat.append(re.compile('</span>'))
+    embed = discord.Embed(title='오늘의 아이템 등급을 알려드릴게요!')
+    embed.add_field(name=itemName, value=itemGradeName + '(' + str(itemGradeValue) + '%)')
+    embed.add_field(name=_itemName, value=_itemGradeName + '(' + str(_itemGradeValue) + '%)')
+    embed.add_field(name=__itemName, value=__itemGradeName + '(' + str(__itemGradeValue) + '%)')
 
-    temp0 = pat[0].search(response.text)
-    start0, end0 = temp0.start(), temp0.end()
-
-    temp1 = pat[1].search(response.text[end0:])
-    start1, end1 = temp1.start(), temp1.end()
-
-    result = response.text[end0 + 1 : end0 + start1 - 1].replace(' ', '').replace('\n', '')
-
-    # 출력
-    embed = discord.Embed(title='아이템 등급을 알려드릴게요!', description='오늘의 등급은 천공의 유산 - 소검을 기준으로 ' + result + '이예요!')
+    footer = ''
+    if itemGradeName == '최하급':
+        footer = '오늘 하루는 절대 정가 금지!'
+    elif itemGradeName == '하급':
+        footer = '아무리 그래도 하급은 아니죠...'
+    elif itemGradeName == '중급':
+        footer = '중급도 사실 하급, 최하급과 다르지 않아요...'
+    elif itemGradeName == '상급':
+        footer = '조금 아쉬운데, 정 급하다면 어쩔 수 없어요!'
+    elif itemGradeName == '최상급':
+        footer = '오늘만을 기다려왔어요!!'
+    embed.set_footer(text=footer)
     await ctx.channel.send(embed=embed)
 
 @bot.command()
@@ -214,10 +219,12 @@ async def 장비(ctx, *input):
         await ctx.channel.send(embed=embed)
 
         def check(m):
-            if 1 <= int(m.content) <= len(itemIdList):
-                return True
-            else:
-                return False
+            try:
+                if 1 <= int(m.content) <= len(itemIdList):
+                    return True
+                else:
+                    return False
+            except: pass
         try:
             msg = await bot.wait_for('message', check=check, timeout=10)
         except asyncio.TimeoutError:
@@ -227,6 +234,7 @@ async def 장비(ctx, *input):
     else:
         itemId = itemIdList[0]['itemId']
 
+    print(itemId)
     ######################
 
     itemDetailInfo = DNFAPI.getItemDetail(itemId)
@@ -314,6 +322,15 @@ async def 세트(ctx, *input):
 
     await ctx.channel.purge(limit=2)
     await ctx.channel.send(embed=embed2)
+
+@bot.command()
+async def 연결(ctx):
+    if ctx.message.author.id == 247361856904232960:
+        embed = discord.Embed(title='다음과 같은 서버에 시크봇이 연결되어있어요!')
+        for i in bot.guilds:
+            embed.add_field(name=i.name, value=str(i.member_count) + '명')
+        embed.set_footer(text='이 명령어는 제작자만 사용할 수 있습니다.')
+        await ctx.channel.send(embed=embed)
 
 bot.remove_command('help')
 bot.run(token)

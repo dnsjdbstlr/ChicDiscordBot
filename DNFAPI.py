@@ -85,6 +85,12 @@ def getItemMythicInfo(options):
         itemMythicInfo += i['explainDetail'] + '\r\n'
     return itemMythicInfo
 
+def getShopItemInfo(itemId):
+    url = 'https://api.neople.co.kr/df/items/' + itemId + '/shop?apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data['itemName'], data['itemGradeName'], data['itemGradeValue']
+
 def getSetItemIdList(setItemName):
     setItemIdList = []
 
