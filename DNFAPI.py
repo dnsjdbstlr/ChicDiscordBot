@@ -1,6 +1,7 @@
 import json
 import requests
 from urllib import parse
+from datetime import datetime
 
 # API키
 apikey = 'GsjfwTqfwvgwdYj2nLNxo1wP0RVnkdLn'
@@ -191,3 +192,13 @@ def getChrStatInfo(server, chrId):
     temp = json.loads(response.text)
     chrBuffStatInfo = temp['buff'][0]['status']
     print(chrBuffStatInfo)
+
+def getChrTimeLine(server, chrId, code):
+    today = datetime.today()
+    startDate = str(today.year) + '-' + str(today.month) + '-01 00:00'
+    endDate   = str(today.year) + '-' + str(today.month) + '-' + str(today.day) + ' ' + str(today.hour) + ':' + str(today.minute)
+
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/timeline?&code=' + code + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data['timeline']['rows']
