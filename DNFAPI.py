@@ -30,9 +30,6 @@ SERVERID_TO_NAME = {
     'siroco'  : '시로코'
 }
 
-def getServerId(server):
-    return SERVER_ID[server]
-
 def getItemId(name):
     itemIdList = []
 

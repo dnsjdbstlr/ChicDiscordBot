@@ -9,18 +9,15 @@ import requests
 import re
 
 # 기타
-import classes
+import Classes
+import Util
 from datetime import datetime
 
 # 기본설정
 bot = commands.Bot(command_prefix='!')
 #token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-
-# 에픽 랭킹
-epic = classes.epicRank()
-
-### 코드 시작 ###
+epic = Classes.epicRank()
 
 @bot.event
 async def on_ready():
@@ -37,13 +34,13 @@ async def on_message(msg):
 @bot.command()
 async def 도움말(ctx):
     await ctx.channel.send("```cs\r\n" +
-                           "#최근 업데이트 날짜 : 2020/12/14\r\n"
+                           "#최근 업데이트 날짜 : 2020/12/15\r\n"
                            "#시크봇의 명령어들을 알려드릴게요!\r\n"
                            "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n"
                            "'!기린력 <닉네임>' : 캐릭터가 얼마나 기린인지 알려드릴게요.\r\n"
                            "'!캐릭터 <닉네임>' : 캐릭터가 장착한 장비와 세트를 알려드릴게요.\r\n"
-                           "'!에픽 <닉네임>' : 해당 캐릭터가 이번 달에 먹은 에픽을 알려드릴게요.\r\n"
-                           "'!에픽랭킹' : 이번 달에 !에픽 명령어를 사용한 기린들을 박제해놨어요!!\r\n"
+                           "'!획득에픽 <닉네임>' : 캐릭터가 이번 달에 획득한 에픽을 알려드릴게요.\r\n"
+                           "'!기린랭킹' : 이번 달에 에픽을 많이 먹은 기린을 박제해놨어요! 나만운업서!\r\n"
                            "'!장비 <장비아이템이름>' : 궁금하신 장비템의 옵션을 검색해서 알려드릴게요.\r\n"
                            "'!세트 <세트아이템이름>' : 궁금하신 세트템의 옵션을 검색해서 알려드릴게요.\r\n"
                            "```")
@@ -64,97 +61,13 @@ async def 등급(ctx):
     elif itemGradeName == '하급':
         footer = '아무리 그래도 하급은 아니죠...'
     elif itemGradeName == '중급':
-        footer = '중급도 사실 하급, 최하급과 다르지 않아요...'
+        footer = '중급...도 조금 그래요.'
     elif itemGradeName == '상급':
-        footer = '조금 아쉬운데, 정 급하다면 어쩔 수 없어요!'
+        footer = '조금 아쉬운데, 급하다면 어쩔 수 없어요!'
     elif itemGradeName == '최상급':
         footer = '오늘만을 기다려왔어요!!'
     embed.set_footer(text=footer)
     await ctx.channel.send(embed=embed)
-
-@bot.command()
-async def 캐릭터(ctx, name='None'):
-    if name == 'None':
-        await ctx.channel.send('> !캐릭터 <닉네임> 의 형태로 적어야해요!')
-        return
-
-    chrIdList = DNFAPI.getChrIdList('전체', name)
-    if len(chrIdList) >= 2:
-        await ctx.channel.purge(limit=1)
-        embed = discord.Embed(title='알고싶은 캐릭터의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
-        for i in range(len(chrIdList)):
-            value = 'Lv. ' + chrIdList[i]['level'] + ' ' + chrIdList[i]['characterName'] + '\r\n' + \
-                    chrIdList[i]['server'] + ' | ' + chrIdList[i]['jobGrowName']
-            embed.add_field(name='> ' + str(i + 1), value=value)
-        await ctx.channel.send(embed=embed)
-
-        def check(m):
-            if 1 <= int(m.content) <= len(chrIdList):
-                return True
-            else:
-                return False
-        try:
-            msg = await bot.wait_for('message', check=check, timeout=15)
-        except asyncio.TimeoutError:
-            await ctx.channel.purge(limit=1)
-            await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-            return
-        except:
-            await ctx.channel.purge(limit=2)
-            await ctx.channel.send('> 제대로 선택해주셔야해요! 다시 시도해주세요.')
-            return
-        else:
-            server, chrId, name = chrIdList[int(msg.content) - 1]['server'], chrIdList[int(msg.content) - 1]['characterId'], chrIdList[int(msg.content) - 1]['characterName']
-    else:
-        try:
-            server, chrId, name = chrIdList[0]['server'], chrIdList[0]['characterId'], chrIdList[0]['characterName']
-        except:
-            await ctx.channel.send('해당 캐릭터를 찾을 수 없어요. 다시 한번 확인해주세요!')
-            return
-
-    chrEquipItemList, chrEquipItemEnchantInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
-    chrEquipSetItemInfo = DNFAPI.getChrEquipSetItemInfo(chrEquipItemList)
-
-    chrEquipSetItemName = []
-    for i in chrEquipSetItemInfo:
-        if i[2] is not None:
-            chrEquipSetItemName.append(i[2])
-    chrEquipSetItemName = list(set(chrEquipSetItemName))
-
-    # embed 설정
-    embed = discord.Embed(title=name + '님의 캐릭터 정보를 알려드릴게요.')
-    embed.set_image(url='https://img-api.neople.co.kr/df/servers/' + DNFAPI.getServerId(server) + '/characters/' + chrId + '?zoom=1')
-
-    # 필드 추가
-    value = ''
-    for i in chrEquipSetItemName:
-        value += i + '\r\n'
-    if value != '':
-        embed.add_field(name='> 장착중인 세트', value=value, inline=False)
-
-    # 장비 옵션
-    for i in range(len(chrEquipSetItemInfo)):
-        value = ''
-        reinforce = chrEquipItemEnchantInfo[i]['reinforce']
-        refine = chrEquipItemEnchantInfo[i]['refine']
-        if reinforce != 0:
-            value += '+' + str(chrEquipItemEnchantInfo[i]['reinforce'])
-        if refine != 0:
-            value += '(' + str(chrEquipItemEnchantInfo[i]['refine']) + ')'
-        value += ' ' + chrEquipSetItemInfo[i][1] + '\r\n'
-        try:
-            value += chrEquipItemEnchantInfo[i]['enchant']
-        except: pass
-        embed.add_field(name='> ' + chrEquipSetItemInfo[i][0], value=value)
-
-    # 푸터
-    embed.set_footer(text=name + '님의 캐릭터 이미지도 챙겨왔어요!')
-    await ctx.channel.purge(limit=2)
-
-    try:
-        await ctx.channel.send(embed=embed)
-    except:
-        await ctx.channel.send('오류가 발생했어요... 다시 시도해주세요!')
 
 @bot.command()
 async def 기린력(ctx, name='None'):
@@ -163,42 +76,12 @@ async def 기린력(ctx, name='None'):
         await ctx.channel.send('> !기린력 <닉네임> 의 형태로 적어야해요!')
         return
 
-    chrIdList = DNFAPI.getChrIdList('전체', name)
-
-    if len(chrIdList) >= 2:
-        await ctx.channel.purge(limit=1)
-        embed = discord.Embed(title='기린력을 측정할 캐릭터의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
-        for i in range(len(chrIdList)):
-            value = 'Lv. ' + chrIdList[i]['level'] + ' ' + chrIdList[i]['characterName'] + '\r\n' + \
-                    chrIdList[i]['server'] + ' | ' + chrIdList[i]['jobGrowName']
-            embed.add_field(name='> ' + str(i + 1), value=value)
-        await ctx.channel.send(embed=embed)
-
-        def check(m):
-            if 1 <= int(m.content) <= len(chrIdList):
-                return True
-            else:
-                return False
-        try:
-            msg = await bot.wait_for('message', check=check, timeout=15)
-        except asyncio.TimeoutError:
-            await ctx.channel.purge(limit=1)
-            await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-            return
-        except:
-            await ctx.channel.purge(limit=2)
-            await ctx.channel.send('> 제대로 선택해주셔야해요! 다시 시도해주세요.')
-            return
-        else:
-            await ctx.channel.purge(limit=2)
-            server, name = chrIdList[int(msg.content) - 1]['server'], chrIdList[int(msg.content) - 1]['characterName']
-    else:
-        try:
-            await ctx.channel.purge(limit=1)
-            server, name = chrIdList[0]['server'], chrIdList[0]['characterName']
-        except:
-            await ctx.channel.send('해당 캐릭터를 찾을 수 없어요. 다시 한번 확인해주세요!')
-            return
+    # 검색
+    try:
+        chrIdList = DNFAPI.getChrIdList('전체', name)
+        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+    except:
+        return False
 
     # URL만들기
     await ctx.channel.send('> ' + name + '님의 기린력을 측정하고 있어요!')
@@ -240,8 +123,109 @@ async def 기린력(ctx, name='None'):
             await ctx.channel.send(embed=embed)
         except:
             await ctx.channel.send('기린력을 읽어오지 못했어...')
+            return
     else:
         await ctx.channel.send('뭔가 오류가 났어...')
+        return
+
+@bot.command()
+async def 캐릭터(ctx, name='None'):
+    if name == 'None':
+        await ctx.channel.send('> !캐릭터 <닉네임> 의 형태로 적어야해요!')
+        return
+
+    # 검색
+    try:
+        chrIdList = DNFAPI.getChrIdList('전체', name)
+        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+    except:
+        return False
+
+    chrEquipItemList, chrEquipItemEnchantInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
+    chrEquipSetItemInfo = DNFAPI.getChrEquipSetItemInfo(chrEquipItemList)
+
+    chrEquipSetItemName = []
+    for i in chrEquipSetItemInfo:
+        if i[2] is not None:
+            chrEquipSetItemName.append(i[2])
+    chrEquipSetItemName = list(set(chrEquipSetItemName))
+
+    # embed 설정
+    embed = discord.Embed(title=name + '님의 캐릭터 정보를 알려드릴게요.')
+    embed.set_image(url='https://img-api.neople.co.kr/df/servers/' + DNFAPI.SERVER_ID[server] + '/characters/' + chrId + '?zoom=1')
+
+    # 필드 추가
+    value = ''
+    for i in chrEquipSetItemName:
+        value += i + '\r\n'
+    if value != '':
+        embed.add_field(name='> 장착중인 세트', value=value, inline=False)
+
+    # 장비 옵션
+    for i in range(len(chrEquipSetItemInfo)):
+        value = ''
+        reinforce = chrEquipItemEnchantInfo[i]['reinforce']
+        refine = chrEquipItemEnchantInfo[i]['refine']
+        if reinforce != 0:
+            value += '+' + str(chrEquipItemEnchantInfo[i]['reinforce'])
+        if refine != 0:
+            value += '(' + str(chrEquipItemEnchantInfo[i]['refine']) + ')'
+        value += ' ' + chrEquipSetItemInfo[i][1] + '\r\n'
+        try:
+            value += chrEquipItemEnchantInfo[i]['enchant']
+        except: pass
+        embed.add_field(name='> ' + chrEquipSetItemInfo[i][0], value=value)
+
+    # 푸터
+    embed.set_footer(text=name + '님의 캐릭터 이미지도 챙겨왔어요!')
+    await ctx.channel.send(embed=embed)
+
+@bot.command()
+async def 획득에픽(ctx, name='None'):
+    if name == 'None':
+        await ctx.channel.send('> !획득에픽 <닉네임> 의 형태로 적어야해요!')
+        return
+
+    # 검색
+    try:
+        chrIdList = DNFAPI.getChrIdList('전체', name)
+        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+    except:
+        return False
+
+    chrTimeLineData = DNFAPI.getChrTimeLine(server, chrId, '505')
+    if len(chrTimeLineData) == 0:
+        await ctx.channel.send('> ' + name + '님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
+        return
+
+    # 결과 출력
+    embed = discord.Embed(title=name + '님이 이번 달에 획득한 에픽을 알려드릴게요!')
+    for i in chrTimeLineData:
+        embed.add_field(name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'], value=i['data']['itemName'])
+    await ctx.channel.send(embed=embed)
+
+    # 데이터 저장
+    today = datetime.today()
+    epic.add(chrId, [today.year, today.month, server, name, len(chrTimeLineData)])
+
+@bot.command()
+async def 기린랭킹(ctx):
+    today = datetime.today()
+    epic.update(today.month)
+    embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
+
+    rank = 1
+    for k in epic.data.keys():
+        name  = '> ' + str(rank) + '등\r\n> ' + epic.data[k][2] + ' ' + epic.data[k][3]
+        value = '에픽을 ' + str(epic.data[k][4]) + '개 획득하셨어요.'
+        embed.add_field(name=name, value=value)
+        rank += 1
+
+    if rank == 1:
+        embed.add_field(name='> 랭킹에 아무도 없어요!', value='> !획득에픽 <닉네임> 으로 자신의 캐릭터를 랭킹에 추가해보세요!')
+
+    await ctx.channel.purge(limit=1)
+    await ctx.channel.send(embed=embed)
 
 @bot.command()
 async def 장비(ctx, *input):
@@ -258,40 +242,13 @@ async def 장비(ctx, *input):
     hasItemMythicInfo  = True
 
     # 아이템 id 얻어오기
-    itemId = 0
-    itemIdList     = DNFAPI.getItemId(name)
-    if not len(itemIdList):
-        await ctx.channel.send('해당 장비를 찾을 수 없어요...\r\n장비 이름을 확인하고 다시 불러주세요!')
+    try:
+        itemIdList = DNFAPI.getItemId(name)
+        itemId = await Util.getSelectionFromItemIdList(bot, ctx, itemIdList)
+        if itemId is False: return
+    except:
         return
-
-    if len(itemIdList) >= 2:
-        await ctx.channel.purge(limit=1)
-        embed = discord.Embed(title='알고싶은 장비 아이템의 번호를 입력해주세요!', description='10초만 기다려드릴거에요. 빠르게 골라주세요!')
-        for i in range(len(itemIdList)):
-            embed.add_field(name='> ' + str(i + 1), value=itemIdList[i]['itemName'])
-        await ctx.channel.send(embed=embed)
-
-        def check(m):
-            try:
-                if 1 <= int(m.content) <= len(itemIdList):
-                    return True
-                else:
-                    return False
-            except: pass
-        try:
-            msg = await bot.wait_for('message', check=check, timeout=10)
-        except asyncio.TimeoutError:
-            await ctx.channel.purge(limit=1)
-            await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-            return
-        else:
-            await ctx.channel.purge(limit=2)
-            itemId = itemIdList[int(msg.content) - 1]['itemId']
-    else:
-        await ctx.channel.purge(limit=1)
-        itemId = itemIdList[0]['itemId']
-
-    ######################
+    ### 선택 종료 ###
 
     itemDetailInfo = DNFAPI.getItemDetail(itemId)
     itemImageUrl   = DNFAPI.getItemImageUrl(itemId)
@@ -338,37 +295,11 @@ async def 세트(ctx, *input):
         await ctx.channel.send('> !세트 <세트옵션이름> 의 형태로 적어야해!')
         return
 
-    setItemIdList = DNFAPI.getSetItemIdList(setItemName)
-    setItemId = -1
-
-    if not len(setItemIdList):
-        await ctx.channel.send('해당 세트를 찾을 수 없어요...\r\n세트 이름을 확인하고 다시 불러주세요!')
+    try:
+        setItemIdList = DNFAPI.getSetItemIdList(setItemName)
+        setItemId, setItemName = await Util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
+    except:
         return
-
-    if len(setItemIdList) >= 2:
-        await ctx.channel.purge(limit=1)
-        embed = discord.Embed(title='알고싶은 세트옵션의 번호를 입력해주세요!', description='10초만 기다려드릴거에요. 빠르게 골라주세요!')
-        for i in range(len(setItemIdList)):
-            embed.add_field(name='> ' + str(i + 1), value=setItemIdList[i]['setItemName'])
-        await ctx.channel.send(embed=embed)
-
-        def check(m):
-            if 1 <= int(m.content) <= len(setItemIdList):
-                return True
-            else:
-                return False
-        try:
-            msg = await bot.wait_for('message', check=check, timeout=10)
-        except asyncio.TimeoutError:
-            await ctx.channel.purge(limit=1)
-            await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요!')
-            return
-        else:
-            await ctx.channel.purge(limit=2)
-            setItemId, setItemName = setItemIdList[int(msg.content) - 1]['setItemId'], setItemIdList[int(msg.content) - 1]['setItemName']
-    else:
-        await ctx.channel.purge(limit=1)
-        setItemId, setItemName = setItemIdList[0]['setItemId'], setItemIdList[0]['setItemName']
 
     setItemInfoList, setItemOptionList = DNFAPI.getSetItemInfoList(setItemId)
     embed2 = discord.Embed(title=setItemName + '의 정보를 알려드릴게요.')
@@ -380,86 +311,6 @@ async def 세트(ctx, *input):
     embed2.set_thumbnail(url=itemImageUrl)
 
     await ctx.channel.send(embed=embed2)
-
-@bot.command()
-async def 에픽(ctx, name='None'):
-    if name == 'None':
-        await ctx.channel.send('> !에픽 <닉네임> 의 형태로 적어야해요!')
-        return
-
-    ### 캐릭터 선택 시작 ###
-
-    chrIdList = DNFAPI.getChrIdList('전체', name)
-    if len(chrIdList) >= 2:
-        await ctx.channel.purge(limit=1)
-        embed = discord.Embed(title='알고싶은 캐릭터의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
-        for i in range(len(chrIdList)):
-            value = 'Lv. ' + chrIdList[i]['level'] + ' ' + chrIdList[i]['characterName'] + '\r\n' + \
-                    chrIdList[i]['server'] + ' | ' + chrIdList[i]['jobGrowName']
-            embed.add_field(name='> ' + str(i + 1), value=value)
-        await ctx.channel.send(embed=embed)
-
-        def check(m):
-            if 1 <= int(m.content) <= len(chrIdList):
-                return True
-            else:
-                return False
-        try:
-            msg = await bot.wait_for('message', check=check, timeout=15)
-        except asyncio.TimeoutError:
-            await ctx.channel.purge(limit=1)
-            await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-            return
-        except:
-            await ctx.channel.purge(limit=2)
-            await ctx.channel.send('> 제대로 선택해주셔야해요! 다시 시도해주세요.')
-            return
-        else:
-            await ctx.channel.purge(limit=2)
-            server, chrId, name = chrIdList[int(msg.content) - 1]['server'], chrIdList[int(msg.content) - 1]['characterId'], chrIdList[int(msg.content) - 1]['characterName']
-    else:
-        try:
-            await ctx.channel.purge(limit=1)
-            server, chrId, name = chrIdList[0]['server'], chrIdList[0]['characterId'], chrIdList[0]['characterName']
-        except:
-            await ctx.channel.send('해당 캐릭터를 찾을 수 없어요. 다시 한번 확인해주세요!')
-            return
-
-    ### 캐릭터 선택 종료 ###
-
-    chrTimeLineData = DNFAPI.getChrTimeLine(server, chrId, '505')
-    if len(chrTimeLineData) == 0:
-        await ctx.channel.send('> ' + name + '님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
-        return
-
-    # 결과 출력
-    embed = discord.Embed(title=name + '님이 이번 달에 획득한 에픽을 알려드릴게요!')
-    for i in chrTimeLineData:
-        embed.add_field(name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'], value=i['data']['itemName'])
-    await ctx.channel.send(embed=embed)
-
-    # 데이터 저장
-    today = datetime.today()
-    epic.add(chrId, [today.year, today.month, server, name, len(chrTimeLineData)])
-
-@bot.command()
-async def 에픽랭킹(ctx):
-    today = datetime.today()
-    epic.update(today.month)
-    embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 에픽 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
-
-    rank = 1
-    for k in epic.data.keys():
-        name  = '> ' + str(rank) + '등\r\n> ' + epic.data[k][2] + ' ' + epic.data[k][3]
-        value = '에픽을 ' + str(epic.data[k][4]) + '개 획득하셨어요.'
-        embed.add_field(name=name, value=value)
-        rank += 1
-
-    if rank == 1:
-        embed.add_field(name='> 랭킹에 아무도 없어요!', value='> !에픽 <닉네임> 으로 자신의 캐릭터를 랭킹에 추가해보세요!')
-
-    await ctx.channel.purge(limit=1)
-    await ctx.channel.send(embed=embed)
 
 @bot.command()
 async def 연결(ctx):
