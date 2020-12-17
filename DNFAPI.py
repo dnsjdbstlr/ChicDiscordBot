@@ -161,6 +161,18 @@ def getChrEquipItemInfoList(server, chrId):
 
     return chrEquipItemIdList, chrEquipItemEnchantInfo
 
+def getChrEquipItemIdList(server, chrId):
+    chrEquipItemIdList = []
+
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/equipment?apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+
+    for i in data['equipment']:
+        chrEquipItemIdList.append(i['itemId'])
+
+    return chrEquipItemIdList
+
 def getChrEquipSetItemInfo(chrEquipItemList):
     chrEquipSetItemName = []
 
@@ -183,6 +195,12 @@ def getChrEquipSetItemInfo(chrEquipItemList):
 
     return chrEquipSetItemName
 
+def getChrEquipCreatureId(server, chrId):
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/creature?apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data['creature']['itemId']
+
 def getChrStatInfo(server, chrId):
     url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] +'/characters/' + chrId +'/status?apikey=' + apikey
     response = requests.get(url=url)
@@ -195,7 +213,7 @@ def getChrTimeLine(server, chrId, code):
     startDate = str(today.year) + '-' + str(today.month) + '-01 00:00'
     endDate   = str(today.year) + '-' + str(today.month) + '-' + str(today.day) + ' ' + str(today.hour) + ':' + str(today.minute)
 
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/timeline?&code=' + code + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/timeline?limit=100&code=' + code + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['timeline']['rows']
