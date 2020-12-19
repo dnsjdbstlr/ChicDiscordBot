@@ -204,9 +204,8 @@ def getChrEquipCreatureId(server, chrId):
 def getChrStatInfo(server, chrId):
     url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] +'/characters/' + chrId +'/status?apikey=' + apikey
     response = requests.get(url=url)
-    temp = json.loads(response.text)
-    chrBuffStatInfo = temp['buff'][0]['status']
-    print(chrBuffStatInfo)
+    data = json.loads(response.text)
+    return data['status']
 
 def getChrTimeLine(server, chrId, code):
     today = datetime.today()

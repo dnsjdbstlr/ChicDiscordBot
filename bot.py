@@ -11,15 +11,16 @@ import Util
 import Classes
 from datetime import datetime
 
-# 기본설정
+### 기본설정 ###
 bot = commands.Bot(command_prefix='!')
 #token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 epic = Classes.epicRank()
 
+### 이벤트 ###
 @bot.event
 async def on_ready():
-    await bot.change_presence(status=discord.Status.online, activity=discord.Game('던전앤파이터'))
+    await bot.change_presence(status=discord.Status.online, activity=discord.Game('!도움말'))
     print('구동 완료')
 
 @bot.event
@@ -29,6 +30,7 @@ async def on_message(msg):
 
     await bot.process_commands(msg)
 
+### 명령어 ###
 @bot.command()
 async def 도움말(ctx):
     await ctx.channel.purge(limit=1)
@@ -69,65 +71,6 @@ async def 등급(ctx):
     await ctx.channel.purge(limit=1)
     await ctx.channel.send(embed=embed)
 
-# @bot.command()
-# async def 기린력(ctx, name='None'):
-#     # 캐릭터 선택
-#     if name == 'None':
-#         await ctx.channel.send('> !기린력 <닉네임> 의 형태로 적어야해요!')
-#         return
-#
-#     # 검색
-#     try:
-#         chrIdList = DNFAPI.getChrIdList('전체', name)
-#         server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
-#     except:
-#         return False
-#
-#     # URL만들기
-#     await ctx.channel.send('> ' + name + '님의 기린력을 측정하고 있어요!')
-#     url = 'http://duntoki.xyz/giraffe?serverNm=' + server + '&charNm=' + name
-#     response = requests.get(url=url)
-#     if response.status_code == 200:
-#         # 패턴 정의
-#         pat1 = [None, None, None, None]
-#         pat1[0] = re.compile('(?P<date>\d\d\d\d-\d\d-\d\d) 대비-(?P<delta>\d.\d\d점 하락)')
-#         pat1[1] = re.compile('(?P<date>\d\d\d\d-\d\d-\d\d) 대비-(?P<delta>\d\d.\d\d점 하락)')
-#         pat1[2] = re.compile('(?P<date>\d\d\d\d-\d\d-\d\d) 대비(?P<delta>\d.\d\d점 상승)')
-#         pat1[3] = re.compile('(?P<date>\d\d\d\d-\d\d-\d\d) 대비(?P<delta>\d\d.\d\d점 상승)')
-#
-#         pat2 = [None, None, None]
-#         pat2[0] = re.compile('<td>(?P<grade>\d\.\d점)</td>')
-#         pat2[1] = re.compile('<td>(?P<grade>\d\.\d\d점)</td>')
-#         pat2[2] = re.compile('<td>(?P<grade>\d\d\.\d\d점)</td>')
-#
-#         # 결과
-#         result0 = None
-#         for i in range(4):
-#             result0 = pat1[i].search(response.text)
-#             if result0 != None: break
-#
-#         result1 = None
-#         for i in range(3):
-#             result1 = pat2[i].search(response.text)
-#             if result1 != None: break
-#
-#         # 출력
-#         try:
-#             await ctx.channel.purge(limit=1)
-#             if result0 is not None:
-#                 embed = discord.Embed(title='기린력 측정 결과가 나왔어요!',
-#                                       description=name + '님의 기린력은 ' + result0.group('date') + '때 보다 ' + result0.group('delta') + '한 ' + result1.group('grade') + '이예요!')
-#             else:
-#                 embed = discord.Embed(title='기린력 측정 결과가 나왔어요!',
-#                                       description=name + '님의 기린력은 변함없이 ' + result1.group('grade') + '이예요!')
-#             await ctx.channel.send(embed=embed)
-#         except:
-#             await ctx.channel.send('기린력을 읽어오지 못했어...')
-#             return
-#     else:
-#         await ctx.channel.send('뭔가 오류가 났어...')
-#         return
-
 @bot.command()
 async def 캐릭터(ctx, name='None'):
     if name == 'None':
@@ -148,6 +91,16 @@ async def 캐릭터(ctx, name='None'):
     for i in chrEquipSetItemInfo:
         if i[2] is not None:
             chrEquipSetItemName.append(i[2])
+
+    # 몇 세트 장착 중인지
+    chrEquipSetItemAmount = {}
+    for i in chrEquipSetItemName:
+        SET = 0
+        if chrEquipSetItemAmount.get(i) is not None:
+            SET = chrEquipSetItemAmount.get(i)
+        chrEquipSetItemAmount.update({i : SET + 1})
+
+    # 세트이름만 추출
     chrEquipSetItemName = list(set(chrEquipSetItemName))
 
     # embed 설정
@@ -157,7 +110,7 @@ async def 캐릭터(ctx, name='None'):
     # 필드 추가
     value = ''
     for i in chrEquipSetItemName:
-        value += i + '\r\n'
+        value += i + '(' + str(chrEquipSetItemAmount.get(i)) + ')\r\n'
     if value != '':
         embed.add_field(name='> 장착중인 세트', value=value, inline=False)
 
@@ -198,10 +151,13 @@ async def 캐릭터(ctx, name='None'):
 #     itemIdList.append(chrEquipCreatureId)
 #
 #     ### 정규식 설정 ###
-#     rDmgInc       = re.compile('공격 시 데미지 (?P<value>\d\d)% 증가')
-#     rCriDmgInc    = re.compile('크리티컬 공격 시 데미지 (?P<value>\d\d)% 증가')
-#     rAddDmgInc    = re.compile('공격 시 데미지 증가량 (?P<value>\d\d)% 추가 증가')
-#     rAddCriDmgInc = re.compile('크리티컬 공격 시 데미지 증가량 (?P<value>\d\d)% 추가 증가')
+#     rDmgInc       = re.compile('공격 시 데미지 (?P<value>\d+)% 증가')
+#     rCriDmgInc    = re.compile('크리티컬 공격 시 데미지 (?P<value>\d+)% 증가')
+#     rAddDmgInc    = re.compile('공격 시 데미지 증가량 (?P<value>\d+)% 추가 증가')
+#     rAddCriDmgInc = re.compile('크리티컬 공격 시 데미지 증가량 (?P<value>\d+)% 추가 증가')
+#     rAddDmg       = re.compile('공격 시 (?P<value>\d+)% 추가 데미지')
+#     rEleAddDmg    = re.compile('공격 시 (?P<value>\d+)% 속성 추가 데미지')
+#     rSkillDmgInc  = re.compile('스킬 공격력 (?P<value>\d+)% 증가')
 #     ### 정규식 설정 끝 ###
 #
 #     ### 변수 설정 ###
@@ -210,35 +166,79 @@ async def 캐릭터(ctx, name='None'):
 #     criDmgInc    = 0 # 크리티컬 데미지 증가
 #     addCriDmgInc = 0 # 크리티컬 데미지 추가 증가
 #     addDmg       = 0 # 추가 데미지
+#     eleAddDmg    = 0 # 속성 추가 데미지
 #     allDmgInc    = 0 # 모든 공격력 증가
-#     skillDmgInc  = 0 # 스킬 데미지 증가
+#     skillDmgInc  = 1 # 스킬 데미지 증가
 #     adApInInc    = 0 # 물리,마법, 독립 공격력 증가
 #     ### 선언 끝 ###
 #
 #     for itemId in itemIdList:
 #         itemDetailInfo = DNFAPI.getItemDetail(itemId)
-#         info = itemDetailInfo['itemExplainDetail']
+#         info = itemDetailInfo['itemExplainDetail'].split('\n')
 #
-#         # 데미지, 크리티컬 데미지 증가
-#         _criDmgInc = rCriDmgInc.search(info)
-#         if _criDmgInc is not None and criDmgInc < int(_criDmgInc.group('value')):
-#             criDmgInc = int(_criDmgInc.group('value'))
-#         else:
-#             _dmgInc = rDmgInc.search(info)
-#             if _dmgInc is not None and dmgInc < int(_dmgInc.group('value')):
-#                 dmgInc = int(_dmgInc.group('value'))
+#         # 신화 옵션
+#         try:
+#             for i in itemDetailInfo['mythologyInfo']['options']:
+#                 info.append(i['explain'])
+#         except: pass
 #
-#         # 데미지, 크리티컬 데미지 추가 증가
-#         _CriDmgInc = rAddCriDmgInc.search(info)
-#         if _CriDmgInc is not None:
-#             addCriDmgInc += int(_CriDmgInc.group('value'))
-#         else:
-#             _DmgInc = rAddDmgInc.search(info)
-#             if _DmgInc is not None: addDmgInc += int(_DmgInc.group('value'))
+#         for i in info:
+#             # 데미지, 크리티컬 데미지 증가
+#             tCriDmgInc = rCriDmgInc.search(i)
+#             if tCriDmgInc is not None and criDmgInc < int(tCriDmgInc.group('value')):
+#                 criDmgInc = int(tCriDmgInc.group('value'))
+#             else:
+#                 tDmgInc = rDmgInc.search(i)
+#                 if tDmgInc is not None and dmgInc < int(tDmgInc.group('value')):
+#                     dmgInc = int(tDmgInc.group('value'))
+#
+#             # 데미지, 크리티컬 데미지 추가 증가
+#             tAddCriDmgInc = rAddCriDmgInc.search(i)
+#             if tAddCriDmgInc is not None:
+#                 addCriDmgInc += int(tAddCriDmgInc.group('value'))
+#             else:
+#                 tAddDmgInc = rAddDmgInc.search(i)
+#                 if tAddDmgInc is not None:
+#                     addDmgInc += int(tAddDmgInc.group('value'))
+#
+#             # 추가 데미지
+#             tAddDmg = rAddDmg.search(i)
+#             if tAddDmg is not None:
+#                 addDmg += int(tAddDmg.group('value'))
+#
+#             # 속성 추가 데미지
+#             tEleDmg = rEleAddDmg.search(i)
+#             if tEleDmg is not None:
+#                 eleAddDmg += int(tEleDmg.group('value'))
+#
+#             # 스킬 데미지 증가
+#             tSkillDmgInc = rSkillDmgInc.search(i)
+#             if tSkillDmgInc is not None:
+#                 skillDmgInc *= 1 + int(tSkillDmgInc.group('value')) / 100
+#
+#     # 속성 추가 데미지 계산
+#     chrStatInfo = DNFAPI.getChrStatInfo(server, chrId)
+#     r = re.compile('\S속성 강화')
+#     element = 0
+#     for i in chrStatInfo:
+#         temp = r.search(i['name'])
+#         if temp is not None:
+#             value = i['value']
+#             if value > element:
+#                 element = value
+#     eleAddDmg = int(eleAddDmg * (1.05 + 0.0045 * element))
+#
+#     # 스킬 데미지 계산
+#     skillDmgInc = int((skillDmgInc - 1) * 100)
+#     if skillDmgInc == 1:
+#         skillDmgInc = 0
 #
 #     embed = discord.Embed(title=name + '님의 상세정보를 알려드릴게요.', description='능력치에 따른 효율도 알려드릴게요!')
-#     embed.add_field(name='> 데미지 증가량', value=str(dmgInc + addDmgInc) + '%')
-#     embed.add_field(name='> 크리티컬 데미지 증가량', value=str(criDmgInc + addCriDmgInc) + '%')
+#     embed.add_field(name='> 데미지 증가',          value=str(dmgInc + addDmgInc) + '%')
+#     embed.add_field(name='> 크리티컬 데미지 증가', value=str(criDmgInc + addCriDmgInc) + '%')
+#     embed.add_field(name='> 추가 데미지',          value=str(addDmg) + '% + ' + str(eleAddDmg) + '%')
+#     embed.add_field(name='> 스킬 데미지 증가',     value=str(skillDmgInc) + '%')
+#     embed.set_footer(text='이 수치들은 모두 극옵션으로 계산한거예요!')
 #     await ctx.channel.send(embed=embed)
 
 @bot.command()
@@ -260,10 +260,23 @@ async def 획득에픽(ctx, name='None'):
         return
 
     # 결과 출력
-    embed = discord.Embed(title=name + '님이 이번 달에 획득한 에픽을 알려드릴게요!')
-    for i in chrTimeLineData:
-        embed.add_field(name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'], value=i['data']['itemName'])
-    await ctx.channel.send(embed=embed)
+    # 15개씩 나눠서 출력
+    index = 0
+    while index < len(chrTimeLineData):
+        start = index
+        end   = min(start + 15, len(chrTimeLineData))
+    
+        if start == 0:
+            embed = discord.Embed(title=name + '님이 이번 달에 획득한 에픽을 알려드릴게요!',
+                                  description='총 ' + str(len(chrTimeLineData)) + '개의 에픽을 획득하셨네요!')
+        else:
+            embed = discord.Embed(title=str(start + 1) + ' ~ ' + str(end) + '번째 획득한 에픽들')
+    
+        for i in chrTimeLineData[start:end]:
+            embed.add_field(name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'], value=i['data']['itemName'])
+        await ctx.channel.send(embed=embed)
+
+        index += 15
 
     # 데이터 저장
     today = datetime.today()
@@ -373,22 +386,42 @@ async def 세트(ctx, *input):
 
     await ctx.channel.send(embed=embed2)
 
+### 제작자 명령어 ###
 @bot.command()
 async def 연결(ctx):
     if ctx.message.author.id == 247361856904232960:
-        embed = discord.Embed(title=str(len(bot.guilds)) + '개의 서버에 시크봇이 연결되어있어요!')
-        for i in bot.guilds:
-            embed.add_field(name='> ' + i.name, value=str(i.member_count) + '명')
-        embed.set_footer(text='이 명령어는 제작자만 사용할 수 있습니다.')
         await ctx.channel.purge(limit=1)
-        await ctx.channel.send(embed=embed)
+        NUMBER_OF_CONNECTED_SERVER = len(bot.guilds)
+
+        index = 0
+        while index < NUMBER_OF_CONNECTED_SERVER:
+            start = index
+            end   = min(len(bot.guilds), index + 15)
+            
+            if start == 0:
+                title = str(NUMBER_OF_CONNECTED_SERVER) + '개의 서버에 시크봇이 연결되어있어요!'
+            else:
+                title = str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
+            embed = discord.Embed(title=title)
+            
+            # 출력
+            for i in bot.guilds[start:end]:
+                embed.add_field(name='> ' + i.name, value=str(i.member_count) + '명')
+            await ctx.channel.send(embed=embed)
+
+            index += 15
 
 @bot.command()
-async def 상태(ctx, state):
+async def 상태(ctx, *state):
     if ctx.message.author.id == 247361856904232960:
-        await bot.change_presence(status=discord.Status.online, activity=discord.Game(state))
+        _state = ''
+        for i in state:
+            _state += i + ' '
+        _state = _state.rstrip()
+
+        await bot.change_presence(status=discord.Status.online, activity=discord.Game(_state))
         await ctx.channel.purge(limit=1)
-        await ctx.channel.send('> ' + state + '하는 중으로 상태를 바꿨습니다.')
+        await ctx.channel.send("> '" + _state + "하는 중' 으로 상태를 바꿨습니다.")
 
 bot.remove_command('help')
 bot.run(token)
