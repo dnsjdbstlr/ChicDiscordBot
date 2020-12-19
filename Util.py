@@ -43,7 +43,7 @@ async def getSelectionFromChrIdList(bot, ctx, chrIdList):
             await ctx.channel.purge(limit=1)
             server, chrId, name = chrIdList[0]['server'], chrIdList[0]['characterId'], chrIdList[0]['characterName']
         except:
-            await ctx.channel.send('해당 캐릭터를 찾을 수 없어요. 다시 한번 확인해주세요!')
+            await ctx.channel.send('> 해당 캐릭터를 찾을 수 없어요. 다시 한번 확인해주세요!')
             return False
 
     return server, chrId, name
