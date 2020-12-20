@@ -15,9 +15,9 @@ async def getSelectionFromChrIdList(bot, ctx, chrIdList):
         ### 반응을 대기함 ###
         try:
             def check(m):
-                if m.content == '':
+                if m.content == '' and ctx.channel.id == m.channel.id:
                     return False
-                else:
+                elif ctx.channel.id == m.channel.id:
                     return True
             msg = await bot.wait_for('message', check=check, timeout=15)
 
@@ -62,9 +62,9 @@ async def getSelectionFromItemIdList(bot, ctx, itemIdList):
 
         try:
             def check(m):
-                if m.content == '':
+                if m.content == '' and ctx.channel.id == m.channel.id:
                     return False
-                else:
+                elif ctx.channel.id == m.channel.id:
                     return True
             msg = await bot.wait_for('message', check=check, timeout=10)
 
@@ -98,9 +98,9 @@ async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
 
         try:
             def check(m):
-                if m.content == '':
+                if m.content == '' and ctx.channel.id == m.channel.id:
                     return False
-                else:
+                elif ctx.channel.id == m.channel.id:
                     return True
             msg = await bot.wait_for('message', check=check, timeout=10)
         except asyncio.TimeoutError:

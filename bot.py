@@ -6,15 +6,14 @@ from discord.ext import commands
 import DNFAPI
 
 # 기타
-import re
 import Util
 import Classes
 from datetime import datetime
 
 ### 기본설정 ###
 bot = commands.Bot(command_prefix='!')
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 epic = Classes.epicRank()
 
 ### 이벤트 ###
@@ -27,7 +26,6 @@ async def on_ready():
 async def on_message(msg):
     if msg.author.bot:
         return None
-
     await bot.process_commands(msg)
 
 ### 명령어 ###
@@ -35,7 +33,7 @@ async def on_message(msg):
 async def 도움말(ctx):
     await ctx.channel.purge(limit=1)
     await ctx.channel.send("```cs\r\n" +
-                           "#최근 업데이트 날짜 : 2020/12/15\r\n"
+                           "#최근 업데이트 날짜 : 2020/12/20\r\n"
                            "#시크봇의 명령어들을 알려드릴게요!\r\n"
                            "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n"
                            "'!캐릭터 <닉네임>' : 캐릭터가 장착한 장비와 세트를 알려드릴게요.\r\n"
@@ -287,6 +285,7 @@ async def 기린랭킹(ctx):
     today = datetime.today()
     epic.update(today.month)
     embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
+    embed.set_footer(text='열심히 개발중이라 랭킹이 자주 초기화될 수 있어요.')
 
     rank = 1
     for k in epic.data.keys():
@@ -399,7 +398,7 @@ async def 연결(ctx):
             end   = min(len(bot.guilds), index + 15)
             
             if start == 0:
-                title = str(NUMBER_OF_CONNECTED_SERVER) + '개의 서버에 시크봇이 연결되어있어요!'
+                title = str(NUMBER_OF_CONNECTED_SERVER) + '개의 서버에 시크봇이 연결되어있어요!\r\n' + str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
             else:
                 title = str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
             embed = discord.Embed(title=title)
