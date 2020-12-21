@@ -118,3 +118,76 @@ async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
         await ctx.channel.purge(limit=1)
         setItemId, setItemName = setItemIdList[0]['setItemId'], setItemIdList[0]['setItemName']
     return setItemId, setItemName
+
+def getSirocoItemInfo(chrEquipItemInfo):
+    sirocoInfo = {}
+
+    ### 데이터 ###
+    reverberation = {}
+
+    intangible = {}
+    intangibleType = ''
+
+    unconscious = {}
+    unconsciousType = ''
+
+    illusion = {}
+    illusionType = ''
+
+    setCount = {
+        '넥스':   0,
+        '암살자': 0,
+        '록시':   0,
+        '수문장': 0,
+        '로도스': 0
+    }
+
+    ### 계산 ###
+    for i in chrEquipItemInfo:
+        try:
+            for name in ['넥스', '암살자', '록시', '수문장', '로도스']:
+                if name in i['upgradeInfo']['itemName']:
+                    setCount[name] = setCount[name] + 1
+        except: pass
+
+        try:
+            for j in i['sirocoInfo']['options']:
+                if i['slotName'] == '무기':
+                    if reverberation.get('1옵션') is None:
+                        reverberation.update({'1옵션' : j['explain']})
+                    else:
+                        reverberation.update({'2옵션': j['explain']})
+                elif i['slotName'] == '하의':
+                    if intangible.get('1옵션') is None:
+                        intangible.update({'1옵션' : j['explain']})
+                        intangibleType = i['upgradeInfo']['itemName']
+                    else:
+                        intangible.update({'2옵션': j['explain']})
+                        intangibleType = i['upgradeInfo']['itemName']
+
+                elif i['slotName'] == '반지':
+                    if unconscious.get('1옵션') is None:
+                        unconscious.update({'1옵션' : j['explain']})
+                        unconsciousType = i['upgradeInfo']['itemName']
+                    else:
+                        unconscious.update({'2옵션': j['explain']})
+                        unconsciousType = i['upgradeInfo']['itemName']
+                elif i['slotName'] == '보조장비':
+                    if illusion.get('1옵션') is None:
+                        illusion.update({'1옵션' : j['explain']})
+                        illusionType = i['upgradeInfo']['itemName']
+                    else:
+                        illusion.update({'2옵션': j['explain']})
+                        illusionType = i['upgradeInfo']['itemName']
+        except: pass
+
+    sirocoInfo['세트'] = setCount
+    if len(reverberation)   != 0: sirocoInfo['잔향'] = reverberation
+    if len(intangible)      != 0: sirocoInfo[intangibleType] = intangible
+    if len(unconscious)     != 0: sirocoInfo[unconsciousType] = unconscious
+    if len(illusion)        != 0: sirocoInfo[illusionType] = illusion
+
+    if len(reverberation) == 0 and len(intangible) == 0 and len(unconscious) == 0 and len(illusion) == 0:
+        return None
+    else:
+        return sirocoInfo

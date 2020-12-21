@@ -16,3 +16,13 @@ class epicRank:
             if self.data[k][1] != month:
                 self.data.clear()
             break
+
+class setRank:
+    def __init__(self):
+        self.data = {}
+
+    def add(self, chrId, info):
+        self.data.update({chrId : info})
+
+        def key(x): return x[1][2]
+        self.data = dict(sorted(self.data.items(), key=key, reverse=True)[:15])

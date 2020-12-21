@@ -6,6 +6,7 @@ from discord.ext import commands
 import DNFAPI
 
 # 기타
+import re
 import Util
 import Classes
 from datetime import datetime
@@ -15,6 +16,7 @@ bot = commands.Bot(command_prefix='!')
 #token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 epic = Classes.epicRank()
+setRank = Classes.setRank()
 
 ### 이벤트 ###
 @bot.event
@@ -131,113 +133,449 @@ async def 캐릭터(ctx, name='None'):
     embed.set_footer(text=name + '님의 캐릭터 이미지도 챙겨왔어요!')
     await ctx.channel.send(embed=embed)
 
-# @bot.command()
-# async def 상세정보(ctx, name='None'):
-#     if name == 'None':
-#         await ctx.channel.send('> !캐릭터 <닉네임> 의 형태로 적어야해요!')
-#         return
-#
-#     # 검색
-#     try:
-#         chrIdList = DNFAPI.getChrIdList('전체', name)
-#         server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
-#     except:
-#         return False
-#
-#     itemIdList = DNFAPI.getChrEquipItemIdList(server, chrId)
-#     chrEquipCreatureId = DNFAPI.getChrEquipCreatureId(server, chrId)
-#     itemIdList.append(chrEquipCreatureId)
-#
-#     ### 정규식 설정 ###
-#     rDmgInc       = re.compile('공격 시 데미지 (?P<value>\d+)% 증가')
-#     rCriDmgInc    = re.compile('크리티컬 공격 시 데미지 (?P<value>\d+)% 증가')
-#     rAddDmgInc    = re.compile('공격 시 데미지 증가량 (?P<value>\d+)% 추가 증가')
-#     rAddCriDmgInc = re.compile('크리티컬 공격 시 데미지 증가량 (?P<value>\d+)% 추가 증가')
-#     rAddDmg       = re.compile('공격 시 (?P<value>\d+)% 추가 데미지')
-#     rEleAddDmg    = re.compile('공격 시 (?P<value>\d+)% 속성 추가 데미지')
-#     rSkillDmgInc  = re.compile('스킬 공격력 (?P<value>\d+)% 증가')
-#     ### 정규식 설정 끝 ###
-#
-#     ### 변수 설정 ###
-#     dmgInc       = 0 # 데미지 증가
-#     addDmgInc    = 0 # 데미지 추가 증가
-#     criDmgInc    = 0 # 크리티컬 데미지 증가
-#     addCriDmgInc = 0 # 크리티컬 데미지 추가 증가
-#     addDmg       = 0 # 추가 데미지
-#     eleAddDmg    = 0 # 속성 추가 데미지
-#     allDmgInc    = 0 # 모든 공격력 증가
-#     skillDmgInc  = 1 # 스킬 데미지 증가
-#     adApInInc    = 0 # 물리,마법, 독립 공격력 증가
-#     ### 선언 끝 ###
-#
-#     for itemId in itemIdList:
-#         itemDetailInfo = DNFAPI.getItemDetail(itemId)
-#         info = itemDetailInfo['itemExplainDetail'].split('\n')
-#
-#         # 신화 옵션
-#         try:
-#             for i in itemDetailInfo['mythologyInfo']['options']:
-#                 info.append(i['explain'])
-#         except: pass
-#
-#         for i in info:
-#             # 데미지, 크리티컬 데미지 증가
-#             tCriDmgInc = rCriDmgInc.search(i)
-#             if tCriDmgInc is not None and criDmgInc < int(tCriDmgInc.group('value')):
-#                 criDmgInc = int(tCriDmgInc.group('value'))
-#             else:
-#                 tDmgInc = rDmgInc.search(i)
-#                 if tDmgInc is not None and dmgInc < int(tDmgInc.group('value')):
-#                     dmgInc = int(tDmgInc.group('value'))
-#
-#             # 데미지, 크리티컬 데미지 추가 증가
-#             tAddCriDmgInc = rAddCriDmgInc.search(i)
-#             if tAddCriDmgInc is not None:
-#                 addCriDmgInc += int(tAddCriDmgInc.group('value'))
-#             else:
-#                 tAddDmgInc = rAddDmgInc.search(i)
-#                 if tAddDmgInc is not None:
-#                     addDmgInc += int(tAddDmgInc.group('value'))
-#
-#             # 추가 데미지
-#             tAddDmg = rAddDmg.search(i)
-#             if tAddDmg is not None:
-#                 addDmg += int(tAddDmg.group('value'))
-#
-#             # 속성 추가 데미지
-#             tEleDmg = rEleAddDmg.search(i)
-#             if tEleDmg is not None:
-#                 eleAddDmg += int(tEleDmg.group('value'))
-#
-#             # 스킬 데미지 증가
-#             tSkillDmgInc = rSkillDmgInc.search(i)
-#             if tSkillDmgInc is not None:
-#                 skillDmgInc *= 1 + int(tSkillDmgInc.group('value')) / 100
-#
-#     # 속성 추가 데미지 계산
-#     chrStatInfo = DNFAPI.getChrStatInfo(server, chrId)
-#     r = re.compile('\S속성 강화')
-#     element = 0
-#     for i in chrStatInfo:
-#         temp = r.search(i['name'])
-#         if temp is not None:
-#             value = i['value']
-#             if value > element:
-#                 element = value
-#     eleAddDmg = int(eleAddDmg * (1.05 + 0.0045 * element))
-#
-#     # 스킬 데미지 계산
-#     skillDmgInc = int((skillDmgInc - 1) * 100)
-#     if skillDmgInc == 1:
-#         skillDmgInc = 0
-#
-#     embed = discord.Embed(title=name + '님의 상세정보를 알려드릴게요.', description='능력치에 따른 효율도 알려드릴게요!')
-#     embed.add_field(name='> 데미지 증가',          value=str(dmgInc + addDmgInc) + '%')
-#     embed.add_field(name='> 크리티컬 데미지 증가', value=str(criDmgInc + addCriDmgInc) + '%')
-#     embed.add_field(name='> 추가 데미지',          value=str(addDmg) + '% + ' + str(eleAddDmg) + '%')
-#     embed.add_field(name='> 스킬 데미지 증가',     value=str(skillDmgInc) + '%')
-#     embed.set_footer(text='이 수치들은 모두 극옵션으로 계산한거예요!')
-#     await ctx.channel.send(embed=embed)
+@bot.command()
+async def 상세정보(ctx, name='None'):
+    if name == 'None':
+        await ctx.channel.send('> !상세정보 <닉네임> 의 형태로 적어야해요!')
+        return
+
+    # 검색
+    try:
+        chrIdList = DNFAPI.getChrIdList('전체', name)
+        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+    except:
+        return False
+
+    itemIdList = DNFAPI.getChrEquipItemIdList(server, chrId)
+    chrEquipCreatureId = DNFAPI.getChrEquipCreatureId(server, chrId)
+    if chrEquipCreatureId is not None: itemIdList.append(chrEquipCreatureId)
+
+    ### 정규식 설정 ###
+    rDmgInc       = re.compile('공격시데미지(?P<value>\d+)%증가')
+    rCriDmgInc    = re.compile('크리티컬공격시데미지(?P<value>\d+)%증가')
+    rCriDmgInc2   = re.compile('크리티컬데미지(?P<value>\d+)%증가')
+    rAddDmgInc    = re.compile('공격시데미지증가\S(?P<value>\d+)%추가증가')
+    rAddCriDmgInc = re.compile('크리티컬공격시데미지증가\S(?P<value>\d+)%추가증가')
+    rAddDmg       = re.compile('공격시(?P<value>\d+)%추가데미지')
+    rEleAddDmg    = re.compile('공격시(?P<value>\d+)%속성추가데미지')
+    rAllDmgInc    = re.compile('모든공격력(?P<value>\d+)%증가')
+    rSkillDmgInc  = re.compile('스킬공격력(?P<value>\d+)%증가')
+    rAdApInInc    = re.compile('물리,마법,독립공격력(?P<value>\d+)%증가')
+    rStrIntInc    = re.compile('힘,지능(?P<value>\d+)%증가')
+    rContinueDmg  = re.compile('적에게입힌피해의(?P<value>\d+)%만큼')
+    ### 정규식 설정 끝 ###
+
+    ### 변수 설정 ###
+    dmgInc       = 0 # 데미지 증가
+    addDmgInc    = 0 # 데미지 추가 증가
+    criDmgInc    = 0 # 크리티컬 데미지 증가
+    addCriDmgInc = 0 # 크리티컬 데미지 추가 증가
+    addDmg       = 0 # 추가 데미지
+    eleAddDmg    = 0 # 속성 추가 데미지
+    allDmgInc    = 0 # 모든 공격력 증가
+    skillDmgInc  = 1 # 스킬 데미지 증가
+    adApInInc    = 0 # 물리,마법, 독립 공격력 증가
+    strIntInc    = 0 # 힘, 지능 증가
+    continueDmg  = 0 # 지속피해
+    
+    element      = 0 # 속성 강화
+    elementResist= 0 # 암속성 저항
+    ### 선언 끝 ###
+
+    ### 속성 강화 :: 가장 높은 수치 ###
+    chrStatInfo = DNFAPI.getChrStatInfo(server, chrId)
+    r = re.compile('\S속성 강화')
+    for i in chrStatInfo:
+        if i['name'] == '암속성 저항':
+            elementResist = i['value']
+
+        if r.search(i['name']) is not None and i['value'] > element:
+            element = i['value']
+
+    # 이 변수에 옵션들을 저장해서 계산함
+    info = []
+
+    ### 먼동 :: 강화 수치에 따라 옵션 설정
+    chrEquipItemList, chrEquipItemEnchantInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
+    for i in range(len(chrEquipItemList)):
+        itemName = DNFAPI.getItemDetail(chrEquipItemList[i])['itemName']
+        if itemName == '새벽을 녹이는 따스함':
+            info.append('모든 공격력 6% 증가')
+            info.append('스킬 공격력 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 증가')
+
+        elif itemName == '달빛을 가두는 여명':
+            info.append('물리, 마법, 독립 공격력 6% 증가')
+            info.append('힘, 지능 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 증가')
+
+        elif itemName == '새벽을 감싸는 따스함':
+            info.append('모든 공격력 6% 증가')
+            info.append('스킬 공격력 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 증가')
+
+        elif itemName == '고요를 머금은 이슬':
+            info.append('공격 시 데미지 증가량 4% 추가 증가')
+            info.append('공격 시 데미지 증가량 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 추가 증가')
+
+    ### 아이템 옵션 계산 ###
+    for itemId in itemIdList:
+        itemDetailInfo = DNFAPI.getItemDetail(itemId)
+
+        # 사도 강림 :: 액티브 스킬 데미지 증가 예외처리
+        # 위대한 의지 :: 액티브 스킬 데미지 증가 예외처리
+        if  '사도 강림' in itemDetailInfo['itemName'] or \
+            '위대한 의지' in itemDetailInfo['itemName']:
+            info.append('공격 시 데미지 15% 증가')
+            continue
+
+        # 별의 바다 : 바드나후 :: 속추뎀 20퍼로 환산
+        if itemDetailInfo['itemName'] == '별의 바다 : 바드나후':
+            info.append('공격 시 20% 속성 추가 데미지')
+
+        # 임의 선택 :: 모든 공격력 증가 35%로 적용
+        if itemDetailInfo['itemName'] == '임의 선택':
+            info.append('모든 공격력 35% 증가')
+            continue
+
+        # 베테랑 세트 :: 숙련 등급 전설 기준
+        if itemDetailInfo['itemName'] == '전장의 매':
+            info.append('물리, 마법, 독립 공격력 34% 증가')
+            continue
+
+        if itemDetailInfo['itemName'] == '퀘이크 프론':
+            info.append('스킬 공격력 34% 증가')
+            continue
+
+        if itemDetailInfo['itemName'] == '오퍼레이션 델타':
+            element += 68
+            continue
+
+        if itemDetailInfo['itemName'] == '데파르망':
+            info.append('크리티컬 공격 시 데미지 증가량 34% 추가 증가')
+            continue
+            
+        if itemDetailInfo['itemName'] == '전쟁의 시작':
+            info.append('힘, 지능 34% 증가')
+            continue
+
+        # 전자기 진공관 :: 버프
+        if itemDetailInfo['itemName'] == '전자기 진공관':
+            info.append('공격 시 10% 추가 데미지')
+            element += 40
+
+        # 심연에 빠진 검은 셔츠 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] in ['심연에 빠진 검은 셔츠', '고대 심연의 로브']:
+            count = min(elementResist / 10, 5)
+            info.append('모든 공격력 ' + str(7 * count) + '% 증가')
+            continue
+
+        # 타락한 세계수의 생명 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] == '타락한 세계수의 생명':
+            count = min(elementResist / 13, 4)
+            info.append('힘, 지능 ' + str(10 * count) + '% 증가')
+            continue
+
+        # 암흑술사가 직접 저술한 고서 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] == '암흑술사가 직접 저술한 고서':
+            count = min(elementResist / 7, 7)
+            info.append('물리, 마법, 독립 공격력 ' + str(6 * count) + '% 증가')
+            continue
+
+        # 어둠을 파헤치는 바지 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] == '어둠을 파헤치는 바지':
+            count = min(elementResist / 14, 5)
+            info.append('공격 시 데미지 증가량 ' + str(7 * count) + '% 추가 증가')
+            continue
+
+        # 지독한 집념의 탐구 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] in ['지독한 집념의 탐구', '영원히 끝나지 않는 탐구']:
+            count = min(elementResist / 18, 4)
+            info.append('모든 공격력 ' + str(7 * count) + '% 증가')
+            element += 10 * count
+            continue
+
+        # 암흑술사의 정수 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] == '암흑술사의 정수':
+            count = min(elementResist / 10, 7)
+            info.append('크리티컬 공격 시 데미지 증가량 ' + str(5 * count) + '% 추가 증가')
+            info.append('스킬 공격력 ' + str(count) + '% 증가')
+            continue
+
+        # 나락으로 빠진 발 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] == '나락으로 빠진 발':
+            count = min(elementResist / 3, 5)
+            element += 14 * count
+            continue
+
+        # 어둠을 지배하는 고리 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] == '어둠을 지배하는 고리':
+            count = min(elementResist / 4, 4)
+            info.append('크리티컬 공격 시 데미지 증가량 ' + str(10 * count) + '% 추가 증가')
+            continue
+            
+        # 끝없는 나락의 다크버스 :: 속성 저항에 따라 설정
+        if itemDetailInfo['itemName'] in ['끝없는 나락의 다크버스', '영원한 나락의 다크버스']:
+            count = min(elementResist / 3, 6)
+            info.append('모든 공격력 ' + str(7 * count) + '% 증가')
+            continue
+
+        # 먼동 세트 :: 이미 계산했으므로 패스
+        if itemDetailInfo['setItemName'] == '먼동 틀 무렵 세트':
+            continue
+
+        # 영보 :: 버프
+        if itemDetailInfo['setItemName'] == '영보 : 세상의 진리 세트':
+            element += 40
+
+        # 사막 :: 퀵슬롯 6개 비운것을 기준
+        if itemDetailInfo['setItemName'] == '메마른 사막의 유산 세트':
+            info.append('공격 시 데미지 증가량 5% 추가 증가')
+
+        # 나머지
+        options = itemDetailInfo['itemExplainDetail'].split('\n')
+        for i in options: info.append(i)
+
+    ### 신화 옵션 계산 ###
+    setItemId = []
+    chrEquipItemInfo = DNFAPI.getChrEquipItemInfo(server, chrId)
+    for i in chrEquipItemInfo:
+        if i['setItemId'] is not None:
+            setItemId.append(i['setItemId'])
+
+        # 신화 옵션
+        try:
+            for j in i['mythologyInfo']['options']:
+                info.append(j['explain'])
+        except: pass
+
+    ### 시로코 옵션 계산 ###
+    chrSirocoItemInfo = Util.getSirocoItemInfo(chrEquipItemInfo)
+    if chrSirocoItemInfo is not None:
+        # 1세트 옵션
+        for k in chrSirocoItemInfo.keys():
+            try:
+                info.append(chrSirocoItemInfo[k]['1옵션'])
+            except: pass
+
+        # 2세트 옵션
+        # 잔향
+        if 3 in chrSirocoItemInfo['세트'].values():
+            info.append(chrSirocoItemInfo['잔향']['2옵션'])
+
+        # 넥스
+        if  '무형 : 넥스의 잠식된 의복' in chrSirocoItemInfo.keys() and \
+            '무의식 : 넥스의 몽환의 어둠' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo['무형 : 넥스의 잠식된 의복']['2옵션'])
+        if '무의식 : 넥스의 몽환의 어둠' in chrSirocoItemInfo.keys() and \
+            '환영 : 넥스의 검은 기운' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo['무의식 : 넥스의 몽환의 어둠']['2옵션'])
+        if '환영 : 넥스의 검은 기운' in chrSirocoItemInfo.keys() and \
+            '무형 : 넥스의 잠식된 의복' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo['환영 : 넥스의 검은 기운']['2옵션'])
+
+        # 암살자
+        if  '무형 : 암살자의 잠식된 의식' in chrSirocoItemInfo.keys() and \
+            '무의식 : 암살자의 몽환의 흔적' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo['무형 : 암살자의 잠식된 의식']['2옵션'])
+
+        if '무의식 : 암살자의 몽환의 흔적' in chrSirocoItemInfo.keys() and \
+            '환영 : 암살자의 검은 검집' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo['무의식 : 암살자의 몽환의 흔적']['2옵션'])
+
+        if '환영 : 암살자의 검은 검집' in chrSirocoItemInfo.keys() and \
+            '무형 : 암살자의 잠식된 의식' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo['환영 : 암살자의 검은 검집']['2옵션'])
+
+        # 수문장
+        if  '무형 : 수문장의 잠식된 갑주' in chrSirocoItemInfo.keys() and \
+            '무의식 : 수문장의 몽환의 사념' in chrSirocoItemInfo.keys():
+            element += 30
+        if  '무의식 : 수문장의 몽환의 사념' in chrSirocoItemInfo.keys() and \
+            '환영 : 수문장의 검은 가면' in chrSirocoItemInfo.keys():
+            element += 30
+        if  '환영 : 수문장의 검은 가면' in chrSirocoItemInfo.keys() and \
+            '무형 : 수문장의 잠식된 갑주' in chrSirocoItemInfo.keys():
+            element += 30
+
+        # 로도스
+        if  '무형 : 로도스의 잠식된 의지' in chrSirocoItemInfo.keys() and \
+            '무의식 : 로도스의 몽환의 근원' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo.get('무형 : 로도스의 잠식된 의지')['2옵션'])
+        if '무의식 : 로도스의 몽환의 근원' in chrSirocoItemInfo.keys() and \
+            '환영 : 로도스의 검은 핵' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo.get('무의식 : 로도스의 몽환의 근원')['2옵션'])
+        if '환영 : 로도스의 검은 핵' in chrSirocoItemInfo.keys() and \
+            '무형 : 로도스의 잠식된 의지' in chrSirocoItemInfo.keys():
+            info.append(chrSirocoItemInfo.get('환영 : 로도스의 검은 핵')['2옵션'])
+
+    ### 세트 갯수 계산 ###
+    chrEquipSetItemAmount = {}
+    for i in setItemId:
+        SET = 0
+        if chrEquipSetItemAmount.get(i) is not None:
+            SET = chrEquipSetItemAmount.get(i)
+        chrEquipSetItemAmount.update({i : SET + 1})
+
+    ### 세트 옵션 계산 ###
+    for i in chrEquipSetItemAmount.keys():
+        for j in DNFAPI.getSetItemInfoList(i)[1]:
+            if j['optionNo'] <= chrEquipSetItemAmount.get(i):
+                # 행운의 트라이앵글 :: 77 기준
+                if i == '9b2a1398222c5ead60edc99cf959338a' and j['optionNo'] == 3:
+                    info.append('스킬 공격력 31% 증가')
+                    continue
+
+                # 운명의 주사위 :: 6 기준
+                if i == '5742ec75674086d001067005f43f0da4' and j['optionNo'] == 3:
+                    info.append('힘, 지능 14% 증가')
+                    continue
+
+                # 메마른 사막의 유산 2세트 :: 퀵슬롯 6개 비운것 기준
+                if i == '0ff0e427a3746948c27de4af1d943109' and j['optionNo'] == 2:
+                    info.append('물리, 마법, 독립 공격력 22% 증가')
+                    info.append('스킬 공격력 6% 증가')
+                    continue
+
+                # 베테랑 군인의 정복 5세트 :: 숙련 등급 전설 기준
+                if i == '10c2cee96ec4093136d041f7f40b7bff' and j['optionNo'] == 5:
+                    info.append('공격 시 40% 추가 데미지')
+                    continue
+
+                # 흑마술 탐구자 세트 :: 암속성 저항에 따라 설정
+                if i == '1d4ed1e13b380593c889feef9ec2f62d':
+                    if j['optionNo'] == 2 and elementResist >= 76:
+                        info.append('공격 시 데미지 증가량 12% 추가 증가')
+                        info.append('스킬 공격력 10% 증가')
+                        continue
+                    if j['optionNo'] == 3 and elementResist >= 81:
+                        info.append('공격 시 13% 속성 추가 데미지')
+                        continue
+
+                # 나락의 구도자 세트 :: 암속성 저항에 따라 설정
+                if i == 'f51b430435a8383b3cf6d34407c4a553':
+                    if j['optionNo'] == 2 and elementResist >= 21:
+                        info.append('모든 공격력 10% 증가')
+                        info.append('공격 시 10% 추가 데미지')
+                        continue
+                    if j['optionNo'] == 3:
+                        count = min(elementResist / 7, 4)
+                        info.append('스킬 공격력 ' + str(4 * count) + '% 증가')
+                        element += 10 * count
+                        continue
+
+                # 군신의 숨겨진 유산 세트 :: 이동속도 최대 기준
+                if i == '0d7fa7e5f82d8ec524d1b8202b31497f' and j['optionNo'] == 3:
+                    info.append('스킬 공격력 10%')
+                    info.append('힘, 지능 10% 증가')
+                    continue
+
+                temp = j['explain'].replace('\r', '')
+                temp = temp.split('\n')
+                info += temp
+
+    ### 계산 ###
+    for i in info:
+        i = i.replace(' ', '')
+
+        # 데미지, 크리티컬 데미지 증가
+        tCriDmgInc = rCriDmgInc.search(i)
+        tCriDmgInc2 = rCriDmgInc2.search(i)
+        if tCriDmgInc is not None and criDmgInc < int(tCriDmgInc.group('value')):
+            criDmgInc = int(tCriDmgInc.group('value'))
+        elif tCriDmgInc2 is not None and criDmgInc < int(tCriDmgInc2.group('value')):
+            criDmgInc = int(tCriDmgInc2.group('value'))
+        else:
+            tDmgInc = rDmgInc.search(i)
+            if tDmgInc is not None and dmgInc < int(tDmgInc.group('value')):
+                dmgInc = int(tDmgInc.group('value'))
+
+        # 데미지, 크리티컬 데미지 추가 증가
+        tAddCriDmgInc = rAddCriDmgInc.search(i)
+        if tAddCriDmgInc is not None:
+            addCriDmgInc += int(tAddCriDmgInc.group('value'))
+        else:
+            tAddDmgInc = rAddDmgInc.search(i)
+            if tAddDmgInc is not None:
+                addDmgInc += int(tAddDmgInc.group('value'))
+
+        # 추가 데미지
+        tAddDmg = rAddDmg.search(i)
+        if tAddDmg is not None:
+            addDmg += int(tAddDmg.group('value'))
+
+        # 속성 추가 데미지
+        tEleDmg = rEleAddDmg.search(i)
+        if tEleDmg is not None:
+            eleAddDmg += int(tEleDmg.group('value'))
+
+        # 모든 공격력 증가
+        tAllDmgInc = rAllDmgInc.search(i)
+        if tAllDmgInc is not None:
+            allDmgInc += int(tAllDmgInc.group('value'))
+
+        # 스킬 데미지 증가
+        tSkillDmgInc = rSkillDmgInc.search(i)
+        if tSkillDmgInc is not None:
+            skillDmgInc *= 1 + float(tSkillDmgInc.group('value')) / 100
+
+        # 물마독 증가
+        tAdAPInInc = rAdApInInc.search(i)
+        if tAdAPInInc is not None:
+            adApInInc += int(tAdAPInInc.group('value'))
+
+        # 힘지능 증가
+        tStrIntInc = rStrIntInc.search(i)
+        if tStrIntInc is not None:
+            strIntInc += int(tStrIntInc.group('value'))
+
+        # 지속 피해
+        tContinueDmg = rContinueDmg.search(i)
+        if tContinueDmg is not None:
+            continueDmg += int(tContinueDmg.group('value'))
+
+    # 속추뎀 -> 추뎀 변환
+    eleAddDmg = int(eleAddDmg * (1.05 + 0.0045 * element))
+
+    # 스증뎀 변환
+    skillDmgInc = round((skillDmgInc - 1) * 100)
+    if skillDmgInc == 1:
+        skillDmgInc = 0
+
+    # 데미지 계산
+    damage = 1
+    damage *= 1 + adApInInc / 100
+    damage *= 1 + ((element + 11) / 222)
+    damage *= 1 + ((dmgInc + addDmgInc) / 100)
+    damage *= 1 + ((criDmgInc + addCriDmgInc) / 100)
+    damage *= 1 + allDmgInc / 100
+    damage *= skillDmgInc
+    damage *= 1 + ((addDmg + eleAddDmg) / 100)
+    damage *= 1 + continueDmg / 100
+    damage = int(damage)
+
+    # 랭킹 추가
+    setRank.add(chrId, [server, name, damage])
+
+    embed = discord.Embed(title=name + '님의 상세정보를 알려드릴게요.')
+    embed.add_field(name='> 데미지 증가',              value=str(dmgInc + addDmgInc) + '%')
+    embed.add_field(name='> 크리티컬 데미지 증가',     value=str(criDmgInc + addCriDmgInc) + '%')
+    embed.add_field(name='> 추가 데미지',              value=str(addDmg + eleAddDmg) + '% (' + str(addDmg) + '% + ' + str(eleAddDmg) + '%)')
+    embed.add_field(name='> 모든 공격력 증가',         value=str(allDmgInc) + '%')
+    embed.add_field(name='> 스킬 데미지 증가',         value=str(skillDmgInc) + '%')
+    embed.add_field(name='> 물리마법독립 공격력 증가', value=str(adApInInc) + '%')
+    embed.add_field(name='> 힘, 지능 증가',            value=str(strIntInc) + '%')
+    embed.add_field(name='> 지속 피해',                value=str(continueDmg) + '%')
+    embed.add_field(name='> 세팅 점수',                value=str(damage) + '점')
+    embed.set_footer(text='세팅 점수는 제작자 마음대로 세운 공식이기 때문에 재미로만 봐주세요!')
+    await ctx.channel.send(embed=embed)
+
+@bot.command()
+async def 세팅랭킹(ctx):
+    embed = discord.Embed(title='세팅 랭킹을 알려드릴게요! 랭킹은 15등까지만 보여드려요.')
+    embed.set_footer(text='열심히 개발중이라 랭킹이 자주 초기화될 수 있어요.')
+    rank = 1
+    for k in setRank.data.keys():
+        embed.add_field(name='> ' + str(rank) + '등\r\n> ' + setRank.data[k][0] + ' ' + setRank.data[k][1], value=str(setRank.data[k][2]) + '점')
+        rank += 1
+    await ctx.channel.send(embed=embed)
 
 @bot.command()
 async def 획득에픽(ctx, name='None'):
@@ -319,9 +657,10 @@ async def 장비(ctx, *input):
         itemIdList = DNFAPI.getItemId(name)
         itemId = await Util.getSelectionFromItemIdList(bot, ctx, itemIdList)
         if itemId is False: return
-    except:
-        return
+    except: return
     ### 선택 종료 ###
+
+    print(itemId)
 
     itemDetailInfo = DNFAPI.getItemDetail(itemId)
     itemImageUrl   = DNFAPI.getItemImageUrl(itemId)
@@ -375,40 +714,40 @@ async def 세트(ctx, *input):
         return
 
     setItemInfoList, setItemOptionList = DNFAPI.getSetItemInfoList(setItemId)
-    embed2 = discord.Embed(title=setItemName + '의 정보를 알려드릴게요.')
+    embed = discord.Embed(title=setItemName + '의 정보를 알려드릴게요.')
     for i in setItemInfoList:
-        embed2.add_field(name='> ' + i['itemRarity'] + ' ' + i['slotName'], value=i['itemName'] + '\r\n')
+        embed.add_field(name='> ' + i['itemRarity'] + ' ' + i['slotName'], value=i['itemName'] + '\r\n')
     for i in setItemOptionList:
-        embed2.add_field(name='> ' + str(i['optionNo']) + '세트 옵션', value=i['explain'])
+        embed.add_field(name='> ' + str(i['optionNo']) + '세트 옵션', value=i['explain'])
     itemImageUrl = DNFAPI.getItemImageUrl(setItemInfoList[0]['itemId'])
-    embed2.set_thumbnail(url=itemImageUrl)
+    embed.set_thumbnail(url=itemImageUrl)
 
-    await ctx.channel.send(embed=embed2)
+    await ctx.channel.send(embed=embed)
+    print(setItemId)
 
 ### 제작자 명령어 ###
 @bot.command()
 async def 연결(ctx):
     if ctx.message.author.id == 247361856904232960:
         await ctx.channel.purge(limit=1)
-        NUMBER_OF_CONNECTED_SERVER = len(bot.guilds)
-
-        index = 0
-        while index < NUMBER_OF_CONNECTED_SERVER:
-            start = index
-            end   = min(len(bot.guilds), index + 15)
-            
-            if start == 0:
-                title = str(NUMBER_OF_CONNECTED_SERVER) + '개의 서버에 시크봇이 연결되어있어요!\r\n' + str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
-            else:
-                title = str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
-            embed = discord.Embed(title=title)
-            
-            # 출력
-            for i in bot.guilds[start:end]:
-                embed.add_field(name='> ' + i.name, value=str(i.member_count) + '명')
-            await ctx.channel.send(embed=embed)
-
-            index += 15
+        await ctx.channel.send('> 시크봇은 ' + str(len(bot.guilds)) + '개의 서버에 연결되어있어요!')
+        # index = 0
+        # while index < NUMBER_OF_CONNECTED_SERVER:
+        #     start = index
+        #     end   = min(len(bot.guilds), index + 15)
+        #
+        #     if start == 0:
+        #         title = str(NUMBER_OF_CONNECTED_SERVER) + '개의 서버에 시크봇이 연결되어있어요!\r\n' + str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
+        #     else:
+        #         title = str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
+        #     embed = discord.Embed(title=title)
+        #
+        #     # 출력
+        #     for i in bot.guilds[start:end]:
+        #         embed.add_field(name='> ' + i.name, value=str(i.member_count) + '명')
+        #     await ctx.channel.send(embed=embed)
+        #
+        #     index += 15
 
 @bot.command()
 async def 상태(ctx, *state):
