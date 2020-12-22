@@ -13,8 +13,8 @@ from datetime import datetime
 
 ### 기본설정 ###
 bot = commands.Bot(command_prefix='!')
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 epic = Classes.epicRank()
 setRank = Classes.setRank()
 
@@ -35,14 +35,20 @@ async def on_message(msg):
 async def 도움말(ctx):
     await ctx.channel.purge(limit=1)
     await ctx.channel.send("```cs\r\n" +
-                           "#최근 업데이트 날짜 : 2020/12/20\r\n"
                            "#시크봇의 명령어들을 알려드릴게요!\r\n"
+                           "#최근 업데이트 날짜 : 2020/12/22                    #건의사항 : LaivY#2463\r\n"
+                           "──────────────────────────────────검색──────────────────────────────────\r\n"
                            "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n"
                            "'!캐릭터 <닉네임>' : 캐릭터가 장착한 장비와 세트를 알려드릴게요.\r\n"
-                           "'!획득에픽 <닉네임>' : 캐릭터가 이번 달에 획득한 에픽을 알려드릴게요.\r\n"
-                           "'!기린랭킹' : 이번 달에 에픽을 많이 먹은 기린을 박제해놨어요! 나만운업서!\r\n"
                            "'!장비 <장비아이템이름>' : 궁금하신 장비템의 옵션을 검색해서 알려드릴게요.\r\n"
                            "'!세트 <세트아이템이름>' : 궁금하신 세트템의 옵션을 검색해서 알려드릴게요.\r\n"
+                           "\r\n──────────────────────────────────랭킹──────────────────────────────────\r\n"
+                           "'!획득에픽 <닉네임>' : 캐릭터가 이번 달에 획득한 에픽을 알려드릴게요.\r\n"
+                           "'!상세정보 <닉네임>' : 캐릭터의 공격력 증가치를 알려드릴게요. 효율이랑요!\r\n"
+                           "'!기린랭킹' : 이번 달에 에픽을 많이 먹은 기린을 박제해놨어요! 나만운업서!\r\n"
+                           "'!세팅랭킹' : 캐릭터의 상세정보를 기반으로한 세팅 점수 랭킹을 보여드릴게요.\r\n"
+                           "\r\n──────────────────────────────────기타──────────────────────────────────\r\n"
+                           "'!청소' : 시크봇이 말한 것들을 모두 삭제할게요.\r\n"
                            "```")
 
 @bot.command()
@@ -134,6 +140,137 @@ async def 캐릭터(ctx, name='None'):
     await ctx.channel.send(embed=embed)
 
 @bot.command()
+async def 장비(ctx, *input):
+    name = ''
+    for i in input: name += i + ' '
+    name = name.rstrip()
+
+    if len(name) < 1:
+        await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해!')
+        return
+
+    # 해당 정보가 있는지 체크
+    hasItemSkillLvInfo = True
+    hasItemMythicInfo = True
+
+    # 아이템 id 얻어오기
+    try:
+        itemIdList = DNFAPI.getItemId(name)
+        itemId = await Util.getSelectionFromItemIdList(bot, ctx, itemIdList)
+        if itemId is False: return
+    except:
+        return
+    ### 선택 종료 ###
+
+    itemDetailInfo = DNFAPI.getItemDetail(itemId)
+    itemImageUrl = DNFAPI.getItemImageUrl(itemId)
+
+    # 스탯
+    itemStatInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
+
+    # 스킬 레벨
+    try:
+        itemSkillLvInfo = DNFAPI.getItemSkillLvInfo(itemDetailInfo['itemReinforceSkill'][0]['jobName'],
+                                                    itemDetailInfo['itemReinforceSkill'][0]['levelRange'])
+    except:
+        hasItemSkillLvInfo = False
+
+    # 신화옵션
+    try:
+        itemMythicInfo = DNFAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'])
+    except:
+        hasItemMythicInfo = False
+
+    # 플레이버 텍스트
+    itemFlavorText = itemDetailInfo['itemFlavorText']
+
+    # 출력
+    embed = discord.Embed(title=itemDetailInfo['itemName'],
+                          description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo[
+                              'itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
+    embed.add_field(name='> 스탯', value=itemStatInfo, inline=False)
+    if hasItemSkillLvInfo:
+        embed.add_field(name='> 스킬', value=itemSkillLvInfo)
+    embed.add_field(name='> 옵션', value=itemDetailInfo['itemExplainDetail'], inline=False)
+    if hasItemMythicInfo:
+        embed.add_field(name='> 신화옵션', value=itemMythicInfo, inline=False)
+    embed.set_footer(text=itemFlavorText)
+    embed.set_thumbnail(url=itemImageUrl)
+
+    await ctx.channel.send(embed=embed)
+
+@bot.command()
+async def 세트(ctx, *input):
+    setItemName = ''
+    for i in input:
+        setItemName += i + ' '
+    setItemName = setItemName.rstrip()
+
+    if len(setItemName) < 1:
+        await ctx.channel.send('> !세트 <세트옵션이름> 의 형태로 적어야해!')
+        return
+
+    try:
+        setItemIdList = DNFAPI.getSetItemIdList(setItemName)
+        setItemId, setItemName = await Util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
+    except:
+        return
+
+    setItemInfoList, setItemOptionList = DNFAPI.getSetItemInfoList(setItemId)
+    embed = discord.Embed(title=setItemName + '의 정보를 알려드릴게요.')
+    for i in setItemInfoList:
+        embed.add_field(name='> ' + i['itemRarity'] + ' ' + i['slotName'], value=i['itemName'] + '\r\n')
+    for i in setItemOptionList:
+        embed.add_field(name='> ' + str(i['optionNo']) + '세트 옵션', value=i['explain'])
+    itemImageUrl = DNFAPI.getItemImageUrl(setItemInfoList[0]['itemId'])
+    embed.set_thumbnail(url=itemImageUrl)
+
+    await ctx.channel.send(embed=embed)
+
+@bot.command()
+async def 획득에픽(ctx, name='None'):
+    if name == 'None':
+        await ctx.channel.send('> !획득에픽 <닉네임> 의 형태로 적어야해요!')
+        return
+
+    # 검색
+    try:
+        chrIdList = DNFAPI.getChrIdList('전체', name)
+        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+    except:
+        return False
+
+    chrTimeLineData = DNFAPI.getChrTimeLine(server, chrId, '505')
+    if len(chrTimeLineData) == 0:
+        await ctx.channel.send('> ' + name + '님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
+        return
+
+    # 결과 출력
+    # 15개씩 나눠서 출력
+    index = 0
+    while index < len(chrTimeLineData):
+        start = index
+        end = min(start + 15, len(chrTimeLineData))
+
+        if start == 0:
+            embed = discord.Embed(title=name + '님이 이번 달에 획득한 에픽을 알려드릴게요!',
+                                  description='총 ' + str(len(chrTimeLineData)) + '개의 에픽을 획득하셨네요!')
+        else:
+            embed = discord.Embed(title=str(start + 1) + ' ~ ' + str(end) + '번째 획득한 에픽들')
+
+        for i in chrTimeLineData[start:end]:
+            embed.add_field(
+                name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'],
+                value=i['data']['itemName'])
+        await ctx.channel.send(embed=embed)
+
+        index += 15
+
+    # 데이터 저장
+    today = datetime.today()
+    epic.add(chrId, [today.year, today.month, server, name, len(chrTimeLineData)])
+
+@bot.command()
 async def 상세정보(ctx, name='None'):
     if name == 'None':
         await ctx.channel.send('> !상세정보 <닉네임> 의 형태로 적어야해요!')
@@ -160,7 +297,7 @@ async def 상세정보(ctx, name='None'):
     rEleAddDmg    = re.compile('공격시(?P<value>\d+)%속성추가데미지')
     rAllDmgInc    = re.compile('모든공격력(?P<value>\d+)%증가')
     rSkillDmgInc  = re.compile('스킬공격력(?P<value>\d+)%증가')
-    rAdApInInc    = re.compile('물리,마법,독립공격력(?P<value>\d+)%증가')
+    rAdApInInc    = re.compile('물리,마법,독립공격력(?P<value>\d+)%')
     rStrIntInc    = re.compile('힘,지능(?P<value>\d+)%증가')
     rContinueDmg  = re.compile('적에게입힌피해의(?P<value>\d+)%만큼')
     ### 정규식 설정 끝 ###
@@ -177,20 +314,22 @@ async def 상세정보(ctx, name='None'):
     adApInInc    = 0 # 물리,마법, 독립 공격력 증가
     strIntInc    = 0 # 힘, 지능 증가
     continueDmg  = 0 # 지속피해
-    
-    element      = 0 # 속성 강화
+
+    indiElement  = {'화' : 0, '수' : 0, '명' : 0, '암' : 0}
+    element      = 0 # 모든 속성 강화
     elementResist= 0 # 암속성 저항
     ### 선언 끝 ###
 
     ### 속성 강화 :: 가장 높은 수치 ###
     chrStatInfo = DNFAPI.getChrStatInfo(server, chrId)
-    r = re.compile('\S속성 강화')
+    r = re.compile('(?P<key>\S)속성 강화')
     for i in chrStatInfo:
         if i['name'] == '암속성 저항':
             elementResist = i['value']
 
-        if r.search(i['name']) is not None and i['value'] > element:
-            element = i['value']
+        result = r.search(i['name'])
+        if result is not None:
+            indiElement[result.group('key')] = i['value']
 
     # 이 변수에 옵션들을 저장해서 계산함
     info = []
@@ -212,27 +351,34 @@ async def 상세정보(ctx, name='None'):
             info.append('스킬 공격력 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 증가')
 
         elif itemName == '고요를 머금은 이슬':
-            info.append('공격 시 데미지 증가량 4% 추가 증가')
             info.append('공격 시 데미지 증가량 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 추가 증가')
 
     ### 아이템 옵션 계산 ###
     for itemId in itemIdList:
         itemDetailInfo = DNFAPI.getItemDetail(itemId)
 
-        # 사도 강림 :: 액티브 스킬 데미지 증가 예외처리
-        # 위대한 의지 :: 액티브 스킬 데미지 증가 예외처리
-        if  '사도 강림' in itemDetailInfo['itemName'] or \
-            '위대한 의지' in itemDetailInfo['itemName']:
-            info.append('공격 시 데미지 15% 증가')
-            continue
-
         # 별의 바다 : 바드나후 :: 속추뎀 20퍼로 환산
         if itemDetailInfo['itemName'] == '별의 바다 : 바드나후':
             info.append('공격 시 20% 속성 추가 데미지')
 
+        # 순백의 기도 :: 속성 강화 버프, 물마독 증가
+        if itemDetailInfo['itemName'] == '순백의 기도':
+            element += 26
+            info.append('물리, 마법, 독립 공격력 15% 증가')
+
         # 임의 선택 :: 모든 공격력 증가 35%로 적용
         if itemDetailInfo['itemName'] == '임의 선택':
             info.append('모든 공격력 35% 증가')
+            continue
+
+        # 합리적 선택 :: 물마독 20%만 적용
+        if itemDetailInfo['itemName'] == '합리적 선택':
+            info.append('물리, 마법, 독립 공격력 20% 증가')
+            continue
+
+        # 탈리스만 선택 :: 추뎀 17%만 적용
+        if itemDetailInfo['itemName'] == '탈리스만 선택':
+            info.append('공격 시 17% 추가 데미지')
             continue
 
         # 베테랑 세트 :: 숙련 등급 전설 기준
@@ -256,10 +402,42 @@ async def 상세정보(ctx, name='None'):
             info.append('힘, 지능 34% 증가')
             continue
 
-        # 전자기 진공관 :: 버프
+        # 전자기 진공관 :: 속성 강화 버프
         if itemDetailInfo['itemName'] == '전자기 진공관':
-            info.append('공격 시 10% 추가 데미지')
             element += 40
+
+        # 대자연
+        if  itemDetailInfo['itemName'] == '포용의 굳건한 대지' or \
+            itemDetailInfo['itemName'] == '원시 태동의 대지':
+            element += 24
+
+        if itemDetailInfo['itemName'] == '맹렬히 타오르는 화염':
+            indiElement['화'] = indiElement['화'] + 24
+
+        if itemDetailInfo['itemName'] == '잠식된 신록의 숨결':
+            indiElement['암'] = indiElement['암'] + 24
+
+        if itemDetailInfo['itemName'] == '잔잔한 청록의 물결':
+            indiElement['수'] = indiElement['수'] + 24
+
+        if itemDetailInfo['itemName'] == '휘감는 햇살의 바람':
+            indiElement['명'] = indiElement['명'] + 24
+
+        # 마법사 [???]의 하의 :: 속성 강화, 물마독 증가
+        if itemDetailInfo['itemName'] == '마법사 [???]의 하의':
+            element += 18
+            elementResist += 18
+            info.append('물리, 마법, 독립 공격력 10% 증가')
+
+        # 종말의 역전 :: 비통한 자의 목걸이, 비운의 유물 착용 시 물마독 10% 감소
+        if itemDetailInfo['itemName'] == '종말의 역전':
+            if 'da5e4132290136b6bae3d1d8e2692446' in itemIdList: adApInInc -= 10
+            if '33727ea5e4d52bf641bd15ba2556bc75' in itemIdList: adApInInc -= 10
+
+        # 군신의 숨겨진 유산 세트 :: 2세트 옵션을 여기서 계산
+        if  itemDetailInfo['itemName'] == '군신의 유언장' and \
+            ('e8339821b962569895a1dcd569ef1ed8' in itemIdList or 'e98db581d86ffc2098c66049b019cf83' in itemIdList):
+            info.append('크리티컬 공격 시 데미지 증가량 5% 추가 증가')
 
         # 심연에 빠진 검은 셔츠 :: 속성 저항에 따라 설정
         if itemDetailInfo['itemName'] in ['심연에 빠진 검은 셔츠', '고대 심연의 로브']:
@@ -331,7 +509,12 @@ async def 상세정보(ctx, name='None'):
 
         # 나머지
         options = itemDetailInfo['itemExplainDetail'].split('\n')
-        for i in options: info.append(i)
+        for i in options:
+            # 예외처리 :: 특정 스킬 데미지 증가
+            exception = re.compile('\d+ 레벨 액티브 스킬 공격력 \d+% 증가')
+            if exception.search(i) is not None: continue
+
+            info.append(i)
 
     ### 신화 옵션 계산 ###
     setItemId = []
@@ -461,12 +644,19 @@ async def 상세정보(ctx, name='None'):
                         element += 10 * count
                         continue
 
-                # 군신의 숨겨진 유산 세트 :: 이동속도 최대 기준
+                # 군신의 숨겨진 유산 2세트 :: 크추뎀은 이미 계산함
+                if i == '0d7fa7e5f82d8ec524d1b8202b31497f' and j['optionNo'] == 2:
+                    info.append('물리, 마법, 독립 공격력 10% 증가')
+                    info.append('모든 공격력 8% 증가')
+                    continue
+
+                # 군신의 숨겨진 유산 3세트 :: 이동속도 최대 기준
                 if i == '0d7fa7e5f82d8ec524d1b8202b31497f' and j['optionNo'] == 3:
-                    info.append('스킬 공격력 10%')
+                    info.append('스킬 공격력 10% 증가')
                     info.append('힘, 지능 10% 증가')
                     continue
 
+                # 나머지
                 temp = j['explain'].replace('\r', '')
                 temp = temp.split('\n')
                 info += temp
@@ -531,6 +721,9 @@ async def 상세정보(ctx, name='None'):
         if tContinueDmg is not None:
             continueDmg += int(tContinueDmg.group('value'))
 
+    # 모든 속성 강화 += 속성 강화 중 가장 큰 값
+    element += max(indiElement.values())
+    
     # 속추뎀 -> 추뎀 변환
     eleAddDmg = int(eleAddDmg * (1.05 + 0.0045 * element))
 
@@ -540,16 +733,7 @@ async def 상세정보(ctx, name='None'):
         skillDmgInc = 0
 
     # 데미지 계산
-    damage = 1
-    damage *= 1 + adApInInc / 100
-    damage *= 1 + ((element + 11) / 222)
-    damage *= 1 + ((dmgInc + addDmgInc) / 100)
-    damage *= 1 + ((criDmgInc + addCriDmgInc) / 100)
-    damage *= 1 + allDmgInc / 100
-    damage *= skillDmgInc
-    damage *= 1 + ((addDmg + eleAddDmg) / 100)
-    damage *= 1 + continueDmg / 100
-    damage = int(damage)
+    damage = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
 
     # 랭킹 추가
     setRank.add(chrId, [server, name, damage])
@@ -566,57 +750,35 @@ async def 상세정보(ctx, name='None'):
     embed.add_field(name='> 세팅 점수',                value=str(damage) + '점')
     embed.set_footer(text='세팅 점수는 제작자 마음대로 세운 공식이기 때문에 재미로만 봐주세요!')
     await ctx.channel.send(embed=embed)
-
-@bot.command()
-async def 세팅랭킹(ctx):
-    embed = discord.Embed(title='세팅 랭킹을 알려드릴게요! 랭킹은 15등까지만 보여드려요.')
-    embed.set_footer(text='열심히 개발중이라 랭킹이 자주 초기화될 수 있어요.')
-    rank = 1
-    for k in setRank.data.keys():
-        embed.add_field(name='> ' + str(rank) + '등\r\n> ' + setRank.data[k][0] + ' ' + setRank.data[k][1], value=str(setRank.data[k][2]) + '점')
-        rank += 1
-    await ctx.channel.send(embed=embed)
-
-@bot.command()
-async def 획득에픽(ctx, name='None'):
-    if name == 'None':
-        await ctx.channel.send('> !획득에픽 <닉네임> 의 형태로 적어야해요!')
-        return
-
-    # 검색
-    try:
-        chrIdList = DNFAPI.getChrIdList('전체', name)
-        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
-    except:
-        return False
-
-    chrTimeLineData = DNFAPI.getChrTimeLine(server, chrId, '505')
-    if len(chrTimeLineData) == 0:
-        await ctx.channel.send('> ' + name + '님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
-        return
-
-    # 결과 출력
-    # 15개씩 나눠서 출력
-    index = 0
-    while index < len(chrTimeLineData):
-        start = index
-        end   = min(start + 15, len(chrTimeLineData))
     
-        if start == 0:
-            embed = discord.Embed(title=name + '님이 이번 달에 획득한 에픽을 알려드릴게요!',
-                                  description='총 ' + str(len(chrTimeLineData)) + '개의 에픽을 획득하셨네요!')
-        else:
-            embed = discord.Embed(title=str(start + 1) + ' ~ ' + str(end) + '번째 획득한 에픽들')
+    # 데미지 효율 계산
+    embed2 = discord.Embed(title='각 능력치 별 효율도 알려드릴게요.')
+
+    dmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc + 10, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
+    embed2.add_field(name='> 데미지 10%', value='최종 데미지 ' + str(round((dmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+
+    criDmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc + 10, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
+    embed2.add_field(name='> 크리티컬 데미지 10%', value='최종 데미지 ' + str(round((criDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+
+    addDmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc + 10, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
+    embed2.add_field(name='> 추가 데미지 10%', value='최종 데미지 ' + str(round((addDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
     
-        for i in chrTimeLineData[start:end]:
-            embed.add_field(name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'], value=i['data']['itemName'])
-        await ctx.channel.send(embed=embed)
+    allDmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc + 10, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
+    embed2.add_field(name='> 모든 공격력 10%', value='최종 데미지 ' + str(round((allDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
 
-        index += 15
+    skillDmgInc10 = int(damage * 1.1)
+    embed2.add_field(name='> 스킬 데미지 10%', value='최종 데미지 ' + str(round((skillDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    
+    adApInInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc + 10, strIntInc, element, skillDmgInc, continueDmg)
+    embed2.add_field(name='> 물리마법독립 10%', value='최종 데미지 ' + str(round((adApInInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    
+    strIntInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc + 10, element, skillDmgInc, continueDmg)
+    embed2.add_field(name='> 힘, 지능 10%', value='최종 데미지 ' + str(round((strIntInc10 / damage - 1) * 1000) / 10) + '% 증가')
 
-    # 데이터 저장
-    today = datetime.today()
-    epic.add(chrId, [today.year, today.month, server, name, len(chrTimeLineData)])
+    continueDmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg + 10)
+    embed2.add_field(name='> 지속 데미지 10%', value='최종 데미지 ' + str(round((continueDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    embed2.set_footer(text='이 수치들은 참고만 해주세요! 오차가 있을 수 있어요.')
+    await ctx.channel.send(embed=embed2)
 
 @bot.command()
 async def 기린랭킹(ctx):
@@ -639,91 +801,26 @@ async def 기린랭킹(ctx):
     await ctx.channel.send(embed=embed)
 
 @bot.command()
-async def 장비(ctx, *input):
-    name = ''
-    for i in input: name += i + ' '
-    name = name.rstrip()
+async def 세팅랭킹(ctx):
+    embed = discord.Embed(title='세팅 랭킹을 알려드릴게요!',description='랭킹은 15등까지만 보여드려요.')
+    embed.set_footer(text='열심히 개발중이라 랭킹이 자주 초기화될 수 있어요.')
+    rank = 1
+    for k in setRank.data.keys():
+        embed.add_field(name='> ' + str(rank) + '등\r\n> ' + setRank.data[k][0] + ' ' + setRank.data[k][1], value=str(setRank.data[k][2]) + '점')
+        rank += 1
 
-    if len(name) < 1:
-        await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해!')
-        return
+    if rank == 1:
+        embed.add_field(name='> 랭킹에 아무도 없어요!', value='> !상세정보 <닉네임> 으로 자신의 캐릭터를 랭킹에 추가해보세요!')
 
-    # 해당 정보가 있는지 체크
-    hasItemSkillLvInfo = True
-    hasItemMythicInfo  = True
-
-    # 아이템 id 얻어오기
-    try:
-        itemIdList = DNFAPI.getItemId(name)
-        itemId = await Util.getSelectionFromItemIdList(bot, ctx, itemIdList)
-        if itemId is False: return
-    except: return
-    ### 선택 종료 ###
-
-    print(itemId)
-
-    itemDetailInfo = DNFAPI.getItemDetail(itemId)
-    itemImageUrl   = DNFAPI.getItemImageUrl(itemId)
-
-    # 스탯
-    itemStatInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
-
-    # 스킬 레벨
-    try:
-        itemSkillLvInfo = DNFAPI.getItemSkillLvInfo(itemDetailInfo['itemReinforceSkill'][0]['jobName'],
-                                                    itemDetailInfo['itemReinforceSkill'][0]['levelRange'])
-    except: hasItemSkillLvInfo = False
-    
-    # 신화옵션
-    try:
-        itemMythicInfo = DNFAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'])
-    except: hasItemMythicInfo = False
-
-    # 플레이버 텍스트
-    itemFlavorText = itemDetailInfo['itemFlavorText']
-
-    # 출력
-    embed = discord.Embed(title=itemDetailInfo['itemName'],
-                          description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
-    embed.add_field(name='> 스탯', value=itemStatInfo, inline=False)
-    if hasItemSkillLvInfo:
-        embed.add_field(name='> 스킬', value=itemSkillLvInfo)
-    embed.add_field(name='> 옵션', value=itemDetailInfo['itemExplainDetail'], inline=False)
-    if hasItemMythicInfo:
-        embed.add_field(name='> 신화옵션', value=itemMythicInfo, inline=False)
-    embed.set_footer(text=itemFlavorText)
-    embed.set_thumbnail(url=itemImageUrl)
-
+    await ctx.channel.purge(limit=1)
     await ctx.channel.send(embed=embed)
 
 @bot.command()
-async def 세트(ctx, *input):
-    setItemName = ''
-    for i in input:
-        setItemName += i + ' '
-    setItemName = setItemName.rstrip()
-
-    if len(setItemName) < 1:
-        await ctx.channel.send('> !세트 <세트옵션이름> 의 형태로 적어야해!')
-        return
-
-    try:
-        setItemIdList = DNFAPI.getSetItemIdList(setItemName)
-        setItemId, setItemName = await Util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
-    except:
-        return
-
-    setItemInfoList, setItemOptionList = DNFAPI.getSetItemInfoList(setItemId)
-    embed = discord.Embed(title=setItemName + '의 정보를 알려드릴게요.')
-    for i in setItemInfoList:
-        embed.add_field(name='> ' + i['itemRarity'] + ' ' + i['slotName'], value=i['itemName'] + '\r\n')
-    for i in setItemOptionList:
-        embed.add_field(name='> ' + str(i['optionNo']) + '세트 옵션', value=i['explain'])
-    itemImageUrl = DNFAPI.getItemImageUrl(setItemInfoList[0]['itemId'])
-    embed.set_thumbnail(url=itemImageUrl)
-
-    await ctx.channel.send(embed=embed)
-    print(setItemId)
+async def 청소(ctx):
+    await ctx.channel.purge(limit=1)
+    async for message in ctx.channel.history(limit=200):
+        def check(m): return m.author == bot.user
+        await ctx.channel.purge(limit=100, check=check)
 
 ### 제작자 명령어 ###
 @bot.command()

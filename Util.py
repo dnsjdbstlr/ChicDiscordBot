@@ -191,3 +191,17 @@ def getSirocoItemInfo(chrEquipItemInfo):
         return None
     else:
         return sirocoInfo
+
+def getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmg, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg):
+    damage = 1
+    damage *= 1 + ((dmgInc + addDmgInc) / 100)          # 데미지 증가
+    damage *= 1 + ((criDmgInc + addCriDmgInc) / 100)    # 크리티컬 데미지 증가
+    damage *= 1 + ((addDmg + eleAddDmg) / 100)          # 추가데미지
+    damage *= 1 + allDmgInc / 100                       # 모든 공격력 증가
+    damage *= 1 + adApInInc / 100                       # 물리 마법 독립공격력 증가
+    damage *= 1 + strIntInc / 250                       # 힘, 지능 증가
+    damage *= 1 + ((element + 11) / 222)                # 속성 강화
+    damage *= skillDmgInc                               # 스킬 데미지 증가
+    damage *= 1 + continueDmg / 100                     # 지속 피해
+    damage = int(damage)
+    return damage
