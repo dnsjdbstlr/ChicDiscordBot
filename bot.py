@@ -33,7 +33,7 @@ async def on_message(msg):
 ### 명령어 ###
 @bot.command()
 async def 도움말(ctx):
-    await ctx.channel.purge(limit=1)
+    await ctx.message.delete()
     await ctx.channel.send("```cs\r\n" +
                            "#시크봇의 명령어들을 알려드릴게요!\r\n"
                            "#최근 업데이트 날짜 : 2020/12/22                    #건의사항 : LaivY#2463\r\n"
@@ -53,6 +53,7 @@ async def 도움말(ctx):
 
 @bot.command()
 async def 등급(ctx):
+    await ctx.message.delete()
     itemName, itemGradeName, itemGradeValue = DNFAPI.getShopItemInfo('10f619989d70a8f21b6dd8da40f48faf')
     _itemName, _itemGradeName, _itemGradeValue = DNFAPI.getShopItemInfo('0b71d3990dd08a6945cff1dd5d1b20bb')
     __itemName, __itemGradeName, __itemGradeValue = DNFAPI.getShopItemInfo('675a13e96276653391a845e041d3acf9')
@@ -73,8 +74,6 @@ async def 등급(ctx):
     elif itemGradeName == '최상급':
         footer = '오늘만을 기다려왔어요!!'
     embed.set_footer(text=footer)
-
-    await ctx.channel.purge(limit=1)
     await ctx.channel.send(embed=embed)
 
 @bot.command()
@@ -240,7 +239,10 @@ async def 획득에픽(ctx, name='None'):
     except:
         return False
 
+    waiting = await ctx.channel.send('> ' + name + '님의 획득한 에픽을 확인 중이예요...')
     chrTimeLineData = DNFAPI.getChrTimeLine(server, chrId, '505')
+    await waiting.delete()
+    
     if len(chrTimeLineData) == 0:
         await ctx.channel.send('> ' + name + '님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
         return
@@ -282,6 +284,8 @@ async def 상세정보(ctx, name='None'):
         server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except:
         return False
+
+    waiting = await ctx.channel.send('> ' + name + '님의 상세정보를 계산 중이예요...')
 
     itemIdList = DNFAPI.getChrEquipItemIdList(server, chrId)
     chrEquipCreatureId = DNFAPI.getChrEquipCreatureId(server, chrId)
@@ -738,6 +742,8 @@ async def 상세정보(ctx, name='None'):
     # 랭킹 추가
     setRank.add(chrId, [server, name, damage])
 
+    await waiting.delete()
+
     embed = discord.Embed(title=name + '님의 상세정보를 알려드릴게요.')
     embed.add_field(name='> 데미지 증가',              value=str(dmgInc + addDmgInc) + '%')
     embed.add_field(name='> 크리티컬 데미지 증가',     value=str(criDmgInc + addCriDmgInc) + '%')
@@ -749,7 +755,7 @@ async def 상세정보(ctx, name='None'):
     embed.add_field(name='> 지속 피해',                value=str(continueDmg) + '%')
     embed.add_field(name='> 세팅 점수',                value=str(damage) + '점')
     embed.set_footer(text='더 높은 정확도를 위해서는 여러분들의 제보가 필요해요! LaivY#2463\r\n' +
-                          '세팅 점수는 제작자 마음대로 세운 공식이기 때문에 재미로만 봐주세요!')
+                          '세팅 점수는 제작자 마음대로 정한 공식이기 때문에 재미로만 봐주세요!')
     await ctx.channel.send(embed=embed)
     
     # 데미지 효율 계산
@@ -797,8 +803,7 @@ async def 기린랭킹(ctx):
 
     if rank == 1:
         embed.add_field(name='> 랭킹에 아무도 없어요!', value='> !획득에픽 <닉네임> 으로 자신의 캐릭터를 랭킹에 추가해보세요!')
-
-    await ctx.channel.purge(limit=1)
+    await ctx.message.delete()
     await ctx.channel.send(embed=embed)
 
 @bot.command()
@@ -813,21 +818,20 @@ async def 세팅랭킹(ctx):
     if rank == 1:
         embed.add_field(name='> 랭킹에 아무도 없어요!', value='> !상세정보 <닉네임> 으로 자신의 캐릭터를 랭킹에 추가해보세요!')
 
-    await ctx.channel.purge(limit=1)
+    await ctx.message.delete()
     await ctx.channel.send(embed=embed)
 
 @bot.command()
 async def 청소(ctx):
-    await ctx.channel.purge(limit=1)
-    async for message in ctx.channel.history(limit=200):
-        def check(m): return m.author == bot.user
-        await ctx.channel.purge(limit=100, check=check)
+    await ctx.message.delete()
+    def check(m): return m.author == bot.user
+    await ctx.channel.purge(check=check)
 
 ### 제작자 명령어 ###
 @bot.command()
 async def 연결(ctx):
     if ctx.message.author.id == 247361856904232960:
-        await ctx.channel.purge(limit=1)
+        await ctx.message.delete()
         await ctx.channel.send('> 시크봇은 ' + str(len(bot.guilds)) + '개의 서버에 연결되어있어요!')
         # index = 0
         # while index < NUMBER_OF_CONNECTED_SERVER:
@@ -856,7 +860,7 @@ async def 상태(ctx, *state):
         _state = _state.rstrip()
 
         await bot.change_presence(status=discord.Status.online, activity=discord.Game(_state))
-        await ctx.channel.purge(limit=1)
+        await ctx.message.delete()
         await ctx.channel.send("> '" + _state + "하는 중' 으로 상태를 바꿨습니다.")
 
 bot.remove_command('help')

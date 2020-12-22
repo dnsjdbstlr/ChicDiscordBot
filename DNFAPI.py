@@ -129,14 +129,19 @@ def getSetItemInfoList(setItemId):
 def getChrIdList(server, name):
     chrIdList = []
 
+    if len(name) == 1:
+        wordType = 'match'
+    else:
+        wordType = 'full'
+
     name = parse.quote(name)
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters?characterName=' + name + '&wordType=full&limit=30&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters?characterName=' + name + '&wordType=' + wordType + '&limit=30&apikey=' + apikey
     response = requests.get(url=url)
     temp = json.loads(response.text)
     data = temp['rows']
 
     for i in data:
-        chrIdList.append( {'server' : SERVERID_TO_NAME[i['serverId']], 'characterId' : i['characterId'], 'characterName' : i['characterName'] ,'level' : str(i['level']), 'jobName' : i['jobName'], 'jobGrowName' : i['jobGrowName']} )
+        chrIdList.append( {'server' : SERVERID_TO_NAME[i['serverId']], 'characterId' : i['characterId'], 'characterName' : i['characterName'], 'level' : str(i['level']), 'jobName' : i['jobName'], 'jobGrowName' : i['jobGrowName']} )
 
     return chrIdList
 
