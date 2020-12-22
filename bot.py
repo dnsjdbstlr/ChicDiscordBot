@@ -13,8 +13,8 @@ from datetime import datetime
 
 ### 기본설정 ###
 bot = commands.Bot(command_prefix='!')
-token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
-#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 epic = Classes.epicRank()
 setRank = Classes.setRank()
 
@@ -748,7 +748,8 @@ async def 상세정보(ctx, name='None'):
     embed.add_field(name='> 힘, 지능 증가',            value=str(strIntInc) + '%')
     embed.add_field(name='> 지속 피해',                value=str(continueDmg) + '%')
     embed.add_field(name='> 세팅 점수',                value=str(damage) + '점')
-    embed.set_footer(text='세팅 점수는 제작자 마음대로 세운 공식이기 때문에 재미로만 봐주세요!')
+    embed.set_footer(text='더 높은 정확도를 위해서는 여러분들의 제보가 필요해요! LaivY#2463\r\n' +
+                          '세팅 점수는 제작자 마음대로 세운 공식이기 때문에 재미로만 봐주세요!')
     await ctx.channel.send(embed=embed)
     
     # 데미지 효율 계산
