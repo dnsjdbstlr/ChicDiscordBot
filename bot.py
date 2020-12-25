@@ -13,8 +13,8 @@ from datetime import datetime
 
 ### 기본설정 ###
 bot = commands.Bot(command_prefix='!')
-token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
-#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 epic = Classes.epicRank()
 setRank = Classes.setRank()
 
@@ -22,7 +22,7 @@ setRank = Classes.setRank()
 @bot.event
 async def on_ready():
     await bot.change_presence(status=discord.Status.online, activity=discord.Game('!도움말'))
-    print('구동 완료')
+    print('시크봇이 성공적으로 구동됬습니다.')
 
 @bot.event
 async def on_message(msg):
@@ -82,6 +82,7 @@ async def 등급(ctx):
 @bot.command()
 async def 캐릭터(ctx, name='None', _server='전체'):
     if name == 'None':
+        await ctx.message.delete()
         await ctx.channel.send('> !캐릭터 <닉네임> 의 형태로 적어야해요!')
         return
 
@@ -111,17 +112,22 @@ async def 캐릭터(ctx, name='None', _server='전체'):
 
         reinforce = i['reinforce']
         refine    = i['refine']
-
         value = ''
+
+        # 강화, 재련 수치
         if reinforce != 0:
             value += '+' + str(reinforce)
         if refine != 0:
             value += '(' + str(refine) + ')'
         value += ' ' + i['itemName'] + '\r\n'
-        value += i['enchant']
+
+        # 마법부여
+        try:
+            for j in i['enchant']['status']:
+                value += j['name'] + ' +' + str(j['value']) + '\r\n'
+        except: pass
         embed.add_field(name='> ' + i['slotName'], value=value)
 
-    # 푸터
     embed.set_footer(text=name + '님의 캐릭터 이미지도 챙겨왔어요!')
     await ctx.channel.send(embed=embed)
 
@@ -132,7 +138,8 @@ async def 장비(ctx, *input):
     name = name.rstrip()
 
     if len(name) < 1:
-        await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해!')
+        await ctx.message.delete()
+        await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해요!')
         return
 
     # 해당 정보가 있는지 체크
@@ -192,7 +199,8 @@ async def 세트(ctx, *input):
     setItemName = setItemName.rstrip()
 
     if len(setItemName) < 1:
-        await ctx.channel.send('> !세트 <세트옵션이름> 의 형태로 적어야해!')
+        await ctx.message.delete()
+        await ctx.channel.send('> !세트 <세트옵션이름> 의 형태로 적어야해요!')
         return
 
     try:
@@ -215,6 +223,7 @@ async def 세트(ctx, *input):
 @bot.command()
 async def 획득에픽(ctx, name='None', _server='전체'):
     if name == 'None':
+        await ctx.message.delete()
         await ctx.channel.send('> !획득에픽 <닉네임> 의 형태로 적어야해요!')
         return
 
@@ -256,11 +265,18 @@ async def 획득에픽(ctx, name='None', _server='전체'):
 
     # 데이터 저장
     today = datetime.today()
-    epic.add(chrId, [today.year, today.month, server, name, len(chrTimeLineData)])
+    epic.add(chrId, {
+        'year'   : today.year,
+        'month'   : today.month,
+        'server' : server,
+        'name' : name,
+        'score' : len(chrTimeLineData)
+    })
 
 @bot.command()
 async def 상세정보(ctx, name='None', _server='전체'):
     if name == 'None':
+        await ctx.message.delete()
         await ctx.channel.send('> !상세정보 <닉네임> 의 형태로 적어야해요!')
         return
 
@@ -308,8 +324,6 @@ async def 상세정보(ctx, name='None', _server='전체'):
 
     # 장착하고있는 장비템 정보
     chrEquipItemInfoList, chrEquipSetItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
-    print(chrEquipItemInfoList)
-
     itemIdList = [i['itemId'] for i in chrEquipItemInfoList]
 
     # 크리쳐 추가
@@ -522,10 +536,7 @@ async def 상세정보(ctx, name='None', _server='전체'):
         except: pass
 
     ### 시로코 옵션 계산 ###
-    chrEquipItemInfo = DNFAPI.getChrEquipItemInfo(server, chrId)
-    print(chrEquipItemInfo)
-
-    chrSirocoItemInfo = Util.getSirocoItemInfo(chrEquipItemInfo)
+    chrSirocoItemInfo = Util.getSirocoItemInfo(chrEquipItemInfoList)
     if chrSirocoItemInfo is not None:
         # 1세트 옵션
         for k in chrSirocoItemInfo.keys():
@@ -736,8 +747,11 @@ async def 상세정보(ctx, name='None', _server='전체'):
     damage = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
 
     # 랭킹 추가
-    setRank.add(chrId, [server, name, damage])
-
+    setRank.add(chrId, {
+                        'server' : server,
+                        'name' : name,
+                        'score' : damage
+                        })
     await waiting.delete()
 
     embed = discord.Embed(title=name + '님의 상세정보를 알려드릴게요.')
@@ -788,12 +802,12 @@ async def 기린랭킹(ctx):
     today = datetime.today()
     epic.update(today.month)
     embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
-    embed.set_footer(text='열심히 개발중이라 랭킹이 자주 초기화될 수 있어요.')
+    embed.set_footer(text='더 이상 업데이트 때문에 랭킹이 초기화되지 않아요!')
 
     rank = 1
     for k in epic.data.keys():
-        name  = '> ' + str(rank) + '등\r\n> ' + epic.data[k][2] + ' ' + epic.data[k][3]
-        value = '에픽 ' + str(epic.data[k][4]) + '개 획득!'
+        name  = '> ' + str(rank) + '등\r\n> ' + epic.data[k]['server'] + ' ' + epic.data[k]['name']
+        value = '에픽 ' + str(epic.data[k]['score']) + '개 획득!'
         embed.add_field(name=name, value=value)
         rank += 1
 
@@ -804,11 +818,12 @@ async def 기린랭킹(ctx):
 
 @bot.command()
 async def 세팅랭킹(ctx):
-    embed = discord.Embed(title='세팅 랭킹을 알려드릴게요!',description='랭킹은 15등까지만 보여드려요.')
-    embed.set_footer(text='열심히 개발중이라 랭킹이 자주 초기화될 수 있어요.')
+    embed = discord.Embed(title='세팅 랭킹을 알려드릴게요!', description='랭킹은 15등까지만 보여드려요.')
+    embed.set_footer(text='더 이상 업데이트 때문에 랭킹이 초기화되지 않아요!')
+
     rank = 1
     for k in setRank.data.keys():
-        embed.add_field(name='> ' + str(rank) + '등\r\n> ' + setRank.data[k][0] + ' ' + setRank.data[k][1], value=str(setRank.data[k][2]) + '점')
+        embed.add_field(name='> ' + str(rank) + '등\r\n> ' + setRank.data[k]['server'] + ' ' + setRank.data[k]['name'], value=str(setRank.data[k]['score']) + '점')
         rank += 1
 
     if rank == 1:
@@ -829,23 +844,6 @@ async def 연결(ctx):
     if ctx.message.author.id == 247361856904232960:
         await ctx.message.delete()
         await ctx.channel.send('> 시크봇은 ' + str(len(bot.guilds)) + '개의 서버에 연결되어있어요!')
-        # index = 0
-        # while index < NUMBER_OF_CONNECTED_SERVER:
-        #     start = index
-        #     end   = min(len(bot.guilds), index + 15)
-        #
-        #     if start == 0:
-        #         title = str(NUMBER_OF_CONNECTED_SERVER) + '개의 서버에 시크봇이 연결되어있어요!\r\n' + str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
-        #     else:
-        #         title = str(start + 1) + ' ~ ' + str(end) + '번째 서버 목록'
-        #     embed = discord.Embed(title=title)
-        #
-        #     # 출력
-        #     for i in bot.guilds[start:end]:
-        #         embed.add_field(name='> ' + i.name, value=str(i.member_count) + '명')
-        #     await ctx.channel.send(embed=embed)
-        #
-        #     index += 15
 
 @bot.command()
 async def 상태(ctx, *state):
