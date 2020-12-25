@@ -54,24 +54,27 @@ async def 도움말(ctx):
 @bot.command()
 async def 등급(ctx):
     await ctx.message.delete()
-    itemName, itemGradeName, itemGradeValue = DNFAPI.getShopItemInfo('10f619989d70a8f21b6dd8da40f48faf')
-    _itemName, _itemGradeName, _itemGradeValue = DNFAPI.getShopItemInfo('0b71d3990dd08a6945cff1dd5d1b20bb')
-    __itemName, __itemGradeName, __itemGradeValue = DNFAPI.getShopItemInfo('675a13e96276653391a845e041d3acf9')
+    shopItemInfo1 = DNFAPI.getShopItemInfo('52b3fac226cfa92cba9cffff516fb06e')
+    shopItemInfo2 = DNFAPI.getShopItemInfo('615335efa74675460d969dd71332bd19')
+    shopItemInfo3 = DNFAPI.getShopItemInfo('4851754a3f4371cd1fbaed86d589b9b5')
 
     embed = discord.Embed(title='오늘의 아이템 등급을 알려드릴게요!')
-    embed.add_field(name='> ' + itemName, value=itemGradeName + '(' + str(itemGradeValue) + '%)')
-    embed.add_field(name='> ' + _itemName, value=_itemGradeName + '(' + str(_itemGradeValue) + '%)')
-    embed.add_field(name='> ' + __itemName, value=__itemGradeName + '(' + str(__itemGradeValue) + '%)')
+    embed.add_field(name='> ' + shopItemInfo1['itemName'],
+                    value=shopItemInfo1['itemGradeName'] + '(' + str(shopItemInfo1['itemGradeValue']) + '%)')
+    embed.add_field(name='> ' + shopItemInfo2['itemName'],
+                    value=shopItemInfo2['itemGradeName'] + '(' + str(shopItemInfo2['itemGradeValue']) + '%)')
+    embed.add_field(name='> ' + shopItemInfo3['itemName'],
+                    value=shopItemInfo3['itemGradeName'] + '(' + str(shopItemInfo3['itemGradeValue']) + '%)')
 
-    if itemGradeName == '최하급':
+    if shopItemInfo1['itemGradeName'] == '최하급':
         footer = '오늘 하루는 절대 정가 금지!'
-    elif itemGradeName == '하급':
+    elif shopItemInfo1['itemGradeName'] == '하급':
         footer = '아무리 그래도 하급은 아니죠...'
-    elif itemGradeName == '중급':
+    elif shopItemInfo1['itemGradeName'] == '중급':
         footer = '중급...도 조금 그래요.'
-    elif itemGradeName == '상급':
+    elif shopItemInfo1['itemGradeName'] == '상급':
         footer = '조금 아쉬운데, 급하다면 어쩔 수 없어요!'
-    elif itemGradeName == '최상급':
+    elif shopItemInfo1['itemGradeName'] == '최상급':
         footer = '오늘만을 기다려왔어요!!'
     embed.set_footer(text=footer)
     await ctx.channel.send(embed=embed)
@@ -270,10 +273,6 @@ async def 상세정보(ctx, name='None', _server='전체'):
 
     waiting = await ctx.channel.send('> ' + name + '님의 상세정보를 계산 중이예요...')
 
-    itemIdList = DNFAPI.getChrEquipItemIdList(server, chrId)
-    chrEquipCreatureId = DNFAPI.getChrEquipCreatureId(server, chrId)
-    if chrEquipCreatureId is not None: itemIdList.append(chrEquipCreatureId)
-
     ### 정규식 설정 ###
     rDmgInc       = re.compile('공격시데미지(?P<value>\d+)%증가')
     rCriDmgInc    = re.compile('크리티컬공격시데미지(?P<value>\d+)%증가')
@@ -307,6 +306,16 @@ async def 상세정보(ctx, name='None', _server='전체'):
     elementResist= 0 # 암속성 저항
     ### 선언 끝 ###
 
+    # 장착하고있는 장비템 정보
+    chrEquipItemInfoList, chrEquipSetItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
+    print(chrEquipItemInfoList)
+
+    itemIdList = [i['itemId'] for i in chrEquipItemInfoList]
+
+    # 크리쳐 추가
+    chrEquipCreatureId = DNFAPI.getChrEquipCreatureId(server, chrId)
+    if chrEquipCreatureId is not None: itemIdList.append(chrEquipCreatureId)
+
     ### 속성 강화, 저항 ###
     chrStatInfo = DNFAPI.getChrStatInfo(server, chrId)
     r = re.compile('(?P<key>\S)속성 강화')
@@ -322,180 +331,182 @@ async def 상세정보(ctx, name='None', _server='전체'):
     info = []
 
     ### 먼동 :: 강화 수치에 따라 옵션 설정
-    chrEquipItemList, chrEquipItemEnchantInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
-    for i in range(len(chrEquipItemList)):
-        itemName = DNFAPI.getItemDetail(chrEquipItemList[i])['itemName']
+    for i in chrEquipItemInfoList:
+        itemName = i['itemName']
         if itemName == '새벽을 녹이는 따스함':
             info.append('모든 공격력 6% 증가')
-            info.append('스킬 공격력 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 증가')
+            info.append('스킬 공격력 ' + str(4 + i['reinforce']) + '% 증가')
 
         elif itemName == '달빛을 가두는 여명':
             info.append('물리, 마법, 독립 공격력 6% 증가')
-            info.append('힘, 지능 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 증가')
+            info.append('힘, 지능 ' + str(4 + i['reinforce']) + '% 증가')
 
         elif itemName == '새벽을 감싸는 따스함':
             info.append('모든 공격력 6% 증가')
-            info.append('스킬 공격력 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 증가')
+            info.append('스킬 공격력 ' + str(4 + i['reinforce']) + '% 증가')
 
         elif itemName == '고요를 머금은 이슬':
-            info.append('공격 시 데미지 증가량 ' + str(4 + chrEquipItemEnchantInfo[i]['reinforce']) + '% 추가 증가')
+            info.append('공격 시 데미지 증가량 ' + str(4 + i['reinforce']) + '% 추가 증가')
 
     ### 아이템 옵션 계산 ###
-    for itemId in itemIdList:
-        itemDetailInfo = DNFAPI.getItemDetail(itemId)
+    itemsInfo = DNFAPI.getItemDetails(itemIdList)
+    for i in itemsInfo:
+        iteminfo    = i['itemExplain']
+        itemName    = i['itemName']
+        setItemName = i['setItemName']
 
         # 별의 바다 : 바드나후 :: 속추뎀 20퍼로 환산
-        if itemDetailInfo['itemName'] == '별의 바다 : 바드나후':
+        if itemName == '별의 바다 : 바드나후':
             info.append('공격 시 20% 속성 추가 데미지')
 
         # 순백의 기도 :: 속성 강화 버프, 물마독 증가
-        if itemDetailInfo['itemName'] == '순백의 기도':
+        if itemName == '순백의 기도':
             element += 26
             info.append('물리, 마법, 독립 공격력 15% 증가')
 
         # 임의 선택 :: 모든 공격력 증가 35%로 적용
-        if itemDetailInfo['itemName'] == '임의 선택':
+        if itemName == '임의 선택':
             info.append('모든 공격력 35% 증가')
             continue
 
         # 합리적 선택 :: 물마독 20%만 적용
-        if itemDetailInfo['itemName'] == '합리적 선택':
+        if itemName == '합리적 선택':
             info.append('물리, 마법, 독립 공격력 20% 증가')
             continue
 
         # 탈리스만 선택 :: 추뎀 17%만 적용
-        if itemDetailInfo['itemName'] == '탈리스만 선택':
+        if itemName == '탈리스만 선택':
             info.append('공격 시 17% 추가 데미지')
             continue
 
         # 베테랑 세트 :: 숙련 등급 전설 기준
-        if itemDetailInfo['itemName'] == '전장의 매':
+        if itemName == '전장의 매':
             info.append('물리, 마법, 독립 공격력 34% 증가')
             continue
 
-        if itemDetailInfo['itemName'] == '퀘이크 프론':
+        if itemName == '퀘이크 프론':
             info.append('스킬 공격력 34% 증가')
             continue
 
-        if itemDetailInfo['itemName'] == '오퍼레이션 델타':
+        if itemName == '오퍼레이션 델타':
             element += 68
             continue
 
-        if itemDetailInfo['itemName'] == '데파르망':
+        if itemName == '데파르망':
             info.append('크리티컬 공격 시 데미지 증가량 34% 추가 증가')
             continue
             
-        if itemDetailInfo['itemName'] == '전쟁의 시작':
+        if itemName == '전쟁의 시작':
             info.append('힘, 지능 34% 증가')
             continue
 
         # 전자기 진공관 :: 속성 강화 버프
-        if itemDetailInfo['itemName'] == '전자기 진공관':
+        if itemName == '전자기 진공관':
             element += 40
 
         # 대자연
-        if  itemDetailInfo['itemName'] == '포용의 굳건한 대지' or \
-            itemDetailInfo['itemName'] == '원시 태동의 대지':
+        if  itemName == '포용의 굳건한 대지' or \
+            itemName == '원시 태동의 대지':
             element += 24
 
-        if itemDetailInfo['itemName'] == '맹렬히 타오르는 화염':
+        if itemName == '맹렬히 타오르는 화염':
             indiElement['화'] = indiElement['화'] + 24
 
-        if itemDetailInfo['itemName'] == '잠식된 신록의 숨결':
+        if itemName == '잠식된 신록의 숨결':
             indiElement['암'] = indiElement['암'] + 24
 
-        if itemDetailInfo['itemName'] == '잔잔한 청록의 물결':
+        if itemName == '잔잔한 청록의 물결':
             indiElement['수'] = indiElement['수'] + 24
 
-        if itemDetailInfo['itemName'] == '휘감는 햇살의 바람':
+        if itemName == '휘감는 햇살의 바람':
             indiElement['명'] = indiElement['명'] + 24
 
         # 마법사 [???]의 하의 :: 속성 강화, 물마독 증가
-        if itemDetailInfo['itemName'] == '마법사 [???]의 하의':
+        if itemName == '마법사 [???]의 하의':
             element += 18
             elementResist += 18
             info.append('물리, 마법, 독립 공격력 10% 증가')
 
         # 종말의 역전 :: 비통한 자의 목걸이, 비운의 유물 착용 시 물마독 10% 감소
-        if itemDetailInfo['itemName'] == '종말의 역전':
+        if itemName == '종말의 역전':
             if 'da5e4132290136b6bae3d1d8e2692446' in itemIdList: adApInInc -= 10
             if '33727ea5e4d52bf641bd15ba2556bc75' in itemIdList: adApInInc -= 10
 
         # 군신의 숨겨진 유산 세트 :: 2세트 옵션을 여기서 계산
-        if  itemDetailInfo['itemName'] == '군신의 유언장' and \
+        if  itemName == '군신의 유언장' and \
             ('e8339821b962569895a1dcd569ef1ed8' in itemIdList or 'e98db581d86ffc2098c66049b019cf83' in itemIdList):
             info.append('크리티컬 공격 시 데미지 증가량 5% 추가 증가')
 
         # 심연에 빠진 검은 셔츠 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] in ['심연에 빠진 검은 셔츠', '고대 심연의 로브']:
+        if itemName in ['심연에 빠진 검은 셔츠', '고대 심연의 로브']:
             count = min(elementResist / 10, 5)
             info.append('모든 공격력 ' + str(7 * count) + '% 증가')
             continue
 
         # 타락한 세계수의 생명 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] == '타락한 세계수의 생명':
+        if itemName == '타락한 세계수의 생명':
             count = min(elementResist / 13, 4)
             info.append('힘, 지능 ' + str(10 * count) + '% 증가')
             continue
 
         # 암흑술사가 직접 저술한 고서 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] == '암흑술사가 직접 저술한 고서':
+        if itemName == '암흑술사가 직접 저술한 고서':
             count = min(elementResist / 7, 7)
             info.append('물리, 마법, 독립 공격력 ' + str(6 * count) + '% 증가')
             continue
 
         # 어둠을 파헤치는 바지 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] == '어둠을 파헤치는 바지':
+        if itemName == '어둠을 파헤치는 바지':
             count = min(elementResist / 14, 5)
             info.append('공격 시 데미지 증가량 ' + str(7 * count) + '% 추가 증가')
             continue
 
         # 지독한 집념의 탐구 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] in ['지독한 집념의 탐구', '영원히 끝나지 않는 탐구']:
+        if itemName in ['지독한 집념의 탐구', '영원히 끝나지 않는 탐구']:
             count = min(elementResist / 18, 4)
             info.append('모든 공격력 ' + str(7 * count) + '% 증가')
             element += 10 * count
             continue
 
         # 암흑술사의 정수 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] == '암흑술사의 정수':
+        if itemName == '암흑술사의 정수':
             count = min(elementResist / 10, 7)
             info.append('크리티컬 공격 시 데미지 증가량 ' + str(5 * count) + '% 추가 증가')
             info.append('스킬 공격력 ' + str(count) + '% 증가')
             continue
 
         # 나락으로 빠진 발 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] == '나락으로 빠진 발':
+        if itemName == '나락으로 빠진 발':
             count = min(elementResist / 3, 5)
             element += 14 * count
             continue
 
         # 어둠을 지배하는 고리 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] == '어둠을 지배하는 고리':
+        if itemName == '어둠을 지배하는 고리':
             count = min(elementResist / 4, 4)
             info.append('크리티컬 공격 시 데미지 증가량 ' + str(10 * count) + '% 추가 증가')
             continue
             
         # 끝없는 나락의 다크버스 :: 속성 저항에 따라 설정
-        if itemDetailInfo['itemName'] in ['끝없는 나락의 다크버스', '영원한 나락의 다크버스']:
+        if itemName in ['끝없는 나락의 다크버스', '영원한 나락의 다크버스']:
             count = min(elementResist / 3, 6)
             info.append('모든 공격력 ' + str(7 * count) + '% 증가')
             continue
 
         # 먼동 세트 :: 이미 계산했으므로 패스
-        if itemDetailInfo['setItemName'] == '먼동 틀 무렵 세트':
+        if setItemName == '먼동 틀 무렵 세트':
             continue
 
         # 영보 :: 버프
-        if itemDetailInfo['setItemName'] == '영보 : 세상의 진리 세트':
+        if setItemName == '영보 : 세상의 진리 세트':
             element += 40
 
         # 사막 :: 퀵슬롯 6개 비운것을 기준
-        if itemDetailInfo['setItemName'] == '메마른 사막의 유산 세트':
+        if setItemName == '메마른 사막의 유산 세트':
             info.append('공격 시 데미지 증가량 5% 추가 증가')
 
         # 나머지
-        options = itemDetailInfo['itemExplainDetail'].split('\n')
+        options = iteminfo.split('\n')
         for i in options:
             # 예외처리 :: 특정 스킬 데미지 증가
             exception = re.compile('\d+ 레벨 액티브 스킬 공격력 \d+% 증가')
@@ -504,19 +515,16 @@ async def 상세정보(ctx, name='None', _server='전체'):
             info.append(i)
 
     ### 신화 옵션 계산 ###
-    setItemId = []
-    chrEquipItemInfo = DNFAPI.getChrEquipItemInfo(server, chrId)
-    for i in chrEquipItemInfo:
-        if i['setItemId'] is not None:
-            setItemId.append(i['setItemId'])
-
-        # 신화 옵션
+    for i in chrEquipItemInfoList:
         try:
             for j in i['mythologyInfo']['options']:
                 info.append(j['explain'])
         except: pass
 
     ### 시로코 옵션 계산 ###
+    chrEquipItemInfo = DNFAPI.getChrEquipItemInfo(server, chrId)
+    print(chrEquipItemInfo)
+
     chrSirocoItemInfo = Util.getSirocoItemInfo(chrEquipItemInfo)
     if chrSirocoItemInfo is not None:
         # 1세트 옵션
@@ -576,41 +584,43 @@ async def 상세정보(ctx, name='None', _server='전체'):
             '무형 : 로도스의 잠식된 의지' in chrSirocoItemInfo.keys():
             info.append(chrSirocoItemInfo.get('환영 : 로도스의 검은 핵')['2옵션'])
 
-    ### 세트 갯수 계산 ###
-    chrEquipSetItemAmount = {}
-    for i in setItemId:
-        SET = 0
-        if chrEquipSetItemAmount.get(i) is not None:
-            SET = chrEquipSetItemAmount.get(i)
-        chrEquipSetItemAmount.update({i : SET + 1})
-
     ### 세트 옵션 계산 ###
-    for i in chrEquipSetItemAmount.keys():
-        for j in DNFAPI.getSetItemInfoList(i)[1]:
-            if j['optionNo'] <= chrEquipSetItemAmount.get(i):
-                # 행운의 트라이앵글 :: 77 기준
-                if i == '9b2a1398222c5ead60edc99cf959338a' and j['optionNo'] == 3:
+    setItemIdList = [i['setItemId'] for i in chrEquipSetItemInfo]
+    setItemInfos = DNFAPI.getSetItemInfos(setItemIdList)
+
+    for i in setItemInfos:
+        for j in chrEquipSetItemInfo:
+            if i['setItemName'] == j['setItemName']:
+                i.update({'activeSetNo' : j['activeSetNo']})
+
+    for i in setItemInfos:
+        for j in i['setItemOption']:
+            if i['activeSetNo'] >= j['optionNo']:
+                setItemName = i['setItemName']
+                
+                # 행운의 트라이앵글 3세트 :: 77 기준
+                if setItemName == '행운의 트라이앵글 세트' and j['optionNo'] == 3:
                     info.append('스킬 공격력 31% 증가')
                     continue
 
-                # 운명의 주사위 :: 6 기준
-                if i == '5742ec75674086d001067005f43f0da4' and j['optionNo'] == 3:
+                # 운명의 주사위 3세트 :: 6 기준
+                if setItemName == '운명의 주사위 세트' and j['optionNo'] == 3:
                     info.append('힘, 지능 14% 증가')
                     continue
 
                 # 메마른 사막의 유산 2세트 :: 퀵슬롯 6개 비운것 기준
-                if i == '0ff0e427a3746948c27de4af1d943109' and j['optionNo'] == 2:
+                if setItemName == '메마른 사막의 유산 세트' and j['optionNo'] == 2:
                     info.append('물리, 마법, 독립 공격력 22% 증가')
                     info.append('스킬 공격력 6% 증가')
                     continue
 
                 # 베테랑 군인의 정복 5세트 :: 숙련 등급 전설 기준
-                if i == '10c2cee96ec4093136d041f7f40b7bff' and j['optionNo'] == 5:
+                if setItemName == '베테랑 군인의 정복 세트' and j['optionNo'] == 5:
                     info.append('공격 시 40% 추가 데미지')
                     continue
 
-                # 흑마술 탐구자 세트 :: 암속성 저항에 따라 설정
-                if i == '1d4ed1e13b380593c889feef9ec2f62d':
+                # 흑마술의 탐구자 세트 :: 암속성 저항에 따라 설정
+                if setItemName == '흑마술의 탐구자 세트':
                     if j['optionNo'] == 2 and elementResist >= 76:
                         info.append('공격 시 데미지 증가량 12% 추가 증가')
                         info.append('스킬 공격력 10% 증가')
@@ -620,7 +630,7 @@ async def 상세정보(ctx, name='None', _server='전체'):
                         continue
 
                 # 나락의 구도자 세트 :: 암속성 저항에 따라 설정
-                if i == 'f51b430435a8383b3cf6d34407c4a553':
+                if setItemName == '나락의 구도자 세트':
                     if j['optionNo'] == 2 and elementResist >= 21:
                         info.append('모든 공격력 10% 증가')
                         info.append('공격 시 10% 추가 데미지')
@@ -631,22 +641,25 @@ async def 상세정보(ctx, name='None', _server='전체'):
                         element += 10 * count
                         continue
 
-                # 군신의 숨겨진 유산 2세트 :: 크추뎀은 이미 계산함
-                if i == '0d7fa7e5f82d8ec524d1b8202b31497f' and j['optionNo'] == 2:
-                    info.append('물리, 마법, 독립 공격력 10% 증가')
-                    info.append('모든 공격력 8% 증가')
-                    continue
-
-                # 군신의 숨겨진 유산 3세트 :: 이동속도 최대 기준
-                if i == '0d7fa7e5f82d8ec524d1b8202b31497f' and j['optionNo'] == 3:
-                    info.append('스킬 공격력 10% 증가')
-                    info.append('힘, 지능 10% 증가')
-                    continue
+                # 군신의 숨겨진 유산
+                if setItemName == '군신의 숨겨진 유산 세트':
+                    # 크리티컬 추가 데미지는 이미 계산함
+                    if j['optionNo'] == 2:
+                        info.append('물리, 마법, 독립 공격력 10% 증가')
+                        info.append('모든 공격력 8% 증가')
+                        continue
+                    # 이동속도 최대 기준
+                    if j['optionNo'] == 3:
+                        info.append('스킬 공격력 10% 증가')
+                        info.append('힘, 지능 10% 증가')
+                        continue
 
                 # 나머지
-                temp = j['explain'].replace('\r', '')
-                temp = temp.split('\n')
-                info += temp
+                try:
+                    option = j['explain'].replace('\r', '')
+                    option = option.split('\n')
+                    info += option
+                except: pass
 
     ### 계산 ###
     for i in info:

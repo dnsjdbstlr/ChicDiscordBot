@@ -52,6 +52,16 @@ def getItemDetail(itemId):
     data = json.loads(response.text)
     return dict(data)
 
+def getItemDetails(itemIds):
+    items = ''
+    for i in itemIds:
+        items += i
+        if i != itemIds[-1]: items += ','
+    url = 'https://api.neople.co.kr/df/multi/items?itemIds=' + items + '&apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data['rows']
+
 def getItemImageUrl(itemId):
     return 'https://img-api.neople.co.kr/df/items/' + itemId
 
@@ -87,7 +97,7 @@ def getShopItemInfo(itemId):
     url = 'https://api.neople.co.kr/df/items/' + itemId + '/shop?apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
-    return data['itemName'], data['itemGradeName'], data['itemGradeValue']
+    return data
 
 def getSetItemIdList(setItemName):
     setItemIdList = []
@@ -126,6 +136,16 @@ def getSetItemInfoList(setItemId):
 
     return setItemInfoList, setItemOptionList
 
+def getSetItemInfos(setItemIds):
+    setItems = ''
+    for i in setItemIds:
+        setItems += i
+        if i != setItemIds[-1]: setItems += ','
+    url = 'https://api.neople.co.kr/df/multi/setitems?setItemIds=' + setItems + '&apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data['rows']
+
 def getChrIdList(server, name):
     chrIdList = []
 
@@ -154,8 +174,6 @@ def getChrEquipItemInfoList(server, chrId):
 
     # 장착한 아이템과 강화효과
     for i in data['equipment']:
-        # if i['slotName'] == '칭호': continue
-        # elif i['slotName'] == '보조무기': continue
         enchantInfo = ''
         try:
             for j in i['enchant']['status']:
@@ -163,6 +181,7 @@ def getChrEquipItemInfoList(server, chrId):
         except: pass
         chrEquipItemList.append({
                                  'slotName' : i['slotName'],
+                                 'itemId'   : i['itemId'],
                                  'itemName' : i['itemName'],
                                  'reinforce': i['reinforce'],
                                  'refine'   : i['refine'],
