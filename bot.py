@@ -13,8 +13,8 @@ from datetime import datetime
 
 ### 기본설정 ###
 bot = commands.Bot(command_prefix='!')
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 epic = Classes.epicRank()
 setRank = Classes.setRank()
 
@@ -77,62 +77,46 @@ async def 등급(ctx):
     await ctx.channel.send(embed=embed)
 
 @bot.command()
-async def 캐릭터(ctx, name='None'):
+async def 캐릭터(ctx, name='None', _server='전체'):
     if name == 'None':
         await ctx.channel.send('> !캐릭터 <닉네임> 의 형태로 적어야해요!')
         return
 
     # 검색
     try:
-        chrIdList = DNFAPI.getChrIdList('전체', name)
+        chrIdList = DNFAPI.getChrIdList(_server, name)
         server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except:
         return False
 
-    chrEquipItemList, chrEquipItemEnchantInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
-    chrEquipSetItemInfo = DNFAPI.getChrEquipSetItemInfo(chrEquipItemList)
-
-    chrEquipSetItemName = []
-    for i in chrEquipSetItemInfo:
-        if i[2] is not None:
-            chrEquipSetItemName.append(i[2])
-
-    # 몇 세트 장착 중인지
-    chrEquipSetItemAmount = {}
-    for i in chrEquipSetItemName:
-        SET = 0
-        if chrEquipSetItemAmount.get(i) is not None:
-            SET = chrEquipSetItemAmount.get(i)
-        chrEquipSetItemAmount.update({i : SET + 1})
-
-    # 세트이름만 추출
-    chrEquipSetItemName = list(set(chrEquipSetItemName))
+    chrEquipItemList, chrEquipSetItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
 
     # embed 설정
     embed = discord.Embed(title=name + '님의 캐릭터 정보를 알려드릴게요.')
     embed.set_image(url='https://img-api.neople.co.kr/df/servers/' + DNFAPI.SERVER_ID[server] + '/characters/' + chrId + '?zoom=1')
 
-    # 필드 추가
+    # 장착중인 세트
     value = ''
-    for i in chrEquipSetItemName:
-        value += i + '(' + str(chrEquipSetItemAmount.get(i)) + ')\r\n'
+    for i in chrEquipSetItemInfo:
+        value += i['setItemName'] + '(' + str(i['activeSetNo']) + ')\r\n'
     if value != '':
         embed.add_field(name='> 장착중인 세트', value=value, inline=False)
 
     # 장비 옵션
-    for i in range(len(chrEquipSetItemInfo)):
+    for i in chrEquipItemList:
+        if i['slotName'] in ['칭호', '보조무기']: continue
+
+        reinforce = i['reinforce']
+        refine    = i['refine']
+
         value = ''
-        reinforce = chrEquipItemEnchantInfo[i]['reinforce']
-        refine = chrEquipItemEnchantInfo[i]['refine']
         if reinforce != 0:
-            value += '+' + str(chrEquipItemEnchantInfo[i]['reinforce'])
+            value += '+' + str(reinforce)
         if refine != 0:
-            value += '(' + str(chrEquipItemEnchantInfo[i]['refine']) + ')'
-        value += ' ' + chrEquipSetItemInfo[i][1] + '\r\n'
-        try:
-            value += chrEquipItemEnchantInfo[i]['enchant']
-        except: pass
-        embed.add_field(name='> ' + chrEquipSetItemInfo[i][0], value=value)
+            value += '(' + str(refine) + ')'
+        value += ' ' + i['itemName'] + '\r\n'
+        value += i['enchant']
+        embed.add_field(name='> ' + i['slotName'], value=value)
 
     # 푸터
     embed.set_footer(text=name + '님의 캐릭터 이미지도 챙겨왔어요!')
@@ -185,8 +169,7 @@ async def 장비(ctx, *input):
 
     # 출력
     embed = discord.Embed(title=itemDetailInfo['itemName'],
-                          description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo[
-                              'itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
+                          description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
     embed.add_field(name='> 스탯', value=itemStatInfo, inline=False)
     if hasItemSkillLvInfo:
         embed.add_field(name='> 스킬', value=itemSkillLvInfo)
@@ -227,14 +210,14 @@ async def 세트(ctx, *input):
     await ctx.channel.send(embed=embed)
 
 @bot.command()
-async def 획득에픽(ctx, name='None'):
+async def 획득에픽(ctx, name='None', _server='전체'):
     if name == 'None':
         await ctx.channel.send('> !획득에픽 <닉네임> 의 형태로 적어야해요!')
         return
 
     # 검색
     try:
-        chrIdList = DNFAPI.getChrIdList('전체', name)
+        chrIdList = DNFAPI.getChrIdList(_server, name)
         server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except:
         return False
@@ -273,14 +256,14 @@ async def 획득에픽(ctx, name='None'):
     epic.add(chrId, [today.year, today.month, server, name, len(chrTimeLineData)])
 
 @bot.command()
-async def 상세정보(ctx, name='None'):
+async def 상세정보(ctx, name='None', _server='전체'):
     if name == 'None':
         await ctx.channel.send('> !상세정보 <닉네임> 의 형태로 적어야해요!')
         return
 
     # 검색
     try:
-        chrIdList = DNFAPI.getChrIdList('전체', name)
+        chrIdList = DNFAPI.getChrIdList(_server, name)
         server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except:
         return False
@@ -324,7 +307,7 @@ async def 상세정보(ctx, name='None'):
     elementResist= 0 # 암속성 저항
     ### 선언 끝 ###
 
-    ### 속성 강화 :: 가장 높은 수치 ###
+    ### 속성 강화, 저항 ###
     chrStatInfo = DNFAPI.getChrStatInfo(server, chrId)
     r = re.compile('(?P<key>\S)속성 강화')
     for i in chrStatInfo:

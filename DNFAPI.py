@@ -146,25 +146,30 @@ def getChrIdList(server, name):
     return chrIdList
 
 def getChrEquipItemInfoList(server, chrId):
-    chrEquipItemIdList = []
-    chrEquipItemEnchantInfo = []
+    chrEquipItemList = []
 
     url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/equipment?apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
 
+    # 장착한 아이템과 강화효과
     for i in data['equipment']:
-        if i['slotName'] == '칭호': continue
+        # if i['slotName'] == '칭호': continue
+        # elif i['slotName'] == '보조무기': continue
         enchantInfo = ''
         try:
             for j in i['enchant']['status']:
                 enchantInfo += j['name'] + ' +' + str(j['value']) + '\r\n'
         except: pass
-        chrEquipItemIdList.append(i['itemId'])
-        chrEquipItemEnchantInfo.append({'enchant': enchantInfo, 'reinforce': i['reinforce'], 'refine': i['refine']})
-        enchantInfo = ''
+        chrEquipItemList.append({
+                                 'slotName' : i['slotName'],
+                                 'itemName' : i['itemName'],
+                                 'reinforce': i['reinforce'],
+                                 'refine'   : i['refine'],
+                                 'enchant'  : enchantInfo,
+                                 })
 
-    return chrEquipItemIdList, chrEquipItemEnchantInfo
+    return chrEquipItemList, data['setItemInfo']
 
 def getChrEquipItemIdList(server, chrId):
     chrEquipItemIdList = []
