@@ -36,7 +36,7 @@ async def 도움말(ctx):
     await ctx.message.delete()
     await ctx.channel.send("```cs\r\n" +
                            "#시크봇의 명령어들을 알려드릴게요!\r\n"
-                           "#최근 업데이트 날짜 : 2020/12/23                    #건의사항 : LaivY#2463\r\n"
+                           "#최근 업데이트 날짜 : 2020/12/28                    #건의사항 : LaivY#2463\r\n"
                            "──────────────────────────────────검색──────────────────────────────────\r\n"
                            "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n"
                            "'!캐릭터 <닉네임>' : 캐릭터가 장착한 장비와 세트를 알려드릴게요.\r\n"
@@ -53,7 +53,6 @@ async def 도움말(ctx):
 
 @bot.command()
 async def 등급(ctx):
-    await ctx.message.delete()
     shopItemInfo1 = DNFAPI.getShopItemInfo('52b3fac226cfa92cba9cffff516fb06e')
     shopItemInfo2 = DNFAPI.getShopItemInfo('615335efa74675460d969dd71332bd19')
     shopItemInfo3 = DNFAPI.getShopItemInfo('4851754a3f4371cd1fbaed86d589b9b5')
@@ -77,6 +76,7 @@ async def 등급(ctx):
     elif shopItemInfo1['itemGradeName'] == '최상급':
         footer = '오늘만을 기다려왔어요!!'
     embed.set_footer(text=footer)
+    await ctx.message.delete()
     await ctx.channel.send(embed=embed)
 
 @bot.command()
@@ -298,7 +298,7 @@ async def 상세정보(ctx, name='None', _server='전체'):
     rAddDmg       = re.compile('공격시(?P<value>\d+)%추가데미지')
     rEleAddDmg    = re.compile('공격시(?P<value>\d+)%속성추가데미지')
     rAllDmgInc    = re.compile('모든공격력(?P<value>\d+)%증가')
-    rSkillDmgInc  = re.compile('스킬공격력(?P<value>\d+)%증가')
+    rSkillDmgInc  = re.compile('스킬공격력(?P<value>\d+)%')
     rAdApInInc    = re.compile('물리,마법,독립공격력(?P<value>\d+)%')
     rStrIntInc    = re.compile('힘,지능(?P<value>\d+)%증가')
     rContinueDmg  = re.compile('적에게입힌피해의(?P<value>\d+)%만큼')
@@ -325,6 +325,8 @@ async def 상세정보(ctx, name='None', _server='전체'):
     # 장착하고있는 장비템 정보
     chrEquipItemInfoList, chrEquipSetItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
     itemIdList = [i['itemId'] for i in chrEquipItemInfoList]
+    itemNameList = [i['itemName'] for i in chrEquipItemInfoList]
+    setItemIdList = [i['setItemId'] for i in chrEquipSetItemInfo]
 
     # 크리쳐 추가
     chrEquipCreatureId = DNFAPI.getChrEquipCreatureId(server, chrId)
@@ -344,30 +346,20 @@ async def 상세정보(ctx, name='None', _server='전체'):
     # 이 변수에 옵션들을 저장해서 계산함
     info = []
 
-    ### 먼동 :: 강화 수치에 따라 옵션 설정
-    for i in chrEquipItemInfoList:
-        itemName = i['itemName']
-        if itemName == '새벽을 녹이는 따스함':
-            info.append('모든 공격력 6% 증가')
-            info.append('스킬 공격력 ' + str(4 + i['reinforce']) + '% 증가')
-
-        elif itemName == '달빛을 가두는 여명':
-            info.append('물리, 마법, 독립 공격력 6% 증가')
-            info.append('힘, 지능 ' + str(4 + i['reinforce']) + '% 증가')
-
-        elif itemName == '새벽을 감싸는 따스함':
-            info.append('모든 공격력 6% 증가')
-            info.append('스킬 공격력 ' + str(4 + i['reinforce']) + '% 증가')
-
-        elif itemName == '고요를 머금은 이슬':
-            info.append('공격 시 데미지 증가량 ' + str(4 + i['reinforce']) + '% 추가 증가')
-
     ### 아이템 옵션 계산 ###
     itemsInfo = DNFAPI.getItemDetails(itemIdList)
     for i in itemsInfo:
-        iteminfo    = i['itemExplain']
+        iteminfo    = i['itemExplainDetail']
         itemName    = i['itemName']
         setItemName = i['setItemName']
+
+        # 태극천제검 :: 음의 기운 기준
+        if itemName == '태극천제검':
+            info.append('스킬 공격력 30% 증가')
+            info.append('물리, 마법, 독립 공격력 40% 증가')
+            info.append('힘, 지능 10% 증가')
+            info.append('모든 공격력 21% 증가')
+            continue
 
         # 별의 바다 : 바드나후 :: 속추뎀 20퍼로 환산
         if itemName == '별의 바다 : 바드나후':
@@ -443,12 +435,12 @@ async def 상세정보(ctx, name='None', _server='전체'):
 
         # 종말의 역전 :: 비통한 자의 목걸이, 비운의 유물 착용 시 물마독 10% 감소
         if itemName == '종말의 역전':
-            if 'da5e4132290136b6bae3d1d8e2692446' in itemIdList: adApInInc -= 10
-            if '33727ea5e4d52bf641bd15ba2556bc75' in itemIdList: adApInInc -= 10
+            if '비통한 자의 목걸이' in itemNameList: adApInInc -= 10
+            if '비운의 유물' in itemNameList: adApInInc -= 10
 
-        # 군신의 숨겨진 유산 세트 :: 2세트 옵션을 여기서 계산
+        # 군신의 숨겨진 유산 세트 :: 2세트 옵션의 크리티컬 데미지 추가 증가를 여기서 계산
         if  itemName == '군신의 유언장' and \
-            ('e8339821b962569895a1dcd569ef1ed8' in itemIdList or 'e98db581d86ffc2098c66049b019cf83' in itemIdList):
+            ('군신의 수상한 귀걸이' in itemNameList or '군신의 마지막 갈망' in itemNameList):
             info.append('크리티컬 공격 시 데미지 증가량 5% 추가 증가')
 
         # 심연에 빠진 검은 셔츠 :: 속성 저항에 따라 설정
@@ -507,7 +499,7 @@ async def 상세정보(ctx, name='None', _server='전체'):
             info.append('모든 공격력 ' + str(7 * count) + '% 증가')
             continue
 
-        # 먼동 세트 :: 이미 계산했으므로 패스
+        # 먼동 세트 :: 따로 계산
         if setItemName == '먼동 틀 무렵 세트':
             continue
 
@@ -528,6 +520,24 @@ async def 상세정보(ctx, name='None', _server='전체'):
 
             info.append(i)
 
+    ### 먼동 :: 강화 수치에 따라 옵션 설정
+    for i in chrEquipItemInfoList:
+        itemName = i['itemName']
+        if itemName == '새벽을 녹이는 따스함':
+            info.append('모든 공격력 6% 증가')
+            info.append('스킬 공격력 ' + str(4 + i['reinforce']) + '% 증가')
+
+        elif itemName == '달빛을 가두는 여명':
+            info.append('물리, 마법, 독립 공격력 6% 증가')
+            info.append('힘, 지능 ' + str(4 + i['reinforce']) + '% 증가')
+
+        elif itemName == '새벽을 감싸는 따스함':
+            info.append('모든 공격력 6% 증가')
+            info.append('스킬 공격력 ' + str(4 + i['reinforce']) + '% 증가')
+
+        elif itemName == '고요를 머금은 이슬':
+            info.append('공격 시 데미지 증가량 ' + str(4 + i['reinforce']) + '% 추가 증가')
+
     ### 신화 옵션 계산 ###
     for i in chrEquipItemInfoList:
         try:
@@ -547,7 +557,9 @@ async def 상세정보(ctx, name='None', _server='전체'):
         # 2세트 옵션
         # 잔향
         if 3 in chrSirocoItemInfo['세트'].values():
-            info.append(chrSirocoItemInfo['잔향']['2옵션'])
+            try:
+                info.append(chrSirocoItemInfo['잔향']['2옵션'])
+            except: pass
 
         # 넥스
         if  '무형 : 넥스의 잠식된 의복' in chrSirocoItemInfo.keys() and \
@@ -596,7 +608,6 @@ async def 상세정보(ctx, name='None', _server='전체'):
             info.append(chrSirocoItemInfo.get('환영 : 로도스의 검은 핵')['2옵션'])
 
     ### 세트 옵션 계산 ###
-    setItemIdList = [i['setItemId'] for i in chrEquipSetItemInfo]
     setItemInfos = DNFAPI.getSetItemInfos(setItemIdList)
 
     for i in setItemInfos:
@@ -764,8 +775,7 @@ async def 상세정보(ctx, name='None', _server='전체'):
     embed.add_field(name='> 힘, 지능 증가',            value=str(strIntInc) + '%')
     embed.add_field(name='> 지속 피해',                value=str(continueDmg) + '%')
     embed.add_field(name='> 세팅 점수',                value=str(damage) + '점')
-    embed.set_footer(text='더 높은 정확도를 위해서는 여러분들의 제보가 필요해요! LaivY#2463\r\n' +
-                          '세팅 점수는 제작자 마음대로 정한 공식이기 때문에 재미로만 봐주세요!')
+    embed.set_footer(text='세팅 점수는 데미지 증가 옵션만을 고려해서 나온 점수예요.')
     await ctx.channel.send(embed=embed)
     
     # 데미지 효율 계산
