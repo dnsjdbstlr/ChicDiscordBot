@@ -13,8 +13,8 @@ from datetime import datetime
 
 ### 기본설정 ###
 bot = commands.Bot(command_prefix='!')
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 epic = Classes.epicRank()
 setRank = Classes.setRank()
 
@@ -36,7 +36,7 @@ async def 도움말(ctx):
     await ctx.message.delete()
     await ctx.channel.send("```cs\r\n" +
                            "#시크봇의 명령어들을 알려드릴게요!\r\n"
-                           "#최근 업데이트 날짜 : 2020/12/28                    #건의사항 : LaivY#2463\r\n"
+                           "#최근 업데이트 날짜 : 2021/01/03                    #건의사항 : LaivY#2463\r\n"
                            "──────────────────────────────────검색──────────────────────────────────\r\n"
                            "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n"
                            "'!캐릭터 <닉네임>' : 캐릭터가 장착한 장비와 세트를 알려드릴게요.\r\n"
@@ -266,10 +266,10 @@ async def 획득에픽(ctx, name='None', _server='전체'):
     # 데이터 저장
     today = datetime.today()
     epic.add(chrId, {
-        'year'   : today.year,
-        'month'   : today.month,
-        'server' : server,
-        'name' : name,
+        'year'  : today.year,
+        'month' : today.month,
+        'server': server,
+        'name'  : name,
         'score' : len(chrTimeLineData)
     })
 
@@ -298,7 +298,7 @@ async def 상세정보(ctx, name='None', _server='전체'):
     rAddDmg       = re.compile('공격시(?P<value>\d+)%추가데미지')
     rEleAddDmg    = re.compile('공격시(?P<value>\d+)%속성추가데미지')
     rAllDmgInc    = re.compile('모든공격력(?P<value>\d+)%증가')
-    rSkillDmgInc  = re.compile('스킬공격력(?P<value>\d+)%')
+    rSkillDmgInc  = re.compile('스킬공격력(?P<value>\d+)%증가')
     rAdApInInc    = re.compile('물리,마법,독립공격력(?P<value>\d+)%')
     rStrIntInc    = re.compile('힘,지능(?P<value>\d+)%증가')
     rContinueDmg  = re.compile('적에게입힌피해의(?P<value>\d+)%만큼')
@@ -324,6 +324,10 @@ async def 상세정보(ctx, name='None', _server='전체'):
 
     # 장착하고있는 장비템 정보
     chrEquipItemInfoList, chrEquipSetItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
+    for i in chrEquipItemInfoList:
+        if i['slotName'] == '보조무기':
+            chrEquipItemInfoList.remove(i)
+
     itemIdList = [i['itemId'] for i in chrEquipItemInfoList]
     itemNameList = [i['itemName'] for i in chrEquipItemInfoList]
     setItemIdList = [i['setItemId'] for i in chrEquipSetItemInfo]
@@ -360,6 +364,10 @@ async def 상세정보(ctx, name='None', _server='전체'):
             info.append('힘, 지능 10% 증가')
             info.append('모든 공격력 21% 증가')
             continue
+
+        # 판데모니엄 플레임 :: 스킬 공격력 36% 증가
+        if itemName == '판데모니엄 플레임':
+            info.append('스킬 공격력 36% 증가')
 
         # 별의 바다 : 바드나후 :: 속추뎀 20퍼로 환산
         if itemName == '별의 바다 : 바드나후':
@@ -782,28 +790,25 @@ async def 상세정보(ctx, name='None', _server='전체'):
     embed2 = discord.Embed(title='각 능력치 별 효율도 알려드릴게요.')
 
     dmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc + 10, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
-    embed2.add_field(name='> 데미지 10%', value='최종 데미지 ' + str(round((dmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    embed2.add_field(name='> 데미지 10%', value='스킬 데미지 ' + str(round((dmgInc10 / damage - 1) * 1000) / 10) + '%')
 
     criDmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc + 10, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
-    embed2.add_field(name='> 크리티컬 데미지 10%', value='최종 데미지 ' + str(round((criDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    embed2.add_field(name='> 크리티컬 데미지 10%', value='스킬 데미지 ' + str(round((criDmgInc10 / damage - 1) * 1000) / 10) + '%')
 
     addDmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc + 10, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
-    embed2.add_field(name='> 추가 데미지 10%', value='최종 데미지 ' + str(round((addDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    embed2.add_field(name='> 추가 데미지 10%', value='스킬 데미지 ' + str(round((addDmgInc10 / damage - 1) * 1000) / 10) + '%')
     
     allDmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc + 10, adApInInc, strIntInc, element, skillDmgInc, continueDmg)
-    embed2.add_field(name='> 모든 공격력 10%', value='최종 데미지 ' + str(round((allDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
-
-    skillDmgInc10 = int(damage * 1.1)
-    embed2.add_field(name='> 스킬 데미지 10%', value='최종 데미지 ' + str(round((skillDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    embed2.add_field(name='> 모든 공격력 10%', value='스킬 데미지 ' + str(round((allDmgInc10 / damage - 1) * 1000) / 10) + '%')
     
     adApInInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc + 10, strIntInc, element, skillDmgInc, continueDmg)
-    embed2.add_field(name='> 물리마법독립 10%', value='최종 데미지 ' + str(round((adApInInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    embed2.add_field(name='> 물리마법독립 10%', value='스킬 데미지 ' + str(round((adApInInc10 / damage - 1) * 1000) / 10) + '%')
     
     strIntInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc + 10, element, skillDmgInc, continueDmg)
-    embed2.add_field(name='> 힘, 지능 10%', value='최종 데미지 ' + str(round((strIntInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    embed2.add_field(name='> 힘, 지능 10%', value='스킬 데미지 ' + str(round((strIntInc10 / damage - 1) * 1000) / 10) + '%')
 
     continueDmgInc10 = Util.getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmgInc, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg + 10)
-    embed2.add_field(name='> 지속 데미지 10%', value='최종 데미지 ' + str(round((continueDmgInc10 / damage - 1) * 1000) / 10) + '% 증가')
+    embed2.add_field(name='> 지속 데미지 10%', value='스킬 데미지 ' + str(round((continueDmgInc10 / damage - 1) * 1000) / 10) + '%')
     embed2.set_footer(text='이 수치들은 참고만 해주세요! 오차가 있을 수 있어요.')
     await ctx.channel.send(embed=embed2)
 

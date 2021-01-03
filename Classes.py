@@ -7,7 +7,8 @@ class epicRank:
             with open('data/epicRank.json', 'r') as f:
                 self.data = json.load(f)
                 print('기린랭킹을 성공적으로 불러왔습니다.')
-        except: pass
+        except:
+            print('기존 기린랭킹 데이터가 없습니다.')
 
     def add(self, chrId, info):
         self.update(info['month'])
@@ -35,7 +36,8 @@ class setRank:
             with open('data/setRank.json', 'r') as f:
                 self.data = json.load(f)
                 print('세팅랭킹을 성공적으로 불러왔습니다.')
-        except: pass
+        except:
+            print('기존 세팅랭킹 데이터가 없습니다.')
 
     def add(self, chrId, info):
         self.data.update({chrId : info})
