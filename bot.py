@@ -414,8 +414,8 @@ async def 상세정보(ctx, name='None', _server='전체'):
             info.append('힘, 지능 34% 증가')
             continue
 
-        # 전자기 진공관 :: 속성 강화 버프
-        if itemName == '전자기 진공관':
+        # 싱크로 귀걸이 :: 속성 강화 버프
+        if itemName in ['전자기 진공관', '플라즈마 초 진공관']:
             element += 40
 
         # 대자연
