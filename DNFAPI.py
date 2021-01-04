@@ -155,7 +155,7 @@ def getChrIdList(server, name):
         wordType = 'full'
 
     name = parse.quote(name)
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters?characterName=' + name + '&wordType=' + wordType + '&limit=30&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters?characterName=' + name + '&wordType=' + wordType + '&limit=15&apikey=' + apikey
     response = requests.get(url=url)
     temp = json.loads(response.text)
     data = temp['rows']

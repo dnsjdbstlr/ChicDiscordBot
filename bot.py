@@ -15,8 +15,12 @@ from datetime import datetime
 bot = commands.Bot(command_prefix='!')
 token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 #token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
-epic = Classes.epicRank()
+ownerId = 247361856904232960
+
+### 데이터 선언 ###
+epicRank = Classes.epicRank()
 setRank = Classes.setRank()
+cmdStatistics = Classes.cmdStatistics()
 
 ### 이벤트 ###
 @bot.event
@@ -26,9 +30,14 @@ async def on_ready():
 
 @bot.event
 async def on_message(msg):
-    if msg.author.bot:
-        return None
+    if msg.author.bot: return None
     await bot.process_commands(msg)
+
+    # 명령어 사용 빈도수 저장
+    cmd = msg.content.split(' ')[0]
+    if cmd in cmdStatistics.data.keys():
+        cmdStatistics.data[cmd] = cmdStatistics.data[cmd] + 1
+        cmdStatistics.update()
 
 ### 명령어 ###
 @bot.command()
@@ -265,7 +274,7 @@ async def 획득에픽(ctx, name='None', _server='전체'):
 
     # 데이터 저장
     today = datetime.today()
-    epic.add(chrId, {
+    epicRank.add(chrId, {
         'year'  : today.year,
         'month' : today.month,
         'server': server,
@@ -815,14 +824,14 @@ async def 상세정보(ctx, name='None', _server='전체'):
 @bot.command()
 async def 기린랭킹(ctx):
     today = datetime.today()
-    epic.update(today.month)
+    epicRank.update(today.month)
     embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
     embed.set_footer(text='더 이상 업데이트 때문에 랭킹이 초기화되지 않아요!')
 
     rank = 1
-    for k in epic.data.keys():
-        name  = '> ' + str(rank) + '등\r\n> ' + epic.data[k]['server'] + ' ' + epic.data[k]['name']
-        value = '에픽 ' + str(epic.data[k]['score']) + '개 획득!'
+    for k in epicRank.data.keys():
+        name  = '> ' + str(rank) + '등\r\n> ' + epicRank.data[k]['server'] + ' ' + epicRank.data[k]['name']
+        value = '에픽 ' + str(epicRank.data[k]['score']) + '개 획득!'
         embed.add_field(name=name, value=value)
         rank += 1
 
@@ -856,13 +865,13 @@ async def 청소(ctx):
 ### 제작자 명령어 ###
 @bot.command()
 async def 연결(ctx):
-    if ctx.message.author.id == 247361856904232960:
+    if ctx.message.author.id == ownerId:
         await ctx.message.delete()
         await ctx.channel.send('> 시크봇은 ' + str(len(bot.guilds)) + '개의 서버에 연결되어있어요!')
 
 @bot.command()
 async def 상태(ctx, *state):
-    if ctx.message.author.id == 247361856904232960:
+    if ctx.message.author.id == ownerId:
         _state = ''
         for i in state:
             _state += i + ' '
@@ -871,6 +880,15 @@ async def 상태(ctx, *state):
         await bot.change_presence(status=discord.Status.online, activity=discord.Game(_state))
         await ctx.message.delete()
         await ctx.channel.send("> '" + _state + "하는 중' 으로 상태를 바꿨습니다.")
+
+@bot.command()
+async def 통계(ctx):
+    if ctx.message.author.id == ownerId:
+        await ctx.message.delete()
+        embed = discord.Embed(title='유저들이 사용한 각 명령어의 사용 횟수를 알려드릴게요.')
+        for k in cmdStatistics.data.keys():
+            embed.add_field(name='> ' + k, value=str(cmdStatistics.data[k]) + '번')
+        await ctx.channel.send(embed=embed)
 
 bot.remove_command('help')
 bot.run(token)

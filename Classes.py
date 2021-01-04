@@ -48,3 +48,30 @@ class setRank:
         # 파일로 저장
         with open('data/setRank.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
+
+class cmdStatistics:
+    def __init__(self):
+        self.data = {
+            '!도움말'   : 0,
+            '!등급'     : 0,
+            '!캐릭터'   : 0,
+            '!장비'     : 0,
+            '!세트'     : 0,
+            '!획득에픽' : 0,
+            '!상세정보' : 0,
+            '!기린랭킹' : 0,
+            '!세팅랭킹' : 0,
+            '!청소'     : 0
+        }
+
+        try:
+            with open('data/cmdStatistics.json', 'r') as f:
+                self.data = json.load(f)
+                print('명령어 통계를 성공적으로 불러왔습니다.')
+        except:
+            print('기존 명령어 통계 데이터가 없습니다.')
+
+    def update(self):
+        # 파일로 저장
+        with open('data/cmdStatistics.json', 'w') as f:
+            json.dump(self.data, f, indent=4, ensure_ascii=False)

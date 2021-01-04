@@ -11,6 +11,7 @@ async def getSelectionFromChrIdList(bot, ctx, chrIdList):
             value = 'Lv. ' + chrIdList[i]['level'] + ' ' + chrIdList[i]['characterName'] + '\r\n' + \
                     chrIdList[i]['server'] + ' | ' + chrIdList[i]['jobGrowName']
             embed.add_field(name='> ' + str(i + 1), value=value)
+        embed.set_footer(text='명령어 뒤에 서버이름을 적으면 해당 서버만 검색해요!')
         selection = await ctx.channel.send(embed=embed)
 
         ### 반응을 대기함 ###
@@ -58,18 +59,19 @@ async def getSelectionFromItemIdList(bot, ctx, itemIdList):
         return False
 
     if len(itemIdList) >= 2:
-        embed = discord.Embed(title='알고싶은 장비 아이템의 번호를 입력해주세요!', description='10초만 기다려드릴거에요. 빠르게 골라주세요!')
+        embed = discord.Embed(title='알고싶은 장비 아이템의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
         for i in range(len(itemIdList)):
             embed.add_field(name='> ' + str(i + 1), value=itemIdList[i]['itemName'])
         selection = await ctx.channel.send(embed=embed)
 
         try:
             def check(m):
-                if m.content == '' and ctx.channel.id == m.channel.id:
-                    return False
-                elif ctx.channel.id == m.channel.id:
-                    return True
-            result = await bot.wait_for('message', check=check, timeout=10)
+                if ctx.channel.id == m.channel.id and ctx.message.author == m.author:
+                    if m.content == '':
+                        return False
+                    else:
+                        return True
+            result = await bot.wait_for('message', check=check, timeout=15)
 
         except asyncio.TimeoutError:
             await selection.delete()
@@ -95,18 +97,19 @@ async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
         return
 
     if len(setItemIdList) >= 2:
-        embed = discord.Embed(title='알고싶은 세트옵션의 번호를 입력해주세요!', description='10초만 기다려드릴거에요. 빠르게 골라주세요!')
+        embed = discord.Embed(title='알고싶은 세트옵션의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
         for i in range(len(setItemIdList)):
             embed.add_field(name='> ' + str(i + 1), value=setItemIdList[i]['setItemName'])
         selection = await ctx.channel.send(embed=embed)
 
         try:
             def check(m):
-                if m.content == '' and ctx.channel.id == m.channel.id:
-                    return False
-                elif ctx.channel.id == m.channel.id:
-                    return True
-            result = await bot.wait_for('message', check=check, timeout=10)
+                if ctx.channel.id == m.channel.id and ctx.message.author == m.author:
+                    if m.content == '':
+                        return False
+                    else:
+                        return True
+            result = await bot.wait_for('message', check=check, timeout=15)
         except asyncio.TimeoutError:
             await selection.delete()
             await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
