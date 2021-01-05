@@ -1,25 +1,16 @@
-# 디스코드
-import discord
-from discord.ext import commands
-
-# API
-import DNFAPI
-
-# 기타
 import re
-import Util
-import Classes
+import discord
 from datetime import datetime
+from discord.ext import commands
+from FrameWork import Util, DNFAPI, Classes
+bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
-bot = commands.Bot(command_prefix='!')
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 ownerId = 247361856904232960
-
-### 데이터 선언 ###
-epicRank = Classes.epicRank()
 setRank = Classes.setRank()
+epicRank = Classes.epicRank()
 cmdStatistics = Classes.cmdStatistics()
 
 ### 이벤트 ###
@@ -266,8 +257,8 @@ async def 획득에픽(ctx, name='None', _server='전체'):
 
         for i in chrTimeLineData[start:end]:
             embed.add_field(
-                name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'],
-                value=i['data']['itemName'])
+                name='> ' + i['date'][:10] + '\r\n> ch' + str(i['Data']['channelNo']) + '.' + i['Data']['channelName'],
+                value=i['Data']['itemName'])
         await ctx.channel.send(embed=embed)
 
         index += 15
