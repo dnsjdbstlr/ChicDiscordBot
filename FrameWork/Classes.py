@@ -4,7 +4,7 @@ class epicRank:
     def __init__(self):
         self.data = {}
         try:
-            with open('../Data/epicRank.json', 'r') as f:
+            with open('Data/epicRank.json', 'r') as f:
                 self.data = json.load(f)
                 print('기린랭킹을 성공적으로 불러왔습니다.')
         except:
@@ -18,7 +18,7 @@ class epicRank:
         self.data = dict(sorted(self.data.items(), key=key, reverse=True)[:15])
 
         # 파일로 저장
-        with open('../Data/epicRank.json', 'w') as f:
+        with open('Data/epicRank.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
 
     def update(self, month):
@@ -33,7 +33,7 @@ class setRank:
     def __init__(self):
         self.data = {}
         try:
-            with open('../Data/setRank.json', 'r') as f:
+            with open('Data/setRank.json', 'r') as f:
                 self.data = json.load(f)
                 print('세팅랭킹을 성공적으로 불러왔습니다.')
         except:
@@ -46,7 +46,7 @@ class setRank:
         self.data = dict(sorted(self.data.items(), key=key, reverse=True)[:15])
 
         # 파일로 저장
-        with open('../Data/setRank.json', 'w') as f:
+        with open('Data/setRank.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
 
 class cmdStatistics:
@@ -58,14 +58,14 @@ class cmdStatistics:
             '!장비'     : 0,
             '!세트'     : 0,
             '!획득에픽' : 0,
-            '!상세정보' : 0,
+            #'!상세정보' : 0,
             '!기린랭킹' : 0,
-            '!세팅랭킹' : 0,
+            #'!세팅랭킹' : 0,
             '!청소'     : 0
         }
 
         try:
-            with open('../Data/cmdStatistics.json', 'r') as f:
+            with open('Data/cmdStatistics.json', 'r') as f:
                 self.data = json.load(f)
                 print('명령어 통계를 성공적으로 불러왔습니다.')
         except:
@@ -73,5 +73,5 @@ class cmdStatistics:
 
     def update(self):
         # 파일로 저장
-        with open('../Data/cmdStatistics.json', 'w') as f:
+        with open('Data/cmdStatistics.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
