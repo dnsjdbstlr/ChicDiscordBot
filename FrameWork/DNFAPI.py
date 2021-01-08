@@ -93,6 +93,12 @@ def getItemMythicInfo(options):
         itemMythicInfo += i['explainDetail'] + '\r\n'
     return itemMythicInfo
 
+def getItemAuctionPrice(itemName):
+    url = 'https://api.neople.co.kr/df/auction-sold?itemName=' + itemName + '&limit=100&wordType=<wordType>&apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data['rows']
+
 def getShopItemInfo(itemId):
     url = 'https://api.neople.co.kr/df/items/' + itemId + '/shop?apikey=' + apikey
     response = requests.get(url=url)

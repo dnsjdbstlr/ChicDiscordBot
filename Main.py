@@ -1,4 +1,3 @@
-import re
 import discord
 from datetime import datetime
 from discord.ext import commands
@@ -7,11 +6,12 @@ bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
 token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token   = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 ownerId = 247361856904232960
-setRank = Classes.setRank()
-epicRank = Classes.epicRank()
-cmdStatistics = Classes.cmdStatistics()
+setRank          = Classes.setRank()
+epicRank         = Classes.epicRank()
+itemAuctionPrice = Classes.itemAuctionPrice()
+cmdStatistics    = Classes.cmdStatistics()
 
 ### 이벤트 ###
 @bot.event
@@ -36,9 +36,10 @@ async def 도움말(ctx):
     await ctx.message.delete()
     await ctx.channel.send("```cs\r\n" +
                            "#시크봇의 명령어들을 알려드릴게요!\r\n"
-                           "#최근 업데이트 날짜 : 2021/01/07                    #건의사항 : LaivY#2463\r\n"
+                           "#최근 업데이트 날짜 : 2021/01/08                    #건의사항 : LaivY#2463\r\n"
                            "──────────────────────────────────검색──────────────────────────────────\r\n"
                            "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n"
+                           "'!시세' <정확한아이템이름> : 해당 아이템의 시세를 알려드릴게요.\r\n"
                            "'!캐릭터 <닉네임>' : 캐릭터가 장착한 장비와 세트를 알려드릴게요.\r\n"
                            "'!장비 <장비아이템이름>' : 궁금하신 장비템의 옵션을 검색해서 알려드릴게요.\r\n"
                            "'!세트 <세트아이템이름>' : 궁금하신 세트템의 옵션을 검색해서 알려드릴게요.\r\n"
@@ -218,6 +219,66 @@ async def 세트(ctx, *input):
     itemImageUrl = DNFAPI.getItemImageUrl(setItemInfoList[0]['itemId'])
     embed.set_thumbnail(url=itemImageUrl)
 
+    await ctx.channel.send(embed=embed)
+
+@bot.command()
+async def 시세(ctx, *input):
+    itemName = ''
+    for i in input: itemName += i + ' '
+    itemName = itemName.rstrip()
+
+    inputAuctionPrice = DNFAPI.getItemAuctionPrice(itemName)
+    if not inputAuctionPrice:
+        await ctx.message.delete()
+        await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
+        return
+
+    itemPriceSum  = 0   # 총 가격
+    itemAmountSum = 0   # 총 갯수
+    priceAverage  = 0   # 평균 가격
+
+    for i in inputAuctionPrice:
+        itemPriceSum  += i['price']
+        itemAmountSum += i['count']
+    priceAverage = itemPriceSum // itemAmountSum
+
+    # 데이터 저장
+    data = {'평균가': priceAverage, '판매량': itemAmountSum}
+    year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
+    key = str(year) + '년' + str(month) + '월' + str(day) + '일'
+    try:
+        itemAuctionPrice.data[itemName].update( {key : data} )
+    except:
+        itemAuctionPrice.data[itemName] = {key : data}
+    itemAuctionPrice.update()
+
+    # 가격 변동률 계산
+    prevPriceAvg = -1
+    try:
+        for k in itemAuctionPrice.data[itemName].keys():
+            if k == key: break
+            prevPriceAvg = itemAuctionPrice.data[itemName][k]['평균가']
+    except: pass
+
+    if prevPriceAvg == -1:
+        volatility = '데이터 없음'
+    else:
+        volatility = ((priceAverage / prevPriceAvg) - 1) * 100
+        if volatility > 0:
+            volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
+        elif volatility == 0:
+            volatility = '- 0.00%'
+        else:
+            volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
+
+    embed = discord.Embed(title="'" + itemName + "' 시세를 알려드릴게요")
+    embed.add_field(name='> 평균 가격', value=str(priceAverage) + '골드')
+    embed.add_field(name='> 최근 판매량', value=str(itemAmountSum) + '개')
+    embed.add_field(name='> 가격 변동률', value=volatility)
+    embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
+    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
+
+    await ctx.message.delete()
     await ctx.channel.send(embed=embed)
 
 @bot.command()

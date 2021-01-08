@@ -49,6 +49,21 @@ class setRank:
         with open('Data/setRank.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
 
+class itemAuctionPrice:
+    def __init__(self):
+        self.data = {}
+        try:
+            with open('Data/itemAuctionPrice.json', 'r') as f:
+                self.data = json.load(f)
+                print('아이템 시세를 성공적으로 불러왔습니다.')
+        except:
+            print('기존 아이템 시세 데이터가 없습니다.')
+
+    def update(self):
+        # 파일로 저장
+        with open('Data/itemAuctionPrice.json', 'w') as f:
+            json.dump(self.data, f, indent=4, ensure_ascii=False)
+
 class cmdStatistics:
     def __init__(self):
         self.data = {
