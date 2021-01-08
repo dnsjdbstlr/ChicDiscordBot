@@ -1,4 +1,5 @@
 import discord
+import random
 from datetime import datetime
 from discord.ext import commands
 from FrameWork import Util, DNFAPI, Classes
@@ -55,7 +56,7 @@ async def 도움말(ctx):
 @bot.command()
 async def 등급(ctx):
     await ctx.message.delete()
-    processing = await ctx.channel.send('> 오늘의 아이템 등급을 읽어오고있어요...')
+    waiting = await ctx.channel.send('> 오늘의 아이템 등급을 읽어오고있어요...')
 
     itemIdList = ['52b3fac226cfa92cba9cffff516fb06e', '55d4d2bbf302e19ea1b7bf7487f91120',
                   '10f619989d70a8f21b6dd8da40f48faf', '2230b9bb6a9d484c3f94c5721750de23',
@@ -78,7 +79,7 @@ async def 등급(ctx):
         footer = '오늘만을 기다려왔어요!!'
     embed.set_footer(text=footer)
 
-    await processing.delete()
+    await waiting.delete()
     await ctx.channel.send(embed=embed)
 
 @bot.command()
@@ -129,7 +130,6 @@ async def 캐릭터(ctx, name='None', _server='전체'):
                 value += j['name'] + ' +' + str(j['value']) + '\r\n'
         except: pass
         embed.add_field(name='> ' + i['slotName'], value=value)
-
     embed.set_footer(text=name + '님의 캐릭터 이미지도 챙겨왔어요!')
     await ctx.channel.send(embed=embed)
 
@@ -228,10 +228,13 @@ async def 시세(ctx, *input):
     for i in input: itemName += i + ' '
     itemName = itemName.rstrip()
 
+    await ctx.message.delete()
+    waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
+
     itemName = DNFAPI.getMostSimilarItemName(itemName)
     inputAuctionPrice = DNFAPI.getItemAuctionPrice(itemName)
     if not inputAuctionPrice:
-        await ctx.message.delete()
+        await waiting.delete()
         await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
         return
 
@@ -280,7 +283,7 @@ async def 시세(ctx, *input):
     embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
     embed.set_thumbnail(url=DNFAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
 
-    await ctx.message.delete()
+    await waiting.delete()
     await ctx.channel.send(embed=embed)
 
 @bot.command()
@@ -880,7 +883,7 @@ async def 기린랭킹(ctx):
     today = datetime.today()
     epicRank.update(today.month)
     embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
-    embed.set_footer(text='더 이상 업데이트 때문에 랭킹이 초기화되지 않아요!')
+    embed.set_footer(text='모두 원하는 에픽/신화를 얻을 수 있으면 좋겠어요!')
 
     rank = 1
     for k in epicRank.data.keys():
