@@ -5,8 +5,8 @@ from FrameWork import Util, DNFAPI, Classes
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token   = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token   = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 ownerId = 247361856904232960
 setRank          = Classes.setRank()
 epicRank         = Classes.epicRank()
@@ -54,9 +54,12 @@ async def 도움말(ctx):
 
 @bot.command()
 async def 등급(ctx):
-    itemNameList = ['혈광갑주 가죽 상의', '혈광갑주 가죽 어깨', '혈광갑주 가죽 하의',
-                    '혈광갑주 가죽 벨트', '혈광갑주 가죽 부츠', '검은 성전의 기억 : 소검']
-    itemIdList = [DNFAPI.getItemId(i, True)[0]['itemId'] for i in itemNameList]
+    await ctx.message.delete()
+    processing = await ctx.channel.send('> 오늘의 아이템 등급을 읽어오고있어요...')
+
+    itemIdList = ['52b3fac226cfa92cba9cffff516fb06e', '55d4d2bbf302e19ea1b7bf7487f91120',
+                  '10f619989d70a8f21b6dd8da40f48faf', '2230b9bb6a9d484c3f94c5721750de23',
+                  '01c9dcf2c3294bec093984e3d12b87ab', '7fae76b5a3fd513001a5d40716e1287f']
     shopItemInfo = [DNFAPI.getShopItemInfo(i) for i in itemIdList]
 
     embed = discord.Embed(title='오늘의 아이템 등급을 알려드릴게요!')
@@ -74,7 +77,8 @@ async def 등급(ctx):
     elif shopItemInfo[0]['itemGradeName'] == '최상급':
         footer = '오늘만을 기다려왔어요!!'
     embed.set_footer(text=footer)
-    await ctx.message.delete()
+
+    await processing.delete()
     await ctx.channel.send(embed=embed)
 
 @bot.command()
