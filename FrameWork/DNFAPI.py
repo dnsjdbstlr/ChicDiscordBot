@@ -30,21 +30,42 @@ SERVERID_TO_NAME = {
     'siroco'  : '시로코'
 }
 
-def getItemId(name):
-    itemIdList = []
-
+def getItemId(name, exactly=False):
     name = parse.quote(name)
-    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&limit=30&wordType=full' + '&apikey=' + apikey
+    wordType = 'full' if exactly is False else 'match'
+
+    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&limit=30&wordType=' + wordType + '&apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
 
+    itemIdList = []
     for i in data['rows']:
         if '[영혼]' in i['itemName']: continue
         if '[결투장]' in i['itemName']: continue
         if i['itemType'] in ['무기', '방어구', '액세서리', '추가장비'] and \
            i['itemRarity'] in ['레전더리', '에픽', '신화']:
-            itemIdList.append({'itemId' : i['itemId'], 'itemName' : i['itemName']})
+
+            # 이름이 중복된 아이템은 리스트에 추가하지않음
+            isOverride = False
+            for j in itemIdList:
+                if i['itemName'] == j['itemName']:
+                    isOverride = True
+
+            if not isOverride:
+                itemIdList.append({'itemId' : i['itemId'], 'itemName' : i['itemName']})
+
     return itemIdList
+
+def getMostSimilarItemName(name):
+    name = parse.quote(name)
+    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&q=trade:true&limit=1&wordType=front&apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+
+    try:
+        return data['rows'][0]['itemName']
+    except:
+        return 'None'
 
 def getItemDetail(itemId):
     url = 'https://api.neople.co.kr/df/items/' + itemId + '?apikey=' + apikey
@@ -94,7 +115,7 @@ def getItemMythicInfo(options):
     return itemMythicInfo
 
 def getItemAuctionPrice(itemName):
-    url = 'https://api.neople.co.kr/df/auction-sold?itemName=' + itemName + '&limit=100&wordType=<wordType>&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/auction-sold?itemName=' + itemName + '&limit=100&wordType=match&apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['rows']

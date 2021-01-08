@@ -5,8 +5,8 @@ from FrameWork import Util, DNFAPI, Classes
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token   = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token   = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 ownerId = 247361856904232960
 setRank          = Classes.setRank()
 epicRank         = Classes.epicRank()
@@ -39,10 +39,10 @@ async def 도움말(ctx):
                            "#최근 업데이트 날짜 : 2021/01/08                    #건의사항 : LaivY#2463\r\n"
                            "──────────────────────────────────검색──────────────────────────────────\r\n"
                            "'!등급' : 오늘의 장비 등급을 알려드릴게요.\r\n"
-                           "'!시세' <정확한아이템이름> : 해당 아이템의 시세를 알려드릴게요.\r\n"
                            "'!캐릭터 <닉네임>' : 캐릭터가 장착한 장비와 세트를 알려드릴게요.\r\n"
-                           "'!장비 <장비아이템이름>' : 궁금하신 장비템의 옵션을 검색해서 알려드릴게요.\r\n"
-                           "'!세트 <세트아이템이름>' : 궁금하신 세트템의 옵션을 검색해서 알려드릴게요.\r\n"
+                           "'!시세 <아이템이름>' : 해당 아이템의 시세와 가격 변동률을 알려드릴게요.\r\n"
+                           "'!장비 <장비아이템이름>' : 해당 장비아이템의 옵션을 검색해서 알려드릴게요.\r\n"
+                           "'!세트 <세트아이템이름>' : 해당 세트아이템의 옵션을 검색해서 알려드릴게요.\r\n"
                            "\r\n──────────────────────────────────랭킹──────────────────────────────────\r\n"
                            "'!획득에픽 <닉네임>' : 캐릭터가 이번 달에 획득한 에픽을 알려드릴게요.\r\n"
                            #"'!상세정보 <닉네임>' : 캐릭터의 공격력 증가치를 알려드릴게요. 효율이랑요!\r\n"
@@ -54,27 +54,24 @@ async def 도움말(ctx):
 
 @bot.command()
 async def 등급(ctx):
-    shopItemInfo1 = DNFAPI.getShopItemInfo('52b3fac226cfa92cba9cffff516fb06e')
-    shopItemInfo2 = DNFAPI.getShopItemInfo('615335efa74675460d969dd71332bd19')
-    shopItemInfo3 = DNFAPI.getShopItemInfo('4851754a3f4371cd1fbaed86d589b9b5')
+    itemNameList = ['혈광갑주 가죽 상의', '혈광갑주 가죽 어깨', '혈광갑주 가죽 하의',
+                    '혈광갑주 가죽 벨트', '혈광갑주 가죽 부츠', '검은 성전의 기억 : 소검']
+    itemIdList = [DNFAPI.getItemId(i, True)[0]['itemId'] for i in itemNameList]
+    shopItemInfo = [DNFAPI.getShopItemInfo(i) for i in itemIdList]
 
     embed = discord.Embed(title='오늘의 아이템 등급을 알려드릴게요!')
-    embed.add_field(name='> ' + shopItemInfo1['itemName'],
-                    value=shopItemInfo1['itemGradeName'] + '(' + str(shopItemInfo1['itemGradeValue']) + '%)')
-    embed.add_field(name='> ' + shopItemInfo2['itemName'],
-                    value=shopItemInfo2['itemGradeName'] + '(' + str(shopItemInfo2['itemGradeValue']) + '%)')
-    embed.add_field(name='> ' + shopItemInfo3['itemName'],
-                    value=shopItemInfo3['itemGradeName'] + '(' + str(shopItemInfo3['itemGradeValue']) + '%)')
+    for i in shopItemInfo:
+        embed.add_field(name='> ' + i['itemName'], value=i['itemGradeName'] + '(' + str(i['itemGradeValue']) + '%)')
 
-    if shopItemInfo1['itemGradeName'] == '최하급':
+    if shopItemInfo[0]['itemGradeName'] == '최하급':
         footer = '오늘 하루는 절대 정가 금지!'
-    elif shopItemInfo1['itemGradeName'] == '하급':
+    elif shopItemInfo[0]['itemGradeName'] == '하급':
         footer = '아무리 그래도 하급은 아니죠...'
-    elif shopItemInfo1['itemGradeName'] == '중급':
+    elif shopItemInfo[0]['itemGradeName'] == '중급':
         footer = '중급...도 조금 그래요.'
-    elif shopItemInfo1['itemGradeName'] == '상급':
+    elif shopItemInfo[0]['itemGradeName'] == '상급':
         footer = '조금 아쉬운데, 급하다면 어쩔 수 없어요!'
-    elif shopItemInfo1['itemGradeName'] == '최상급':
+    elif shopItemInfo[0]['itemGradeName'] == '최상급':
         footer = '오늘만을 기다려왔어요!!'
     embed.set_footer(text=footer)
     await ctx.message.delete()
@@ -227,6 +224,7 @@ async def 시세(ctx, *input):
     for i in input: itemName += i + ' '
     itemName = itemName.rstrip()
 
+    itemName = DNFAPI.getMostSimilarItemName(itemName)
     inputAuctionPrice = DNFAPI.getItemAuctionPrice(itemName)
     if not inputAuctionPrice:
         await ctx.message.delete()
