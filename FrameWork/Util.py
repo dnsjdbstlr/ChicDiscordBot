@@ -213,3 +213,9 @@ def getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmg, eleAddDmg
     damage *= 1 + continueDmg / 100                     # 지속 피해
     damage = int(damage)
     return damage
+
+def saveCmdStatistics(cmdStatistics, msg):
+    cmd = msg.content.split(' ')[0]
+    if cmd in cmdStatistics.data.keys():
+        cmdStatistics.data[cmd] = cmdStatistics.data[cmd] + 1
+        cmdStatistics.update()

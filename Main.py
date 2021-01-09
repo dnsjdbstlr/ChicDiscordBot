@@ -1,5 +1,4 @@
 import discord
-import random
 from datetime import datetime
 from discord.ext import commands
 from FrameWork import Util, DNFAPI, Classes
@@ -18,7 +17,7 @@ cmdStatistics    = Classes.cmdStatistics()
 @bot.event
 async def on_ready():
     await bot.change_presence(status=discord.Status.online, activity=discord.Game('!도움말'))
-    print('시크봇이 성공적으로 구동됬습니다.')
+    print('[알림][시크봇이 성공적으로 구동됬습니다.]')
 
 @bot.event
 async def on_message(msg):
@@ -26,10 +25,7 @@ async def on_message(msg):
     await bot.process_commands(msg)
 
     # 명령어 사용 빈도수 저장
-    cmd = msg.content.split(' ')[0]
-    if cmd in cmdStatistics.data.keys():
-        cmdStatistics.data[cmd] = cmdStatistics.data[cmd] + 1
-        cmdStatistics.update()
+    Util.saveCmdStatistics(cmdStatistics, msg)
 
 ### 명령어 ###
 @bot.command()
@@ -238,50 +234,116 @@ async def 시세(ctx, *input):
         await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
         return
 
-    itemPriceSum  = 0   # 총 가격
-    itemAmountSum = 0   # 총 갯수
-    priceAverage  = 0   # 평균 가격
-
-    for i in inputAuctionPrice:
-        itemPriceSum  += i['price']
-        itemAmountSum += i['count']
-    priceAverage = itemPriceSum // itemAmountSum
-
-    # 데이터 저장
-    data = {'평균가': priceAverage, '판매량': itemAmountSum}
+    # KEY 설정
     year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
     key = str(year) + '년' + str(month) + '월' + str(day) + '일'
-    try:
-        itemAuctionPrice.data[itemName].update( {key : data} )
-    except:
-        itemAuctionPrice.data[itemName] = {key : data}
-    itemAuctionPrice.update()
 
-    # 가격 변동률 계산
-    prevPriceAvg = -1
-    try:
-        for k in itemAuctionPrice.data[itemName].keys():
-            if k == key: break
-            prevPriceAvg = itemAuctionPrice.data[itemName][k]['평균가']
-    except: pass
+    # 카드일 경우
+    if '카드' in itemName:
+        data, priceAndAmountSum = {}, {}
+        itemPriceSum, itemAmountSum = {}, {}
 
-    if prevPriceAvg == -1:
-        volatility = '데이터 없음'
+        ### 가격합과 판매량을 계산 ###
+        for i in inputAuctionPrice:
+            prevPriceSum, prevAmountSum = 0, 0
+            try:
+                prevPriceSum = itemPriceSum[i['upgrade']]
+                prevAmountSum = itemAmountSum[i['upgrade']]
+            except: pass
+            itemPriceSum.update( {i['upgrade'] : prevPriceSum + i['price']} )
+            itemAmountSum.update( {i['upgrade'] : prevAmountSum + i['count']} )
+            priceAndAmountSum.update( { i['upgrade'] :
+                                           {'가격합' : itemPriceSum[i['upgrade']],
+                                            '판매량' : itemAmountSum[i['upgrade']]}
+                                       } )
+        priceAndAmountSum = dict(sorted(priceAndAmountSum.items(), key=lambda x: x[0]))
+
+        ### 계산한 가격합과 판매량으로 평균가 계산 ###
+        for i in priceAndAmountSum.keys():
+            data.update( {str(i) :
+                              {'평균가' : priceAndAmountSum[i]['가격합'] // priceAndAmountSum[i]['판매량'],
+                               '판매량' : priceAndAmountSum[i]['판매량']
+                               }})
+
+        ### 최근 평균가 불러오기 ###
+        prevPriceAvg = {}
+        try:
+            _key = list(itemAuctionPrice.data[itemName].keys())[-2]
+            prevPriceAvg = itemAuctionPrice.data[itemName][_key]
+        except:
+            for k in data.keys():
+                prevPriceAvg.update( {k : {'평균가' : -1}} )
+
+        ### 출력 ###
+        embed = discord.Embed(title="'" + itemName + "' 시세를 알려드릴게요")
+        for i in data.keys():
+            if prevPriceAvg[i]['평균가'] == -1:
+                volatility = '데이터 없음'
+            else:
+                volatility = (data[i]['평균가'] / prevPriceAvg[i]['평균가'] - 1) * 100
+                if volatility > 0:
+                    volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
+                elif volatility == 0:
+                    volatility = '- 0.00%'
+                else:
+                    volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
+
+            embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(data[i]['평균가'], ',') + '골드')
+            embed.add_field(name='> 최근 판매량', value=format(data[i]['판매량'], ',') + '개')
+            embed.add_field(name='> 가격 변동률', value=volatility)
+        embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
+        embed.set_thumbnail(url=DNFAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
+
+        ### 데이터 저장 ###
+        try:
+            itemAuctionPrice.data[itemName].update( {key : data} )
+        except:
+            itemAuctionPrice.data[itemName] = {key : data}
+        itemAuctionPrice.update()
+
+    # 그 외
     else:
-        volatility = ((priceAverage / prevPriceAvg) - 1) * 100
-        if volatility > 0:
-            volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
-        elif volatility == 0:
-            volatility = '- 0.00%'
-        else:
-            volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
+        itemPriceSum  = 0   # 총 가격
+        itemAmountSum = 0  # 총 갯수
+        priceAverage  = 0  # 평균 가격
 
-    embed = discord.Embed(title="'" + itemName + "' 시세를 알려드릴게요")
-    embed.add_field(name='> 평균 가격', value=str(priceAverage) + '골드')
-    embed.add_field(name='> 최근 판매량', value=str(itemAmountSum) + '개')
-    embed.add_field(name='> 가격 변동률', value=volatility)
-    embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
-    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
+        for i in inputAuctionPrice:
+            itemPriceSum  += i['price']
+            itemAmountSum += i['count']
+        priceAverage = itemPriceSum // itemAmountSum
+
+        # 데이터 저장
+        data = {'평균가': priceAverage, '판매량': itemAmountSum}
+        try:
+            itemAuctionPrice.data[itemName].update( {key : data} )
+        except:
+            itemAuctionPrice.data[itemName] = {key : data}
+        itemAuctionPrice.update()
+
+        # 가격 변동률 계산
+        prevPriceAvg = -1
+        try:
+            _key = list(itemAuctionPrice.data[itemName].keys())[-2]
+            prevPriceAvg = itemAuctionPrice.data[itemName][_key]['평균가']
+        except: pass
+
+        if prevPriceAvg == -1:
+            volatility = '데이터 없음'
+        else:
+            volatility = ((priceAverage / prevPriceAvg) - 1) * 100
+            if volatility > 0:
+                volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
+            elif volatility == 0:
+                volatility = '- 0.00%'
+            else:
+                volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
+
+        embed = discord.Embed(title="'" + itemName + "' 시세를 알려드릴게요")
+        embed.add_field(name='> 평균 가격', value=format(priceAverage, ',') + '골드')
+        embed.add_field(name='> 최근 판매량', value=format(itemAmountSum, ',') + '개')
+        embed.add_field(name='> 가격 변동률', value=volatility)
+        embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
+        embed.set_thumbnail(url=DNFAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
 
     await waiting.delete()
     await ctx.channel.send(embed=embed)
@@ -303,7 +365,7 @@ async def 획득에픽(ctx, name='None', _server='전체'):
     waiting = await ctx.channel.send('> ' + name + '님의 획득한 에픽을 확인 중이예요...')
     chrTimeLineData = DNFAPI.getChrTimeLine(server, chrId, '505')
     await waiting.delete()
-    
+
     if len(chrTimeLineData) == 0:
         await ctx.channel.send('> ' + name + '님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
         return

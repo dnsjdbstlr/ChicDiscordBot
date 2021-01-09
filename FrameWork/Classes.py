@@ -6,9 +6,9 @@ class epicRank:
         try:
             with open('Data/epicRank.json', 'r') as f:
                 self.data = json.load(f)
-                print('기린랭킹을 성공적으로 불러왔습니다.')
+                print('[알림][기린 랭킹을 불러왔습니다.]')
         except:
-            print('기존 기린랭킹 데이터가 없습니다.')
+            print('[알림][기린 랭킹 데이터가 없습니다.]')
 
     def add(self, chrId, info):
         self.update(info['month'])
@@ -35,9 +35,9 @@ class setRank:
         try:
             with open('Data/setRank.json', 'r') as f:
                 self.data = json.load(f)
-                print('세팅랭킹을 성공적으로 불러왔습니다.')
+                print('[알림][세팅 랭킹을 불러왔습니다.]')
         except:
-            print('기존 세팅랭킹 데이터가 없습니다.')
+            print('[알림][세팅 랭킹 데이터가 없습니다.]')
 
     def add(self, chrId, info):
         self.data.update({chrId : info})
@@ -55,9 +55,9 @@ class itemAuctionPrice:
         try:
             with open('Data/itemAuctionPrice.json', 'r') as f:
                 self.data = json.load(f)
-                print('아이템 시세를 성공적으로 불러왔습니다.')
+                print('[알림][아이템 시세를 불러왔습니다.]')
         except:
-            print('기존 아이템 시세 데이터가 없습니다.')
+            print('[알림][아이템 시세 데이터가 없습니다.]')
 
     def update(self):
         # 파일로 저장
@@ -72,19 +72,20 @@ class cmdStatistics:
             '!캐릭터'   : 0,
             '!장비'     : 0,
             '!세트'     : 0,
+            '!시세'     : 0,
             '!획득에픽' : 0,
-            #'!상세정보' : 0,
             '!기린랭킹' : 0,
-            #'!세팅랭킹' : 0,
             '!청소'     : 0
         }
 
         try:
             with open('Data/cmdStatistics.json', 'r') as f:
-                self.data = json.load(f)
-                print('명령어 통계를 성공적으로 불러왔습니다.')
+                temp = json.load(f)
+                for k in temp.keys():
+                    self.data.update( {k : temp[k]} )
+                print('[알림][명령어 통계를 불러왔습니다.]')
         except:
-            print('기존 명령어 통계 데이터가 없습니다.')
+            print('[알림][명령어 통계 데이터가 없습니다.]')
 
     def update(self):
         # 파일로 저장
