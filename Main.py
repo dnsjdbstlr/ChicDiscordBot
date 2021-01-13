@@ -385,8 +385,8 @@ async def 획득에픽(ctx, name='None', _server='전체'):
 
         for i in chrTimeLineData[start:end]:
             embed.add_field(
-                name='> ' + i['date'][:10] + '\r\n> ch' + str(i['Data']['channelNo']) + '.' + i['Data']['channelName'],
-                value=i['Data']['itemName'])
+                name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'],
+                value=i['data']['itemName'])
         await ctx.channel.send(embed=embed)
 
         index += 15

@@ -40,7 +40,7 @@ def getItemId(name, exactly=False):
 
     itemIdList = []
     for i in data['rows']:
-        if '[영혼]' in i['itemName']: continue
+        if '[영혼]' in i['itemName']  : continue
         if '[결투장]' in i['itemName']: continue
         if i['itemType'] in ['무기', '방어구', '액세서리', '추가장비'] and \
            i['itemRarity'] in ['레전더리', '에픽', '신화']:
@@ -52,9 +52,12 @@ def getItemId(name, exactly=False):
                     isOverride = True
 
             if not isOverride:
-                itemIdList.append({'itemId' : i['itemId'], 'itemName' : i['itemName']})
+                itemIdList.append(i)
 
     return itemIdList
+
+def getItemImageUrl(itemId):
+    return 'https://img-api.neople.co.kr/df/items/' + itemId
 
 def getMostSimilarItemName(name):
     name = parse.quote(name)
@@ -73,7 +76,7 @@ def getItemDetail(itemId):
     data = json.loads(response.text)
     return dict(data)
 
-def getItemDetails(itemIds):
+def getItemsDetail(itemIds):
     items = ''
     for i in itemIds:
         items += i
@@ -83,14 +86,10 @@ def getItemDetails(itemIds):
     data = json.loads(response.text)
     return data['rows']
 
-def getItemImageUrl(itemId):
-    return 'https://img-api.neople.co.kr/df/items/' + itemId
-
 def getItemStatInfo(itemStatus):
     itemStatInfo = ''
     for i in itemStatus:
-        if i['name'] == '무게' or i['name'] == '내구도':
-            continue
+        if i['name'] in ['무게', '내구도']: continue
         itemStatInfo += i['name'] + ' : ' + str(i['value']) + '\r\n'
     return itemStatInfo
 
@@ -127,26 +126,18 @@ def getShopItemInfo(itemId):
     return data
 
 def getSetItemIdList(setItemName):
-    setItemIdList = []
-
     url = 'https://api.neople.co.kr/df/setitems?setItemName=' + setItemName + '&limit=30&wordType=full&apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
-
-    for i in data['rows']:
-        setItemIdList.append({'setItemId' : i['setItemId'], 'setItemName' : i['setItemName']})
-
-    return setItemIdList
+    return data['rows']
 
 def getSetItemInfoList(setItemId):
-    setItemInfoList = []
     setItemOptionList = []
 
     url = 'https://api.neople.co.kr/df/setitems/' + setItemId + '?apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
-    for i in data['setItems']:
-        setItemInfoList.append({'slotName' : i['slotName'], 'itemId' : i['itemId'], 'itemName' : i['itemName'], 'itemRarity' : i['itemRarity']})
+    setItemInfoList = data['setItems']
 
     for i in data['setItemOption']:
         explain = ''
@@ -155,6 +146,7 @@ def getSetItemInfoList(setItemId):
             for j in i['status']:
                 optionInfo += j['name'] + ' +' + str(j['value']) + '\r\n'
         except: pass
+
         try:
             explain = i['explain']
         except: pass
@@ -168,6 +160,7 @@ def getSetItemInfos(setItemIds):
     for i in setItemIds:
         setItems += i
         if i != setItemIds[-1]: setItems += ','
+
     url = 'https://api.neople.co.kr/df/multi/setitems?setItemIds=' + setItems + '&apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
@@ -188,7 +181,12 @@ def getChrIdList(server, name):
     data = temp['rows']
 
     for i in data:
-        chrIdList.append( {'server' : SERVERID_TO_NAME[i['serverId']], 'characterId' : i['characterId'], 'characterName' : i['characterName'], 'level' : str(i['level']), 'jobName' : i['jobName'], 'jobGrowName' : i['jobGrowName']} )
+        chrIdList.append( {'server'         : SERVERID_TO_NAME[i['serverId']],
+                           'characterId'    : i['characterId'],
+                           'characterName'  : i['characterName'],
+                           'level'          : str(i['level']),
+                           'jobName'        : i['jobName'],
+                           'jobGrowName'    : i['jobGrowName']} )
 
     return chrIdList
 
@@ -204,8 +202,7 @@ def getChrEquipSetItemInfo(chrEquipItemList):
     itemIds = ''
     for i in chrEquipItemList:
         itemIds += i
-        if i != chrEquipItemList[-1]:
-            itemIds += ','
+        if i != chrEquipItemList[-1]: itemIds += ','
 
     url = 'https://api.neople.co.kr/df/custom/equipment/setitems?itemIds=' + itemIds + '&apikey=' + apikey
     response = requests.get(url=url)
@@ -215,8 +212,7 @@ def getChrEquipSetItemInfo(chrEquipItemList):
         data = temp['equipment']
         for i in data:
             chrEquipSetItemName.append((i['slotName'], i['itemName'], i['setItemName']))
-    except:
-        pass
+    except: pass
 
     return chrEquipSetItemName
 
