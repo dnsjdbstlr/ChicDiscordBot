@@ -63,31 +63,3 @@ class itemAuctionPrice:
         # 파일로 저장
         with open('Data/itemAuctionPrice.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
-
-class cmdStatistics:
-    def __init__(self):
-        self.data = {
-            '!도움말'   : 0,
-            '!등급'     : 0,
-            '!캐릭터'   : 0,
-            '!장비'     : 0,
-            '!세트'     : 0,
-            '!시세'     : 0,
-            '!획득에픽' : 0,
-            '!기린랭킹' : 0,
-            '!청소'     : 0
-        }
-
-        try:
-            with open('Data/cmdStatistics.json', 'r') as f:
-                temp = json.load(f)
-                for k in temp.keys():
-                    self.data.update( {k : temp[k]} )
-                print('[알림][명령어 통계를 불러왔습니다.]')
-        except:
-            print('[알림][명령어 통계 데이터가 없습니다.]')
-
-    def update(self):
-        # 파일로 저장
-        with open('Data/cmdStatistics.json', 'w') as f:
-            json.dump(self.data, f, indent=4, ensure_ascii=False)

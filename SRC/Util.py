@@ -1,6 +1,8 @@
 import discord
 import asyncio
+from datetime import datetime
 
+### 선택 ###
 async def getSelectionFromChrIdList(bot, ctx, chrIdList):
     await ctx.message.delete()
 
@@ -127,6 +129,7 @@ async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
         setItemId, setItemName = setItemIdList[0]['setItemId'], setItemIdList[0]['setItemName']
     return setItemId, setItemName
 
+### 계산 ###
 def getSirocoItemInfo(chrEquipItemInfo):
     sirocoInfo = {}
 
@@ -214,8 +217,14 @@ def getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmg, eleAddDmg
     damage = int(damage)
     return damage
 
-def saveCmdStatistics(cmdStatistics, msg):
-    cmd = msg.content.split(' ')[0]
-    if cmd in cmdStatistics.data.keys():
-        cmdStatistics.data[cmd] = cmdStatistics.data[cmd] + 1
-        cmdStatistics.update()
+### 편리 ###
+def getToday():
+    year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
+    return str(year) + '년' + str(month) + '월' + str(day) + '일'
+
+def mergeString(*input):
+    result= ''
+    for i in input:
+        result += i + ' '
+    result = result.rstrip()
+    return result
