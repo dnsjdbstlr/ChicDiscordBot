@@ -1,6 +1,7 @@
 import discord
 from SRC import Util
 from FrameWork import DNFAPI
+import re
 
 async def 등급(ctx):
     await ctx.message.delete()
@@ -278,4 +279,203 @@ async def 세트(bot, ctx, *input):
         embed.add_field(name='> ' + str(i['optionNo']) + '세트 옵션', value=i['explain'])
     itemImageUrl = DNFAPI.getItemImageUrl(setItemInfoList[0]['itemId'])
     embed.set_thumbnail(url=itemImageUrl)
+    await ctx.channel.send(embed=embed)
+
+async def 버프력(bot, ctx, name, server='전체'):
+    if name == 'None':
+        await ctx.message.delete()
+        await ctx.channel.send('> !버프력 <닉네임> 의 형태로 적어야해요!')
+        return
+
+    # 검색
+    try:
+        chrIdList = DNFAPI.getChrIdList(server, name)
+        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+    except:
+        return False
+
+    ### 계산에 필요한 데이터 불러오기 ###
+    chrStatInfo     = DNFAPI.getChrStatInfo(server, chrId)
+    chrSkillStyle   = DNFAPI.getChrSkillStyle(server, chrId)
+    chrEquipData    = DNFAPI.getChrEquipItemInfoList(server, chrId)
+    chrAvatarData   = DNFAPI.getChrAvatarData(server, chrId)
+    chrBuffEquip    = DNFAPI.getChrBuffEquip(server, chrId)
+    allItemOption   = Util.getChrAllItemOptions(chrEquipData, chrAvatarData)
+
+    ### 스킬 정보 불러오기 ###
+    ACTIVE_BUFF2_INFO = DNFAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', '56fca6cff74d828e92301a40cd2148b9') # 1각 액티브
+    ACTIVE_BUFF3_INFO = DNFAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', 'caef38e23a8ae551466f8a8eb039df22') # 진각 액티브
+    PASSIVE_BUFF_INFO = DNFAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', '0dbdeaf846356f8b9380f8fbb8e97377') # 1각 패시브
+
+    ### 캐릭터 스킬 레벨 ###
+    chrApplyStat    = Util.getChrSpecificStat(chrStatInfo, '지능')
+    chr48LvSkillLv  = Util.getChrSkillLv(chrSkillStyle, '0dbdeaf846356f8b9380f8fbb8e97377', False)
+    chr50LvSkillLv  = Util.getChrSkillLv(chrSkillStyle, '56fca6cff74d828e92301a40cd2148b9')
+    chr100LvSkillLv = Util.getChrSkillLv(chrSkillStyle, 'caef38e23a8ae551466f8a8eb039df22')
+
+    ### 변수 선언 ###
+    ACTIVE_BUFF1_SKILL_LV    = 0 # 30레벨 버프 스킬 레벨
+    ACTIVE_BUFF2_SKILL_LV    = 0 # 50레벨 버프 스킬 레벨
+    ACTIVE_BUFF3_SKILL_LV    = 0 # 100레벨 버프 스킬 레벨
+    PASSIVE_BUFF_SKILL_LV    = 0 # 48레벨 패시브 버프 스킬 레벨
+    ACTIVE_BUFF1_SKILL_STAT  = 0 # 30레벨 버프 스킬 힘, 지능 퍼센트 증가량
+    ACTIVE_BUFF2_SKILL_STAT1 = 0 # 50Lv 액티브 스킬 힘, 지능 증가량
+    ACTIVE_BUFF2_SKILL_STAT2 = 0 # 50Lv 액티브 스킬 힘, 지능 퍼센트 증가량
+
+    ForbiddenCurseLv = 0 # 금단의 저주
+    MarionetteLv     = 0 # 마리오네트
+    smallDevilLv     = 0 # 소악마
+
+    ### 정규식 ###
+    ACTIVE_BUFF1_SKILL_LV_RE    = re.compile('30Lv버프스킬레벨\+(?P<value>\d+)')
+    ACTIVE_BUFF2_SKILL_LV_RE    = re.compile('50Lv액티브스킬레벨\+(?P<value>\d+)')
+    ACTIVE_BUFF2_SKILL_STAT1_RE = re.compile('50Lv액티브스킬힘,지능증가량(?P<value>\d+)증가')
+    ACTIVE_BUFF2_SKILL_STAT2_RE = re.compile('50Lv액티브스킬힘,지능증가량(?P<value>\d+)%증가')
+    INC_SKILL_LV1_RE            = re.compile('모든직업(?P<value1>\d+)레벨모든스킬Lv\+(?P<value2>\d+)')
+    INC_SKILL_LV2_RE            = re.compile('모든직업(?P<value1>\d+)~(?P<value2>\d+)레벨모든스킬Lv\+(?P<value3>\d+)')
+
+    ForbiddenCurse_RE = re.compile('금단의저주스킬Lv\+(?P<value>\d+)')
+    MarionetteLv_RE   = re.compile('마리오네트스킬Lv\+(?P<value>\d+)')
+    smallDevilLv_RE   = re.compile('소악마스킬Lv\+(?P<value>\d+)')
+
+    ### 계산 ###
+    for option in allItemOption:
+        try:
+            option = option.replace(' ', '')
+            #print(option)
+        except: pass
+
+        try:
+            ### 30 레벨 스킬 레벨 증가 ###
+            result = ACTIVE_BUFF1_SKILL_LV_RE.search(option)
+            ACTIVE_BUFF1_SKILL_LV += int(result.group('value'))
+        except: pass
+
+        try:
+            ### 50 레벨 스킬 레벨 증가 ###
+            result = ACTIVE_BUFF2_SKILL_LV_RE.search(option)
+            ACTIVE_BUFF2_SKILL_LV += int(result.group('value'))
+        except: pass
+
+        try:
+            ### 50 레벨 스킬 힘, 지능 증가량1 ###
+            result = ACTIVE_BUFF2_SKILL_STAT1_RE.search(option)
+            ACTIVE_BUFF2_SKILL_STAT1 += int(result.group('value'))
+        except: pass
+
+        try:
+            ### 50 레벨 스킬 힘, 지능 증가량2 ###
+            result = ACTIVE_BUFF2_SKILL_STAT2_RE.search(option)
+            ACTIVE_BUFF2_SKILL_STAT2 += int(result.group('value'))
+        except: pass
+
+        try:
+            ### 모든 직업 N 레벨 스킬 레벨 증가 ###
+            result  = INC_SKILL_LV1_RE.search(option)
+            value   = int(result.group('value1'))
+            skillLv = int(result.group('value2'))
+            if value == 30: ACTIVE_BUFF1_SKILL_LV += skillLv
+            if value == 48: PASSIVE_BUFF_SKILL_LV += skillLv
+            if value == 50: ACTIVE_BUFF2_SKILL_LV += skillLv
+            if value == 100: ACTIVE_BUFF3_SKILL_LV += skillLv
+        except: pass
+
+        try:
+            ### 모든 직업 N ~ N 레벨 스킬 레벨 증가 ###
+            result = INC_SKILL_LV2_RE.search(option)
+            startLv = int(result.group('value1'))
+            endLv   = int(result.group('value2'))
+            skillLv = int(result.group('value3'))
+            if startLv <= 30 <= endLv: ACTIVE_BUFF1_SKILL_LV += skillLv
+            if startLv <= 48 <= endLv: PASSIVE_BUFF_SKILL_LV += skillLv
+            if startLv <= 50 <= endLv: ACTIVE_BUFF2_SKILL_LV += skillLv
+            if startLv <= 100 <= endLv: ACTIVE_BUFF3_SKILL_LV += skillLv
+        except: pass
+
+        ### 헤카테 ###
+        try:
+            # 금단의 저주
+            result = ForbiddenCurse_RE.search(option)
+            ForbiddenCurseLv += int(result.group('value'))
+        except: pass
+
+        try:
+            # 마리오네트
+            result = MarionetteLv_RE.search(option)
+            MarionetteLv += int(result.group('value'))
+        except: pass
+
+        try:
+            # 소악마
+            result = smallDevilLv_RE.search(option)
+            smallDevilLv += int(result.group('value'))
+        except: pass
+
+    # 탈리스만 선택 신발 :: 30Lv 버프 스킬 힘, 지능 증가량 6% 추가 증가
+    for i in chrBuffEquip['skill']['buff']['equipment']:
+        if i['itemName'] == '탈리스만 선택':
+            ACTIVE_BUFF1_SKILL_STAT += 6
+
+    ### 금단의 저주로 오르는 스탯 ###
+    values = chrBuffEquip['skill']['buff']['skillInfo']['option']['values'][4:-1]
+    ACTIVE_BUFF1_AD  = int((1 + chrApplyStat / 665) * int(values[0]) * (1 + ACTIVE_BUFF1_SKILL_STAT / 100))
+    ACTIVE_BUFF1_AP  = int((1 + chrApplyStat / 665) * int(values[1]) * (1 + ACTIVE_BUFF1_SKILL_STAT / 100))
+    ACTIVE_BUFF1_ID  = int((1 + chrApplyStat / 665) * int(values[2]) * (1 + ACTIVE_BUFF1_SKILL_STAT / 100))
+    ACTIVE_BUFF1_STR = int((1 + chrApplyStat / 665) * int(values[3]) * (1 + ACTIVE_BUFF1_SKILL_STAT / 100))
+    # ACTIVE_BUFF1_INT = int((1 + chrApplyStat / 665) * int(values[4]) * (1 + ACTIVE_BUFF1_SKILL_STAT / 100))
+
+    ### 마리오네트로 오르는 스탯 ###
+    ACTIVE_BUFF2_STAT = Util.getSkillValue(ACTIVE_BUFF2_INFO, chr50LvSkillLv + ACTIVE_BUFF2_SKILL_LV + MarionetteLv + 1).get('value2')
+    ACTIVE_BUFF2_STAT += ACTIVE_BUFF2_SKILL_STAT1
+    ACTIVE_BUFF2_STAT *= 1 + ACTIVE_BUFF2_SKILL_STAT2 / 100
+    ACTIVE_BUFF2_STAT *= 1 + chrApplyStat / 750
+    ACTIVE_BUFF2_STAT = int(ACTIVE_BUFF2_STAT)
+
+    ### 종막극으로 오르는 스탯 ###
+    ACTIVE_BUFF3_STAT = Util.getSkillValue(ACTIVE_BUFF3_INFO, chr100LvSkillLv + ACTIVE_BUFF3_SKILL_LV).get('value8')
+    ACTIVE_BUFF3_STAT = ACTIVE_BUFF2_STAT * (ACTIVE_BUFF3_STAT / 100)
+    ACTIVE_BUFF3_STAT = int(ACTIVE_BUFF3_STAT)
+
+    ### 소악마로 오르는 스탯 ###
+    PASSIVE_BUFF_STAT = Util.getSkillValue(PASSIVE_BUFF_INFO, chr48LvSkillLv + PASSIVE_BUFF_SKILL_LV + smallDevilLv).get('value3')
+
+    ### 총 버프력 ###
+    TOTAL1 = (1 + ((15000 + ACTIVE_BUFF1_STR + ACTIVE_BUFF2_STAT + ACTIVE_BUFF3_STAT + PASSIVE_BUFF_STAT) / 250)) *\
+            ( 2650 + ((ACTIVE_BUFF1_AD + ACTIVE_BUFF1_AP + ACTIVE_BUFF1_ID) / 3) )
+    TOTAL1 = int(TOTAL1 / 10)
+
+    TOTAL2 = (1 + ((15000 + ACTIVE_BUFF1_STR * 1.25 + ACTIVE_BUFF2_STAT + ACTIVE_BUFF3_STAT + PASSIVE_BUFF_STAT) / 250)) *\
+            ( 2650 + ((ACTIVE_BUFF1_AD * 1.25 + ACTIVE_BUFF1_AP * 1.25 + ACTIVE_BUFF1_ID * 1.25) / 3) )
+    TOTAL2 = int(TOTAL2 / 10)
+
+    TOTAL3 = (1 + ((15000 + ACTIVE_BUFF1_STR * 1.25 * 1.15 + ACTIVE_BUFF2_STAT + ACTIVE_BUFF3_STAT + PASSIVE_BUFF_STAT) / 250)) *\
+            ( 2650 + ((ACTIVE_BUFF1_AD * 1.25 * 1.15 + ACTIVE_BUFF1_AP * 1.25 * 1.15 + ACTIVE_BUFF1_ID * 1.25 * 1.15) / 3) )
+    TOTAL3 = int(TOTAL3 / 10)
+
+    ### 출력 ###
+    embed = discord.Embed(title=name + '님의 버프력을 알려드릴게요!')
+    embed.add_field(name='> 금단의 저주(기본)',
+                    value='물리 공격력 : ' + format(ACTIVE_BUFF1_AD, ',') + '\r\n' +
+                          '마법 공격력 : ' + format(ACTIVE_BUFF1_AP, ',') + '\r\n' +
+                          '독립 공격력 : ' + format(ACTIVE_BUFF1_ID, ',') + '\r\n' +
+                          '힘, 지능 : '    + format(ACTIVE_BUFF1_STR, ',') + '\r\n')
+    embed.add_field(name='> 금단의 저주(퍼펫)',
+                    value='물리 공격력 : ' + format(int(ACTIVE_BUFF1_AD * 1.25), ',') + '\r\n' +
+                          '마법 공격력 : ' + format(int(ACTIVE_BUFF1_AP * 1.25), ',') + '\r\n' +
+                          '독립 공격력 : ' + format(int(ACTIVE_BUFF1_ID * 1.25), ',') + '\r\n' +
+                          '힘, 지능 : '    + format(int(ACTIVE_BUFF1_STR * 1.25), ','))
+    embed.add_field(name='> 금단의 저주(퍼펫 + 편애)',
+                    value='물리 공격력 : ' + format(int(ACTIVE_BUFF1_AD * 1.25 * 1.15), ',') + '\r\n' +
+                          '마법 공격력 : ' + format(int(ACTIVE_BUFF1_AP * 1.25 * 1.15), ',') + '\r\n' +
+                          '독립 공격력 : ' + format(int(ACTIVE_BUFF1_ID * 1.25 * 1.15), ',') + '\r\n' +
+                          '힘, 지능 : '    + format(int(ACTIVE_BUFF1_STR * 1.25 * 1.15), ','))
+    embed.add_field(name='> 마리오네트',
+                    value='힘, 지능 : ' + format(ACTIVE_BUFF2_STAT, ','))
+    embed.add_field(name='> 종막극',
+                    value='힘, 지능 : ' + format(ACTIVE_BUFF3_STAT, ','))
+    embed.add_field(name='> 소악마',
+                    value='힘, 지능 : ' + format(PASSIVE_BUFF_STAT, ','))
+    embed.add_field(name='> 버프력',
+                    value=format(TOTAL3, ','))
+    embed.set_footer(text='실제 버프와 계산값이 다를 수 있어요!')
     await ctx.channel.send(embed=embed)

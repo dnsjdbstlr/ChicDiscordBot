@@ -1,5 +1,6 @@
 import discord
 import asyncio
+from FrameWork import DNFAPI
 from datetime import datetime
 
 ### 선택 ###
@@ -130,7 +131,7 @@ async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
     return setItemId, setItemName
 
 ### 계산 ###
-def getSirocoItemInfo(chrEquipItemInfo):
+def getSirocoItemInfo(chrEquipItemInfo, isBuff=False):
     sirocoInfo = {}
 
     ### 데이터 ###
@@ -153,6 +154,9 @@ def getSirocoItemInfo(chrEquipItemInfo):
         '로도스': 0
     }
 
+    ### 딜러 옵션 or 버퍼 옵션 선택 ###
+    dataType = 'explain' if not isBuff else 'buffExplain'
+
     ### 계산 ###
     for i in chrEquipItemInfo:
         try:
@@ -165,30 +169,32 @@ def getSirocoItemInfo(chrEquipItemInfo):
             for j in i['sirocoInfo']['options']:
                 if i['slotName'] == '무기':
                     if reverberation.get('1옵션') is None:
-                        reverberation.update({'1옵션' : j['explain']})
+                        reverberation.update({'1옵션' : j[dataType]})
                     else:
-                        reverberation.update({'2옵션': j['explain']})
+                        reverberation.update({'2옵션': j[dataType]})
+
                 elif i['slotName'] == '하의':
                     if intangible.get('1옵션') is None:
-                        intangible.update({'1옵션' : j['explain']})
+                        intangible.update({'1옵션' : j[dataType]})
                         intangibleType = i['upgradeInfo']['itemName']
                     else:
-                        intangible.update({'2옵션': j['explain']})
+                        intangible.update({'2옵션': j[dataType]})
                         intangibleType = i['upgradeInfo']['itemName']
 
                 elif i['slotName'] == '반지':
                     if unconscious.get('1옵션') is None:
-                        unconscious.update({'1옵션' : j['explain']})
+                        unconscious.update({'1옵션' : j[dataType]})
                         unconsciousType = i['upgradeInfo']['itemName']
                     else:
-                        unconscious.update({'2옵션': j['explain']})
+                        unconscious.update({'2옵션': j[dataType]})
                         unconsciousType = i['upgradeInfo']['itemName']
+
                 elif i['slotName'] == '보조장비':
                     if illusion.get('1옵션') is None:
-                        illusion.update({'1옵션' : j['explain']})
+                        illusion.update({'1옵션' : j[dataType]})
                         illusionType = i['upgradeInfo']['itemName']
                     else:
-                        illusion.update({'2옵션': j['explain']})
+                        illusion.update({'2옵션': j[dataType]})
                         illusionType = i['upgradeInfo']['itemName']
         except: pass
 
@@ -217,6 +223,109 @@ def getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmg, eleAddDmg
     damage = int(damage)
     return damage
 
+def getChrAllItemOptions(chrEquipData, chrAvatarData):
+    # 장착한 장비 옵션
+    chrEquipItem = chrEquipData[0]
+    chrEquipItemIdList = [i['itemId'] for i in chrEquipItem]
+    chrEquipItemInfoList = DNFAPI.getItemsDetail(chrEquipItemIdList)
+    
+    # 장착한 세트 옵션
+    chrEquipSetItem = chrEquipData[1]
+    chrEquipSetItemIdList = [i['setItemId'] for i in chrEquipSetItem]
+    chrEquipSetItemInfoList = DNFAPI.getSetItemInfos(chrEquipSetItemIdList)
+    chrEquipSetItemActiveSetNo = {}
+    for i in chrEquipSetItem:
+        chrEquipSetItemActiveSetNo.update( {i['setItemName'] : i['activeSetNo']} )
+
+    # 모든 옵션은 이곳에 담겨져 있음
+    allItemOption = []
+
+    # 1. 기본 아이템 옵션
+    # 2. 버퍼 전용 옵션
+    for i in chrEquipItemInfoList:
+        itemExplain = i.get('itemExplain')
+        if itemExplain:
+            allItemOption += itemExplain.split('\n')
+
+        itemBuffExplain = i.get('itemBuff')
+        if itemBuffExplain:
+            allItemOption += itemBuffExplain['explain'].split('\n')
+            reinforceSkill = itemBuffExplain.get('reinforceSkill')
+            if reinforceSkill:
+                for j in reinforceSkill:
+                    for k in j['skills']:
+                        text = k['name'] + ' 스킬Lv +' + str(k['value'])
+                        allItemOption.append(text)
+
+    # 3. 세트 옵션
+    for i in chrEquipSetItemInfoList:
+        for j in i['setItemOption']:
+            if chrEquipSetItemActiveSetNo.get( i['setItemName'] ) >= j['optionNo']:
+                try:
+                    allItemOption += j['explain'].split('\n')
+                except: pass
+                allItemOption += j['itemBuff']['explain'].split('\n')
+                reinforceSkill = j['itemBuff'].get('reinforceSkill')
+                if reinforceSkill:
+                    allItemOption += makePrettyReinforceSkillInfo(reinforceSkill)
+
+    # 4. 칭호 옵션
+    # 5. 연옥 변환 옵션
+    # 6. 신화 전용 옵션
+    for i in chrEquipItem:
+        try:
+            if i['slotName'] == '칭호':
+                reinforceSkill = i['enchant']['reinforceSkill']
+                allItemOption += makePrettyReinforceSkillInfo(reinforceSkill)
+        except: pass
+
+        try:
+            transformInfo = i.get('transformInfo')
+            allItemOption += transformInfo['explain'].split('\n')
+            allItemOption += transformInfo['buffExplain'].split('\n')
+        except: pass
+
+        try:
+            for j in i['mythologyInfo']['options']:
+                allItemOption += j['buffExplain'].split('\n')
+        except: pass
+
+    # 8. 시로코 옵션
+    sirocoInfo = getSirocoItemInfo(chrEquipItem, isBuff=True)
+    if sirocoInfo is not None:
+        ### 1세트 옵션 ###
+        for k in sirocoInfo.keys():
+            try:
+                allItemOption.append(sirocoInfo[k]['1옵션'])
+            except: pass
+
+        ### 2세트 옵션 ###
+        ## 잔향 ##
+        if 3 in sirocoInfo['세트'].values():
+            try:
+                allItemOption.append(sirocoInfo['잔향']['2옵션'])
+            except: pass
+
+        ## 넥스 ##
+        if  '무형 : 넥스의 잠식된 의복' in sirocoInfo.keys() and \
+            '무의식 : 넥스의 몽환의 어둠' in sirocoInfo.keys():
+            allItemOption.append(sirocoInfo['무형 : 넥스의 잠식된 의복']['2옵션'])
+
+        if '무의식 : 넥스의 몽환의 어둠' in sirocoInfo.keys() and \
+            '환영 : 넥스의 검은 기운' in sirocoInfo.keys():
+            allItemOption.append(sirocoInfo['무의식 : 넥스의 몽환의 어둠']['2옵션'])
+        if '환영 : 넥스의 검은 기운' in sirocoInfo.keys() and \
+            '무형 : 넥스의 잠식된 의복' in sirocoInfo.keys():
+            allItemOption.append(sirocoInfo['환영 : 넥스의 검은 기운']['2옵션'])
+
+    # 9. 아바타 옵션
+    for i in chrAvatarData['avatar']:
+        try:
+            allItemOption.append(i['optionAbility'])
+        except: pass
+
+    return allItemOption
+
 ### 편리 ###
 def getToday():
     year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
@@ -228,3 +337,45 @@ def mergeString(*input):
         result += i + ' '
     result = result.rstrip()
     return result
+
+def makePrettyReinforceSkillInfo(reinforceSkill):
+    result = []
+    for j in reinforceSkill:
+        jobName = '모든 직업' if j['jobName'] == '공통' else j['jobName']
+        
+        ### 레벨 범위 레벨링일 경우 ###
+        levelRange = j.get('levelRange')
+        if levelRange is not None:
+            for k in j['levelRange']:
+                minLv, maxLv, value = k.values()
+                text = jobName + ' ' + str(minLv) + ' ~ ' + str(maxLv) + ' 레벨 모든 스킬 Lv +' + str(value)
+                result.append(text)
+                
+        ### 단순 스킬 레벨링일 경우 ###
+        skills = j.get('skills')
+        if skills is not None:
+            for k in skills:
+                skillName = k['name']
+                value     = k['value']
+                text = jobName + ' ' + skillName + ' 스킬Lv +' + str(value)
+                result.append(text)
+    return result
+
+def getChrSkillLv(chrSkillStyle, skillId, isActive=True):
+    skillType = 'active' if isActive else 'passive'
+    for i in chrSkillStyle['skill']['style'][skillType]:
+        if i['skillId'] == skillId:
+            return i['level']
+    return 0
+
+def getChrSpecificStat(chrStatInfo, statName):
+    for i in chrStatInfo['status']:
+        if i['name'] == statName:
+            return i['value']
+    return 0
+
+def getSkillValue(skillInfo, level):
+    for i in skillInfo['levelInfo']['rows']:
+        if i['level'] == level:
+            return i['optionValue']
+    return None

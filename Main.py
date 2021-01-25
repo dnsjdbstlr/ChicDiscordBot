@@ -5,8 +5,8 @@ from SRC import Search, Ranking, Admin, Etc
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token   = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token   = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 setRank          = Classes.setRank()
 epicRank         = Classes.epicRank()
 itemAuctionPrice = Classes.itemAuctionPrice()
@@ -25,14 +25,14 @@ async def on_message(msg):
     # 명령어 사용 빈도수 저장
     Admin.saveCmdStatistics(msg)
 
-### 명령어 ###
+### 검색 명령어 ###
 @bot.command()
 async def 등급(ctx):
     await Search.등급(ctx)
 
 @bot.command()
-async def 캐릭터(ctx, name='None', _server='전체'):
-    await Search.캐릭터(bot, ctx, name, _server)
+async def 캐릭터(ctx, name='None', server='전체'):
+    await Search.캐릭터(bot, ctx, name, server)
 
 @bot.command()
 async def 장비(ctx, *input):
@@ -47,13 +47,19 @@ async def 시세(ctx, *input):
     await Search.시세(ctx, itemAuctionPrice, *input)
 
 @bot.command()
-async def 획득에픽(ctx, name='None', _server='전체'):
-    await Ranking.획득에픽(bot, ctx, epicRank, name, _server)
+async def 버프력(ctx, name='None', server='전체'):
+    await Search.버프력(bot, ctx, name, server)
+
+### 랭킹 명령어 ###
+@bot.command()
+async def 획득에픽(ctx, name='None', server='전체'):
+    await Ranking.획득에픽(bot, ctx, epicRank, name, server)
 
 @bot.command()
 async def 기린랭킹(ctx):
     await Ranking.기린랭킹(ctx, epicRank)
 
+### 기타 명령어 ###
 @bot.command()
 async def 도움말(ctx):
     await Etc.도움말(ctx)
@@ -62,7 +68,7 @@ async def 도움말(ctx):
 async def 청소(ctx):
     await Etc.청소(bot, ctx)
 
-### 어드민 ###
+### 어드민 명령어 ###
 @bot.command()
 async def 연결(ctx):
     await Admin.연결(bot, ctx)

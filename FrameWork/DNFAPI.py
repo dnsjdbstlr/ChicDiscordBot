@@ -226,7 +226,7 @@ def getChrStatInfo(server, chrId):
     url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] +'/characters/' + chrId +'/status?apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
-    return data['status']
+    return data
 
 def getChrTimeLine(server, chrId, code):
     today = datetime.today()
@@ -237,3 +237,33 @@ def getChrTimeLine(server, chrId, code):
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['timeline']['rows']
+
+def getChrSkillStyle(server, chrId):
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/skill/style?apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data
+
+def getChrBuffEquip(server, chrId):
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/skill/buff/equip/equipment?apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data
+
+def getChrAvatarData(server, chrId):
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/avatar?apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data
+
+def getSkillDetailInfo(jobId, skillId):
+    url = 'https://api.neople.co.kr/df/skills/' + jobId + '/' + skillId + '?apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data
+
+def getSkillInfo(jobId, skillId):
+    url = 'https://api.neople.co.kr/df/skills/' + jobId + '/' + skillId + '?apikey=' + apikey
+    response = requests.get(url=url)
+    data = json.loads(response.text)
+    return data
