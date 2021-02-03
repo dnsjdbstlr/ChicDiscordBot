@@ -46,9 +46,9 @@ async def 세트(ctx, *input):
 async def 시세(ctx, *input):
     await Search.시세(ctx, itemAuctionPrice, *input)
 
-@bot.command()
-async def 버프력(ctx, name='None', server='전체'):
-    await Search.버프력(bot, ctx, name, server)
+# @bot.command()
+# async def 버프력(ctx, name='None', server='전체'):
+#     await Search.버프력(bot, ctx, name, server)
 
 ### 랭킹 명령어 ###
 @bot.command()
@@ -62,6 +62,10 @@ async def 기린랭킹(ctx):
 ### 기타 명령어 ###
 @bot.command()
 async def 도움말(ctx):
+    await Etc.도움말(ctx)
+
+@bot.command()
+async def 명령어(ctx):
     await Etc.도움말(ctx)
 
 @bot.command()

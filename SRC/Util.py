@@ -1,5 +1,6 @@
 import discord
 import asyncio
+import re
 from FrameWork import DNFAPI
 from datetime import datetime
 
@@ -267,7 +268,7 @@ def getChrAllItemOptions(chrEquipData, chrAvatarData):
                 allItemOption += j['itemBuff']['explain'].split('\n')
                 reinforceSkill = j['itemBuff'].get('reinforceSkill')
                 if reinforceSkill:
-                    allItemOption += makePrettyReinforceSkillInfo(reinforceSkill)
+                    allItemOption += getSkillLevelingInfo(reinforceSkill)
 
     # 4. 칭호 옵션
     # 5. 연옥 변환 옵션
@@ -276,7 +277,7 @@ def getChrAllItemOptions(chrEquipData, chrAvatarData):
         try:
             if i['slotName'] == '칭호':
                 reinforceSkill = i['enchant']['reinforceSkill']
-                allItemOption += makePrettyReinforceSkillInfo(reinforceSkill)
+                allItemOption += getSkillLevelingInfo(reinforceSkill)
         except: pass
 
         try:
@@ -326,6 +327,18 @@ def getChrAllItemOptions(chrEquipData, chrAvatarData):
 
     return allItemOption
 
+def getApplyStatFromBuffEquip(chrBuffEquip):
+    result = 0
+    equip = chrBuffEquip['skill']['buff']['equipment']
+
+    ### 퍼페티어 지능 N 증가 정규식 ###
+    pp = re.compile('퍼페티어지능\+(?P<value>\d+)증가')
+
+    # for i in equip:
+    #     print(i)
+
+    return result
+
 ### 편리 ###
 def getToday():
     year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
@@ -336,29 +349,6 @@ def mergeString(*input):
     for i in input:
         result += i + ' '
     result = result.rstrip()
-    return result
-
-def makePrettyReinforceSkillInfo(reinforceSkill):
-    result = []
-    for j in reinforceSkill:
-        jobName = '모든 직업' if j['jobName'] == '공통' else j['jobName']
-        
-        ### 레벨 범위 레벨링일 경우 ###
-        levelRange = j.get('levelRange')
-        if levelRange is not None:
-            for k in j['levelRange']:
-                minLv, maxLv, value = k.values()
-                text = jobName + ' ' + str(minLv) + ' ~ ' + str(maxLv) + ' 레벨 모든 스킬 Lv +' + str(value)
-                result.append(text)
-                
-        ### 단순 스킬 레벨링일 경우 ###
-        skills = j.get('skills')
-        if skills is not None:
-            for k in skills:
-                skillName = k['name']
-                value     = k['value']
-                text = jobName + ' ' + skillName + ' 스킬Lv +' + str(value)
-                result.append(text)
     return result
 
 def getChrSkillLv(chrSkillStyle, skillId, isActive=True):
@@ -379,3 +369,112 @@ def getSkillValue(skillInfo, level):
         if i['level'] == level:
             return i['optionValue']
     return None
+
+def convertDateToHyphen(date):
+    reg = re.compile('(?P<year>\d+)년(?P<month>\d+)월(?P<day>\d+)일')
+    res = reg.search(date)
+    result = '(' + res.group('year') + '-'
+
+    if int(res.group('month')) < 10:
+        result += '0' + res.group('month') + '-'
+    else:
+        result += res.group('month') + '-'
+
+    if int(res.group('day')) < 10:
+        result += '0' + res.group('day') + ')'
+    else:
+        result += res.group('day') + ')'
+
+    return result
+
+def getSkillLevelingInfo(reinforceSkill):
+    result = {}
+    for j in reinforceSkill:
+        jobName = '모든 직업' if j['jobName'] == '공통' else j['jobName']
+
+        ### 레벨 범위 레벨링일 경우 ###
+        levelRange = j.get('levelRange')
+        if levelRange is not None:
+            for k in j['levelRange']:
+                minLv, maxLv, value = k.values()
+                text = str(minLv) + ' ~ ' + str(maxLv) + ' 레벨 모든 스킬 Lv +' + str(value)
+
+                if result.get(jobName) is None:
+                    result[jobName] = [text]
+                else:
+                    result[jobName].append(text)
+
+        ### 단순 스킬 레벨링일 경우 ###
+        skills = j.get('skills')
+        if skills is not None:
+            for k in skills:
+                skillName = k['name']
+                value = k['value']
+                text = skillName + ' 스킬Lv +' + str(value)
+
+                if result.get(jobName) is None:
+                    result[jobName] = [text]
+                else:
+                    result[jobName].append(text)
+    return result
+
+def getBuffOptionFromItemDetailInfo(itemDetailInfo):
+    embed = discord.Embed(title=itemDetailInfo['itemName'],
+                          description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
+
+    # 스탯
+    statInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
+    embed.add_field(name='> 스탯', value=statInfo, inline=False)
+
+    # 버프 스킬 레벨 옵션
+    buffLvInfo = getSkillLevelingInfo(itemDetailInfo['itemBuff']['reinforceSkill'])
+    buffLvInfoValue = ''
+    for key in buffLvInfo.keys():
+        if key != '모든 직업':
+            buffLvInfoValue += key + '\r\n'
+        for lv in key:
+            if key == '모든 직업':
+                buffLvInfoValue += key + ' ' + lv + '\r\n'
+            else:
+                buffLvInfoValue += lv + '\r\n'
+
+    # 버프 옵션
+    buffInfo = itemDetailInfo['itemBuff']['explain']
+    embed.add_field(name='> 버퍼 전용 옵션', value=buffLvInfoValue + buffInfo, inline=False)
+
+    # 신화 옵션
+    try:
+        mythicInfo = DNFAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'], buff=True)
+        embed.add_field(name='> 신화 전용 옵션', value=mythicInfo)
+    except: pass
+
+    # 플레이버 텍스트
+    embed.set_footer(text=itemDetailInfo['itemFlavorText'])
+
+    # 아이콘
+    icon = DNFAPI.getItemImageUrl(itemDetailInfo['itemId'])
+    embed.set_thumbnail(url=icon)
+
+    return embed
+
+def getBuffOptionFromItemSetOption(setItemInfo):
+    embed = discord.Embed(title=setItemInfo['setItemName'] + '의 정보를 알려드릴게요.')
+    for setItem in setItemInfo['setItems']:
+        embed.add_field(name='> ' + setItem['itemRarity'] + ' ' + setItem['slotName'], value=setItem['itemName'])
+    for option in setItemInfo['setItemOption']:
+        value = ''
+        try:
+            skill = getSkillLevelingInfo(option['itemBuff']['reinforceSkill'])
+            for key in skill.keys():
+                if key != '모든 직업':
+                    value += key + '\r\n'
+                for lv in skill[key]:
+                    if key == '모든 직업':
+                        value += key + ' ' + lv + '\r\n'
+                    else:
+                        value += lv + '\r\n'
+        except: pass
+        value += option['itemBuff']['explain']
+        embed.add_field(name='> ' + str(option['optionNo']) + '세트 옵션', value=value)
+    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
+    return embed

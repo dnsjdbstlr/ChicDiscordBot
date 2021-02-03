@@ -107,10 +107,13 @@ def getItemSkillLvInfo(jobName, levelRange):
             itemSkillInfo += str(i['minLevel']) + '~' + str(i['maxLevel']) + '레벨 모든 스킬 Lv+' + str(i['value']) + '\r\n'
     return itemSkillInfo
 
-def getItemMythicInfo(options):
+def getItemMythicInfo(options, buff=False):
     itemMythicInfo = ''
     for i in options:
-        itemMythicInfo += i['explainDetail'] + '\r\n'
+        if buff:
+            itemMythicInfo += i['buffExplainDetail'] + '\r\n'
+        else:
+            itemMythicInfo += i['explainDetail'] + '\r\n'
     return itemMythicInfo
 
 def getItemAuctionPrice(itemName):
@@ -132,28 +135,10 @@ def getSetItemIdList(setItemName):
     return data['rows']
 
 def getSetItemInfoList(setItemId):
-    setItemOptionList = []
-
     url = 'https://api.neople.co.kr/df/setitems/' + setItemId + '?apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
-    setItemInfoList = data['setItems']
-
-    for i in data['setItemOption']:
-        explain = ''
-        optionInfo = '\r\n'
-        try:
-            for j in i['status']:
-                optionInfo += j['name'] + ' +' + str(j['value']) + '\r\n'
-        except: pass
-
-        try:
-            explain = i['explain']
-        except: pass
-
-        setItemOptionList.append({'optionNo' : i['optionNo'], 'explain' : explain + optionInfo})
-
-    return setItemInfoList, setItemOptionList
+    return data
 
 def getSetItemInfos(setItemIds):
     setItems = ''
