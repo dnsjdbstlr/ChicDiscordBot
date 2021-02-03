@@ -35,7 +35,7 @@ cmdStatistics = userCommandStatistics()
 def saveCmdStatistics(msg):
     cmd = msg.content.split(' ')[0]
     if cmd in cmdStatistics.data.keys():
-        cmdStatistics.data[cmd] = cmdStatistics.data[cmd] + 1
+        cmdStatistics.data[cmd] += 1
         cmdStatistics.update()
 
 async def 상태(bot, ctx, *state):

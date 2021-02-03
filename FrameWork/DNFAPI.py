@@ -179,7 +179,7 @@ def getChrEquipItemInfoList(server, chrId):
     url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/equipment?apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
-    return data['equipment'], data['setItemInfo']
+    return data
 
 def getChrEquipSetItemInfo(chrEquipItemList):
     chrEquipSetItemName = []

@@ -66,48 +66,46 @@ async def 캐릭터(bot, ctx, name='None', server='전체'):
         await ctx.channel.send('> !캐릭터 <닉네임> 의 형태로 적어야해요!')
         return
 
-    # 검색
     try:
         chrIdList = DNFAPI.getChrIdList(server, name)
         server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except:
         return False
 
-    chrEquipItemList, chrEquipSetItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
+    chrEquipItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
 
-    # embed 설정
+    ### embed 선언 ###
     embed = discord.Embed(title=name + '님의 캐릭터 정보를 알려드릴게요.')
-    embed.set_image(url='https://img-api.neople.co.kr/df/servers/' + DNFAPI.SERVER_ID[server] + '/characters/' + chrId + '?zoom=1')
 
-    # 장착중인 세트
-    value = ''
-    for i in chrEquipSetItemInfo:
-        value += i['setItemName'] + '(' + str(i['activeSetNo']) + ')\r\n'
-    if value != '':
-        embed.add_field(name='> 장착중인 세트', value=value, inline=False)
+    ### 장착중인 세트 ###
+    equipSetItem = ''
+    for i in chrEquipItemInfo['equipment']:
+        equipSetItem += i['setItemName'] + '(' + str(i['activeSetNo']) + ')\r\n'
+    if equipSetItem != '':
+        embed.add_field(name='> 장착중인 세트', value=equipSetItem, inline=False)
 
-    # 장비 옵션
-    for i in chrEquipItemList:
+    ### 장비 옵션 ###
+    for i in chrEquipItemInfo['setItemInfo']:
         if i['slotName'] in ['칭호', '보조무기']: continue
 
-        reinforce = i['reinforce']
-        refine    = i['refine']
-        value = ''
+        text = ''
 
-        # 강화, 재련 수치
-        if reinforce != 0:
-            value += '+' + str(reinforce)
-        if refine != 0:
-            value += '(' + str(refine) + ')'
-        value += ' ' + i['itemName'] + '\r\n'
+        ### 강화, 재련 수치 ###
+        if i['reinforce'] != 0:
+            text += '+' + str(i['reinforce'])
+        if i['refine'] != 0:
+            text += '(' + str(i['refine']) + ')'
+        text += ' ' + i['itemName'] + '\r\n'
 
-        # 마법부여
+        ### 마법부여 ###
         try:
             for j in i['enchant']['status']:
-                value += j['name'] + ' +' + str(j['value']) + '\r\n'
+                text += j['name'] + ' +' + str(j['value']) + '\r\n'
         except: pass
-        embed.add_field(name='> ' + i['slotName'], value=value)
+
+        embed.add_field(name='> ' + i['slotName'], value=text)
     embed.set_footer(text=name + '님의 캐릭터 이미지도 챙겨왔어요!')
+    embed.set_image(url='https://img-api.neople.co.kr/df/servers/' + DNFAPI.SERVER_ID[server] + '/characters/' + chrId + '?zoom=1')
     await ctx.channel.send(embed=embed)
 
 async def 시세(ctx, itemAuctionPrice, *input):
@@ -238,67 +236,52 @@ async def 시세(ctx, itemAuctionPrice, *input):
     await ctx.channel.send(embed=embed)
 
 async def 장비(bot, ctx, *input):
-    name = ''
-    for i in input: name += i + ' '
-    name = name.rstrip()
+    name = Util.mergeString(*input)
 
     if len(name) < 1:
         await ctx.message.delete()
         await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해요!')
         return
 
-    # 해당 정보가 있는지 체크
-    hasItemTransformInfo = True
-    hasItemSkillLvInfo = True
-    hasItemMythicInfo = True
-
-    # 아이템 id 얻어오기
     try:
         itemIdList = DNFAPI.getItemId(name)
         itemId = await Util.getSelectionFromItemIdList(bot, ctx, itemIdList)
         if itemId is False: return
     except: return
-    ### 선택 종료 ###
 
     itemDetailInfo = DNFAPI.getItemDetail(itemId)
     itemImageUrl = DNFAPI.getItemImageUrl(itemId)
-
+    embed = discord.Embed(title=itemDetailInfo['itemName'],
+                          description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
     # 스탯
     itemStatInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
-
-    # 변환 옵션
-    try:
-        itemTransformInfo = itemDetailInfo['transformInfo']['explain']
-    except:
-        hasItemTransformInfo = False
+    embed.add_field(name='> 스탯', value=itemStatInfo, inline=False)
 
     # 스킬 레벨
     try:
         itemSkillLvInfo = DNFAPI.getItemSkillLvInfo(itemDetailInfo['itemReinforceSkill'][0]['jobName'],
                                                     itemDetailInfo['itemReinforceSkill'][0]['levelRange'])
-    except:
-        hasItemSkillLvInfo = False
+        embed.add_field(name='> 스킬', value=itemSkillLvInfo)
+    except: pass
+
+    # 기본 옵션
+    embed.add_field(name='> 옵션', value=itemDetailInfo['itemExplainDetail'], inline=False)
+
+    # 변환 옵션
+    try:
+        itemTransformInfo = itemDetailInfo['transformInfo']['explain']
+        embed.add_field(name='> 변환 옵션', value=itemTransformInfo, inline=False)
+    except: pass
 
     # 신화옵션
     try:
         itemMythicInfo = DNFAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'])
-    except:
-        hasItemMythicInfo = False
+        embed.add_field(name='> 신화 전용 옵션', value=itemMythicInfo, inline=False)
+    except: pass
 
     # 플레이버 텍스트
     itemFlavorText = itemDetailInfo['itemFlavorText']
 
-    # 출력
-    embed = discord.Embed(title=itemDetailInfo['itemName'],
-                          description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
-    embed.add_field(name='> 스탯', value=itemStatInfo, inline=False)
-    if hasItemSkillLvInfo:
-        embed.add_field(name='> 스킬', value=itemSkillLvInfo)
-    embed.add_field(name='> 옵션', value=itemDetailInfo['itemExplainDetail'], inline=False)
-    if hasItemTransformInfo:
-        embed.add_field(name='> 변환 옵션', value=itemTransformInfo, inline=False)
-    if hasItemMythicInfo:
-        embed.add_field(name='> 신화 전용 옵션', value=itemMythicInfo, inline=False)
     embed.set_footer(text=itemFlavorText)
     embed.set_thumbnail(url=itemImageUrl)
     msg = await ctx.channel.send(embed=embed)
@@ -315,24 +298,21 @@ async def 장비(bot, ctx, *input):
         await msg.clear_reactions()
 
 async def 세트(bot, ctx, *input):
-    setItemName = ''
-    for i in input:
-        setItemName += i + ' '
-    setItemName = setItemName.rstrip()
+    name = Util.mergeString(*input)
 
-    if len(setItemName) < 1:
+    if len(name) < 1:
         await ctx.message.delete()
         await ctx.channel.send('> !세트 <세트옵션이름> 의 형태로 적어야해요!')
         return
 
     try:
-        setItemIdList = DNFAPI.getSetItemIdList(setItemName)
-        setItemId, setItemName = await Util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
+        setItemIdList = DNFAPI.getSetItemIdList(name)
+        setItemId, name = await Util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
     except:
         return
 
     setItemInfo = DNFAPI.getSetItemInfoList(setItemId)
-    embed = discord.Embed(title=setItemName + '의 정보를 알려드릴게요.')
+    embed = discord.Embed(title=name + '의 정보를 알려드릴게요.')
     for setItem in setItemInfo['setItems']:
         embed.add_field(name='> ' + setItem['itemRarity'] + ' ' + setItem['slotName'], value=setItem['itemName'])
     for option in setItemInfo['setItemOption']:

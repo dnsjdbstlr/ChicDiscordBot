@@ -408,9 +408,7 @@ def getSkillLevelingInfo(reinforceSkill):
         skills = j.get('skills')
         if skills is not None:
             for k in skills:
-                skillName = k['name']
-                value = k['value']
-                text = skillName + ' 스킬Lv +' + str(value)
+                text = k['name'] + ' 스킬Lv +' + str(k['value'])
 
                 if result.get(jobName) is None:
                     result[jobName] = [text]
@@ -432,7 +430,7 @@ def getBuffOptionFromItemDetailInfo(itemDetailInfo):
     for key in buffLvInfo.keys():
         if key != '모든 직업':
             buffLvInfoValue += key + '\r\n'
-        for lv in key:
+        for lv in buffLvInfo[key]:
             if key == '모든 직업':
                 buffLvInfoValue += key + ' ' + lv + '\r\n'
             else:

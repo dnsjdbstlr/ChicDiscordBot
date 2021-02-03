@@ -6,7 +6,7 @@ bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
 token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token   = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 setRank          = Classes.setRank()
 epicRank         = Classes.epicRank()
 itemAuctionPrice = Classes.itemAuctionPrice()
