@@ -182,8 +182,6 @@ def getChrEquipItemInfoList(server, chrId):
     return data
 
 def getChrEquipSetItemInfo(chrEquipItemList):
-    chrEquipSetItemName = []
-
     itemIds = ''
     for i in chrEquipItemList:
         itemIds += i
@@ -191,15 +189,8 @@ def getChrEquipSetItemInfo(chrEquipItemList):
 
     url = 'https://api.neople.co.kr/df/custom/equipment/setitems?itemIds=' + itemIds + '&apikey=' + apikey
     response = requests.get(url=url)
-    temp = json.loads(response.text)
-
-    try:
-        data = temp['equipment']
-        for i in data:
-            chrEquipSetItemName.append((i['slotName'], i['itemName'], i['setItemName']))
-    except: pass
-
-    return chrEquipSetItemName
+    data = json.loads(response.text)
+    return data
 
 def getChrEquipCreatureId(server, chrId):
     url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/creature?apikey=' + apikey

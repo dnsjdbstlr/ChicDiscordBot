@@ -73,19 +73,27 @@ async def 캐릭터(bot, ctx, name='None', server='전체'):
         return False
 
     chrEquipItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
+    chrEquipItemIds  = []
+    for i in chrEquipItemInfo['equipment']:
+        if i['slotName'] in ['칭호', '보조무기']: continue
+        chrEquipItemIds.append(i['itemId'])
+    chrEquipSetInfo = DNFAPI.getChrEquipSetItemInfo(chrEquipItemIds)
 
     ### embed 선언 ###
     embed = discord.Embed(title=name + '님의 캐릭터 정보를 알려드릴게요.')
 
     ### 장착중인 세트 ###
-    equipSetItem = ''
-    for i in chrEquipItemInfo['equipment']:
-        equipSetItem += i['setItemName'] + '(' + str(i['activeSetNo']) + ')\r\n'
-    if equipSetItem != '':
-        embed.add_field(name='> 장착중인 세트', value=equipSetItem, inline=False)
+    try:
+        for i in chrEquipSetInfo['setItemInfo']:
+            try:
+                setInfo += i['setItemName'] + '(' + str(i['activeSetNo']) + ')\r\n'
+            except:
+                setInfo = i['setItemName'] + '(' + str(i['activeSetNo']) + ')\r\n'
+        embed.add_field(name='> 장착중인 세트', value=setInfo, inline=False)
+    except: pass
 
     ### 장비 옵션 ###
-    for i in chrEquipItemInfo['setItemInfo']:
+    for i in chrEquipItemInfo['equipment']:
         if i['slotName'] in ['칭호', '보조무기']: continue
 
         text = ''
