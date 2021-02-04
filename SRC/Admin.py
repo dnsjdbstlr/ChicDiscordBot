@@ -44,7 +44,7 @@ def saveCmdStatistics(msg):
 
 async def 상태(bot, ctx, *state):
     if ctx.message.author.id == ownerId:
-        state = Util.mergeString(state)
+        state = Util.mergeString(*state)
         await bot.change_presence(status=discord.Status.online, activity=discord.Game(state))
         await ctx.message.delete()
         await ctx.channel.send("> '" + state + " 하는 중' 으로 상태를 바꿨습니다.")
