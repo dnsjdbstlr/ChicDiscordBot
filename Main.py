@@ -1,15 +1,11 @@
 import discord
 from discord.ext import commands
-from FrameWork import Classes
-from SRC import Search, Ranking, Admin, Etc
+from SRC import Search, Ranking, Stock, Admin, Etc
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
-setRank          = Classes.setRank()
-epicRank         = Classes.epicRank()
-itemAuctionPrice = Classes.itemAuctionPrice()
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
 ### 이벤트 ###
 @bot.event
@@ -44,20 +40,33 @@ async def 세트(ctx, *input):
 
 @bot.command()
 async def 시세(ctx, *input):
-    await Search.시세(ctx, itemAuctionPrice, *input)
-
-# @bot.command()
-# async def 버프력(ctx, name='None', server='전체'):
-#     await Search.버프력(bot, ctx, name, server)
+    await Search.시세(ctx, *input)
 
 ### 랭킹 명령어 ###
 @bot.command()
 async def 획득에픽(ctx, name='None', server='전체'):
-    await Ranking.획득에픽(bot, ctx, epicRank, name, server)
+    await Ranking.획득에픽(bot, ctx, name, server)
 
 @bot.command()
 async def 기린랭킹(ctx):
-    await Ranking.기린랭킹(ctx, epicRank)
+    await Ranking.기린랭킹(ctx)
+
+### 게임 명령어 ###
+@bot.command()
+async def 출석(ctx):
+    await Stock.출석(ctx)
+
+@bot.command()
+async def 주식(ctx):
+    await Stock.주식(ctx)
+
+@bot.command()
+async def 주식매수(ctx, *input):
+    await Stock.주식매수(bot, ctx, *input)
+
+@bot.command()
+async def 주식매도(ctx):
+    await Stock.주식매도(bot, ctx)
 
 ### 기타 명령어 ###
 @bot.command()

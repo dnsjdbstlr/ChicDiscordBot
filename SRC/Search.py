@@ -1,8 +1,24 @@
 import discord
-from SRC import Util
-from FrameWork import DNFAPI
+import json
 import re
+from SRC import Util, DNFAPI
 
+class itemAuctionData:
+    def __init__(self):
+        self.data = {}
+        try:
+            with open('Data/itemAuctionPrice.json', 'r') as f:
+                self.data = json.load(f)
+                print('[알림][아이템 시세를 불러왔습니다.]')
+        except:
+            print('[알림][아이템 시세 데이터가 없습니다.]')
+
+    def update(self):
+        # 파일로 저장
+        with open('Data/itemAuctionPrice.json', 'w') as f:
+            json.dump(self.data, f, indent=4, ensure_ascii=False)
+
+AUCTION_DATA = itemAuctionData()
 async def 등급(ctx):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 오늘의 아이템 등급을 읽어오고있어요...')
@@ -116,7 +132,7 @@ async def 캐릭터(bot, ctx, name='None', server='전체'):
     embed.set_image(url='https://img-api.neople.co.kr/df/servers/' + DNFAPI.SERVER_ID[server] + '/characters/' + chrId + '?zoom=1')
     await ctx.channel.send(embed=embed)
 
-async def 시세(ctx, itemAuctionPrice, *input):
+async def 시세(ctx, *input):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
 
@@ -158,12 +174,12 @@ async def 시세(ctx, itemAuctionPrice, *input):
         ### 최근 평균가 불러오기 ###
         prevPriceAvg, prevPriceDay = {}, ''
         try:
-            keys = list(itemAuctionPrice.data[itemName].keys())
+            keys = list(AUCTION_DATA.data[itemName].keys())
             if keys[-1] == Util.getToday():
                 key = keys[-2]
             else:
                 key = keys[-1]
-            prevPriceAvg = itemAuctionPrice.data[itemName][key]
+            prevPriceAvg = AUCTION_DATA.data[itemName][key]
             prevPriceDay = Util.convertDateToHyphen(str(key))
         except:
             for k in data.keys():
@@ -192,7 +208,7 @@ async def 시세(ctx, itemAuctionPrice, *input):
 
     # 그 외
     else:
-        itemPriceSum  = 0   # 총 가격
+        itemPriceSum  = 0  # 총 가격
         itemAmountSum = 0  # 총 갯수
         priceAverage  = 0  # 평균 가격
 
@@ -205,12 +221,12 @@ async def 시세(ctx, itemAuctionPrice, *input):
         # 가격 변동률 계산
         prevPriceAvg, prevPriceDay = -1, ''
         try:
-            keys = list(itemAuctionPrice.data[itemName].keys())
+            keys = list(AUCTION_DATA.data[itemName].keys())
             if keys[-1] == Util.getToday():
                 key = keys[-2]
             else:
                 key = keys[-1]
-            prevPriceAvg = itemAuctionPrice.data[itemName][key]['평균가']
+            prevPriceAvg = AUCTION_DATA.data[itemName][key]['평균가']
             prevPriceDay = Util.convertDateToHyphen(str(key))
         except: pass
 
@@ -235,10 +251,10 @@ async def 시세(ctx, itemAuctionPrice, *input):
 
     ### 데이터 저장 ###
     try:
-        itemAuctionPrice.data[itemName].update( {Util.getToday() : data} )
+        AUCTION_DATA.data[itemName].update( {Util.getToday() : data} )
     except:
-        itemAuctionPrice.data[itemName] = {Util.getToday() : data}
-    itemAuctionPrice.update()
+        AUCTION_DATA.data[itemName] = {Util.getToday() : data}
+    AUCTION_DATA.update()
 
     await waiting.delete()
     await ctx.channel.send(embed=embed)

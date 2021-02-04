@@ -1,7 +1,7 @@
 import discord
 import asyncio
 import re
-from FrameWork import DNFAPI
+from SRC import DNFAPI
 from datetime import datetime
 
 ### 선택 ###
@@ -339,10 +339,64 @@ def getApplyStatFromBuffEquip(chrBuffEquip):
 
     return result
 
+def updateAuctionData(name, auctionData):
+    from SRC import Search
+    isCard = True if name in '카드' else False
+
+    if isCard:
+        pass
+    else:
+        itemPriceSum  = 0  # 총 가격
+        itemAmountSum = 0  # 총 갯수
+        priceAverage  = 0  # 평균 가격
+
+        for i in auctionData:
+            itemPriceSum  += i['price']
+            itemAmountSum += i['count']
+        priceAverage = itemPriceSum // itemAmountSum
+        data = {'평균가': priceAverage, '판매량': itemAmountSum}
+
+        # 가격 변동률 계산
+        prevPriceAvg, prevPriceDay = -1, ''
+        try:
+            keys = list(Search.AUCTION_DATA.data[name].keys())
+            if keys[-1] == getToday():
+                key = keys[-2]
+            else:
+                key = keys[-1]
+            prevPriceAvg = Search.AUCTION_DATA.data[name][key]['평균가']
+            prevPriceDay = convertDateToHyphen(str(key))
+        except: pass
+
+        if prevPriceAvg == -1:
+            volatility = '데이터 없음'
+        else:
+            volatility = ((priceAverage / prevPriceAvg) - 1) * 100
+            if volatility > 0:
+                volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
+            elif volatility == 0:
+                volatility = '- 0.00%'
+            else:
+                volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
+            volatility += ' ' + prevPriceDay
+
+    ### 데이터 저장 ###
+    try:
+        Search.AUCTION_DATA.data[name].update( {getToday() : data} )
+    except:
+        Search.AUCTION_DATA.data[name] = {getToday() : data}
+    Search.AUCTION_DATA.update()
+
+    return data, volatility
+
 ### 편리 ###
 def getToday():
     year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
     return str(year) + '년' + str(month) + '월' + str(day) + '일'
+
+def getToday2():
+    year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
+    return str(year) + str(month) + str(day)
 
 def mergeString(*input):
     result= ''

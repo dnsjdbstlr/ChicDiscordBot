@@ -14,6 +14,10 @@ class userCommandStatistics:
             '!시세'     : 0,
             '!획득에픽' : 0,
             '!기린랭킹' : 0,
+            '!주식'     : 0,
+            '!주식매수' : 0,
+            '!주식매도' : 0,
+            '!출석'     : 0,
             '!청소'     : 0
         }
 
@@ -30,13 +34,13 @@ class userCommandStatistics:
         # 파일로 저장
         with open('Data/cmdStatistics.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
-cmdStatistics = userCommandStatistics()
+USER_COMMAND_DATA = userCommandStatistics()
 
 def saveCmdStatistics(msg):
     cmd = msg.content.split(' ')[0]
-    if cmd in cmdStatistics.data.keys():
-        cmdStatistics.data[cmd] += 1
-        cmdStatistics.update()
+    if cmd in USER_COMMAND_DATA.data.keys():
+        USER_COMMAND_DATA.data[cmd] += 1
+        USER_COMMAND_DATA.update()
 
 async def 상태(bot, ctx, *state):
     if ctx.message.author.id == ownerId:
@@ -54,6 +58,6 @@ async def 통계(ctx):
     if ctx.message.author.id == ownerId:
         await ctx.message.delete()
         embed = discord.Embed(title='유저들이 사용한 각 명령어의 사용 횟수를 알려드릴게요.')
-        for k in cmdStatistics.data.keys():
-            embed.add_field(name='> ' + k, value=str(cmdStatistics.data[k]) + '번')
+        for k in USER_COMMAND_DATA.data.keys():
+            embed.add_field(name='> ' + k, value=str(USER_COMMAND_DATA.data[k]) + '번')
         await ctx.channel.send(embed=embed)

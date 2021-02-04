@@ -1,20 +1,48 @@
 import discord
-from SRC import Util
-from FrameWork import DNFAPI
-from datetime import datetime
+import json
+from SRC import Util, DNFAPI
+from datetime   import datetime
 
-async def 획득에픽(bot, ctx, epicRank, name='None', server='전체'):
+class playerEpicRankData:
+    def __init__(self):
+        self.data = {}
+        try:
+            with open('Data/epicRank.json', 'r') as f:
+                self.data = json.load(f)
+                print('[알림][기린 랭킹을 불러왔습니다.]')
+        except:
+            print('[알림][기린 랭킹 데이터가 없습니다.]')
+
+    def add(self, chrId, info):
+        self.update(info['month'])
+        self.data.update({chrId: info})
+
+        def key(x): return x[1]['score']
+        self.data = dict(sorted(self.data.items(), key=key, reverse=True)[:15])
+
+        # 파일로 저장
+        with open('Data/epicRank.json', 'w') as f:
+            json.dump(self.data, f, indent=4, ensure_ascii=False)
+
+    def update(self, month):
+        # 기존에 있던 데이터와 새로 들어온 데이터의 날짜가 다르다면
+        # 기존 데이터 모두 삭제 후 새로 들어온 데이터 삽입
+        for k in self.data.keys():
+            if self.data[k]['month'] != month:
+                self.data.clear()
+            break
+
+EPIC_RANK_DATA = playerEpicRankData()
+async def 획득에픽(bot, ctx, name='None', server='전체'):
     if name == 'None':
         await ctx.message.delete()
         await ctx.channel.send('> !획득에픽 <닉네임> 의 형태로 적어야해요!')
         return
 
-    # 검색
     try:
         chrIdList = DNFAPI.getChrIdList(server, name)
         server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
-    except:
-        return False
+    except: return False
 
     waiting = await ctx.channel.send('> ' + name + '님의 획득한 에픽을 확인 중이예요...')
     chrTimeLineData = DNFAPI.getChrTimeLine(server, chrId, '505')
@@ -24,7 +52,7 @@ async def 획득에픽(bot, ctx, epicRank, name='None', server='전체'):
         await ctx.channel.send('> ' + name + '님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
         return
 
-    # 결과 출력 :: 15개씩 나눠서
+    ### 결과 출력 ###
     index = 0
     while index < len(chrTimeLineData):
         start = index
@@ -46,7 +74,7 @@ async def 획득에픽(bot, ctx, epicRank, name='None', server='전체'):
 
     # 데이터 저장
     today = datetime.today()
-    epicRank.add(chrId, {
+    EPIC_RANK_DATA.add(chrId, {
         'year'  : today.year,
         'month' : today.month,
         'server': server,
@@ -54,16 +82,16 @@ async def 획득에픽(bot, ctx, epicRank, name='None', server='전체'):
         'score' : len(chrTimeLineData)
     })
 
-async def 기린랭킹(ctx, epicRank):
+async def 기린랭킹(ctx):
     today = datetime.today()
-    epicRank.update(today.month)
+    EPIC_RANK_DATA.update(today.month)
     embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
     embed.set_footer(text='모두 원하는 에픽/신화를 얻을 수 있으면 좋겠어요!')
 
     rank = 1
-    for k in epicRank.data.keys():
-        name  = '> ' + str(rank) + '등\r\n> ' + epicRank.data[k]['server'] + ' ' + epicRank.data[k]['name']
-        value = '에픽 ' + str(epicRank.data[k]['score']) + '개 획득!'
+    for k in EPIC_RANK_DATA.data.keys():
+        name  = '> ' + str(rank) + '등\r\n> ' + EPIC_RANK_DATA.data[k]['server'] + ' ' + EPIC_RANK_DATA.data[k]['name']
+        value = '에픽 ' + str(EPIC_RANK_DATA.data[k]['score']) + '개 획득!'
         embed.add_field(name=name, value=value)
         rank += 1
 
