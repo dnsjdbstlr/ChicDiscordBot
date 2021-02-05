@@ -98,7 +98,7 @@ async def 통계(ctx):
     await Admin.통계(ctx)
 
 @bot.command()
-async def 출석인원(ctx):
+async def 출석확인(ctx):
     await Admin.출석확인(ctx)
 
 bot.remove_command('help')
