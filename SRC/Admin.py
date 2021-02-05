@@ -61,3 +61,16 @@ async def 통계(ctx):
         for k in USER_COMMAND_DATA.data.keys():
             embed.add_field(name='> ' + k, value=str(USER_COMMAND_DATA.data[k]) + '번')
         await ctx.channel.send(embed=embed)
+
+async def 출석확인(ctx):
+    if ctx.message.author.id == ownerId:
+        await ctx.message.delete()
+        from SRC import Stock
+
+        count = 0
+        for key in Stock.STOCK_DATA.data.keys():
+            stock = Stock.STOCK_DATA.data[key]
+            if stock['daily'] == Util.getToday2():
+                count += 1
+
+        await ctx.channel.send('> ' + Util.getToday2() + ' : ' + str(count) + '명이 출석체크를 했어요!')

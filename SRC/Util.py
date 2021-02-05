@@ -396,6 +396,10 @@ def getToday():
 
 def getToday2():
     year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
+    if month < 10:
+        month = '0' + str(month)
+    if day < 10:
+        day = '0' + str(day)
     return str(year) + str(month) + str(day)
 
 def mergeString(*input):
@@ -530,3 +534,9 @@ def getBuffOptionFromItemSetOption(setItemInfo):
         embed.add_field(name='> ' + str(option['optionNo']) + '세트 옵션', value=value)
     embed.set_thumbnail(url=DNFAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     return embed
+
+def getRecentAuctionPrice(name):
+    from SRC import Search
+    auction = Search.AUCTION_DATA.data[name]
+    recent = list(auction.keys())[-1]
+    return auction[recent]['평균가']

@@ -57,6 +57,8 @@ async def 주식(ctx):
         ini = {
             'daily': 'NULL',
             'money': 10000000,
+            'buy'  : 0,
+            'sell' : 0,
             'holdings': []
         }
         STOCK_DATA.data.update({pid: ini})
@@ -149,7 +151,7 @@ async def 주식매수(bot, ctx, *input):
         if str(reaction) == '⭕':
             await msg.delete()
             pid = str(ctx.message.author.id)
-            await purchaseStock(bot, ctx, pid, name, data)
+            await buyStock(bot, ctx, pid, name, data)
         elif str(reaction) == '❌':
             await msg.delete()
             await ctx.channel.send('> 매수가 취소되었습니다.')
@@ -160,7 +162,7 @@ async def 주식매수(bot, ctx, *input):
         await msg.delete()
         await ctx.channel.send('> 오류가 발생했어요.')
 
-async def purchaseStock(bot, ctx, pid, name, data):
+async def buyStock(bot, ctx, pid, name, data):
     stock = STOCK_DATA.data.get(pid)
     if stock is None:
         text = '> ' + ctx.message.author.display_name + '님의 주식 정보를 찾을 수 없어요.\r\n'
@@ -168,7 +170,13 @@ async def purchaseStock(bot, ctx, pid, name, data):
         await ctx.channel.send(text)
         return
 
-    if len(stock['holdings']) >= 3:
+    ### 이미 갖고있는 종목 구매 ###
+    isOverride = False
+    for i in stock['holdings']:
+        if i['name'] == name:
+            isOverride = True
+
+    if len(stock['holdings']) >= 3 and not isOverride:
         text = '> 최대 3가지 종목만 보유할 수 있어요.\r\n'
         text += '> 보유 중인 주식을 매도하고 다시 시도해주세요.'
         await ctx.channel.send(text)
@@ -191,21 +199,27 @@ async def purchaseStock(bot, ctx, pid, name, data):
         ### 매수 처리 ###
         stock['money'] -= count * data['평균가']
 
-        isOverride = False
-        for i in stock['holdings']:
-            if i['name'] == name:
-                isOverride = True
-                newCount = count + i['count']
-                newBid = ((bid * count) + (i['bid'] * i['count'])) // newCount
-                i['bid'], i['count'] = newBid, newCount
-                break
+        ### 추가 매수 ###
+        if isOverride:
+            for i in stock['holdings']:
+                if i['name'] == name:
+                    newCount = count + i['count']
+                    newBid = ((bid * count) + (i['bid'] * i['count'])) // newCount
+                    i['bid'], i['count'] = newBid, newCount
+                    break
 
-        if not isOverride:
+        ### 처음 매수 ###
+        else:
             stock['holdings'].append({
                 'name'  : name,
                 'bid'   : bid,
                 'count': count
             })
+
+        try:
+            stock['buy'] += 1
+        except:
+            stock['buy'] = 1
         STOCK_DATA.update()
 
         await msg.delete()
@@ -274,20 +288,20 @@ async def 주식매도(bot, ctx):
 
         if str(reaction) == '1️⃣' and len(stock['holdings']) >= 1:
             await msg.delete()
-            await saleStock(bot, ctx, stock, 0, newPrice[0])
+            await sellStock(bot, ctx, stock, 0, newPrice[0])
         elif str(reaction) == '2️⃣' and len(stock['holdings']) >= 2:
             await msg.delete()
-            await saleStock(bot, ctx, stock, 1, newPrice[1])
+            await sellStock(bot, ctx, stock, 1, newPrice[1])
         elif str(reaction) == '3️⃣' and len(stock['holdings']) >= 3:
             await msg.delete()
-            await saleStock(bot, ctx, stock, 2, newPrice[2])
+            await sellStock(bot, ctx, stock, 2, newPrice[2])
     except asyncio.TimeoutError:
         await msg.delete()
         await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
     except:
         await ctx.channel.send('> 오류가 발생했어요.')
 
-async def saleStock(bot, ctx, stock, index, offer):
+async def sellStock(bot, ctx, stock, index, offer):
     embed = discord.Embed(title='매도할 양을 입력해주세요.', description='매도 채결 시 1%의 수수료가 발생해요.')
     embed.add_field(name='> 종목', value=stock['holdings'][index]['name'])
     embed.add_field(name='> 매도 단가', value=format(offer, ',') + '골드')
@@ -312,6 +326,11 @@ async def saleStock(bot, ctx, stock, index, offer):
         stock['money'] += int(offer * count * 0.99)
         if stock['holdings'][index]['count'] == 0:
             del stock['holdings'][index]
+
+        try:
+            stock['sell'] += 1
+        except:
+            stock['sell'] = 1
         STOCK_DATA.update()
 
         await msg.delete()
@@ -328,6 +347,40 @@ async def saleStock(bot, ctx, stock, index, offer):
     except:
         await msg.delete()
         await ctx.channel.send('> 오류가 발생했어요.')
+
+async def 주식랭킹(ctx):
+    await ctx.message.delete()
+    rank = getStockRank()
+    embed = discord.Embed(title='주식 랭킹을 알려드릴게요!',
+                          description='보유금액 + 평가금액으로 순위를 매기며 15등까지만 보여드려요.')
+
+    for index, key in enumerate(rank.keys()):
+        stocks = ''                 # 종목
+        #buy    = rank[key]['buy']   # 매수 횟수
+        #sell   = rank[key]['sell']  # 매도 횟수
+        money  = rank[key]['money'] # 보유금
+        price  = 0                  # 평가금
+
+        ### 종목, 평가금 계산 ###
+        for _index, i in enumerate(rank[key]['holdings']):
+            stocks += '종목' + str(_index + 1) + ' : ' + i['name'] + '\r\n'
+            price += Util.getRecentAuctionPrice(i['name']) * i['count']
+
+        ### 결과 세팅 ###
+        value = format(money + price, ',') + '골드\r\n'
+        #value += '보유금 : ' + format(money, ',') + '골드\r\n'
+        #value += '평가금 : ' + format(price, ',') + '골드\r\n'
+        #value += '매수/매도 : ' + format(buy, ',') + '회/' + format(sell, ',') + '회\r\n'
+        value += stocks
+        name = '> ' + str(index + 1) + '등'
+
+        ### 본인 표시 ###
+        if key == str(ctx.message.author.id):
+            name += '(' + ctx.message.author.display_name + '님)'
+
+        embed.add_field(name=name, value=value)
+
+    await ctx.channel.send(embed=embed)
 
 def getTotProfit(totBid, totGain):
     try:
@@ -357,3 +410,12 @@ def makePlusMinus(num):
     else:
         num = '▼ ' + format(num, ',') + '%'
     return num
+
+def getStockRank():
+    def key(x):
+        criterion = x[1]['money']
+        for i in x[1]['holdings']:
+            price = Util.getRecentAuctionPrice(i['name'])
+            criterion += price * i['count']
+        return criterion
+    return dict(sorted(STOCK_DATA.data.items(), key=key, reverse=True)[:15])

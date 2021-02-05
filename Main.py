@@ -1,11 +1,11 @@
 import discord
 from discord.ext import commands
-from SRC import Search, Ranking, Stock, Admin, Etc
+from SRC import Search, Stock, Admin, Etc
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
 ### 이벤트 ###
 @bot.event
@@ -42,14 +42,13 @@ async def 세트(ctx, *input):
 async def 시세(ctx, *input):
     await Search.시세(ctx, *input)
 
-### 랭킹 명령어 ###
 @bot.command()
 async def 획득에픽(ctx, name='None', server='전체'):
-    await Ranking.획득에픽(bot, ctx, name, server)
+    await Search.획득에픽(bot, ctx, name, server)
 
 @bot.command()
 async def 기린랭킹(ctx):
-    await Ranking.기린랭킹(ctx)
+    await Search.기린랭킹(ctx)
 
 ### 게임 명령어 ###
 @bot.command()
@@ -67,6 +66,10 @@ async def 주식매수(ctx, *input):
 @bot.command()
 async def 주식매도(ctx):
     await Stock.주식매도(bot, ctx)
+
+@bot.command()
+async def 주식랭킹(ctx):
+    await Stock.주식랭킹(ctx)
 
 ### 기타 명령어 ###
 @bot.command()
@@ -93,6 +96,10 @@ async def 상태(ctx, *state):
 @bot.command()
 async def 통계(ctx):
     await Admin.통계(ctx)
+
+@bot.command()
+async def 출석인원(ctx):
+    await Admin.출석확인(ctx)
 
 bot.remove_command('help')
 bot.run(token)
