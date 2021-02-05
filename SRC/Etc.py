@@ -21,10 +21,11 @@ async def 도움말(ctx):
                     value='자신이 보유하고 있는 골드와 주식을 알려드려요.')
     embed.add_field(name="> !주식매수 '아이템이름'", value='해당 아이템을 구매할 수 있어요.')
     embed.add_field(name="> !주식매도", value='보유하고 있는 주식을 매도할 수 있어요.')
+    embed.add_field(name="> !주식랭킹", value='보유금과 평가금을 합친 것을 기준으로한 랭킹을 보여드려요.')
     embed.add_field(name="> !출석", value='매일마다 주식을 구매할 수 있는 골드를 얻을 수 있어요.')
     embed.add_field(name='> !청소', value='시크봇이 말한 것들을 모두 삭제할게요.')
     await ctx.channel.send(embed=embed)
-    await ctx.channel.send('> 명령어들의 더 자세한 사용법은 https://bit.ly/3jaHYcy 에서 확인할 수 있어요!')
+    await ctx.channel.send('> 명령어들의 상세한 사용법은 https://bit.ly/3jaHYcy 에서 확인할 수 있어요!')
 
 async def 청소(bot, ctx):
     await ctx.message.delete()
