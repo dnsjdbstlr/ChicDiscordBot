@@ -1,7 +1,7 @@
 import discord
 import asyncio
 import re
-from SRC import DNFAPI
+from src import dnfAPI
 from datetime import datetime
 
 ### 선택 ###
@@ -228,12 +228,12 @@ def getChrAllItemOptions(chrEquipData, chrAvatarData):
     # 장착한 장비 옵션
     chrEquipItem = chrEquipData[0]
     chrEquipItemIdList = [i['itemId'] for i in chrEquipItem]
-    chrEquipItemInfoList = DNFAPI.getItemsDetail(chrEquipItemIdList)
+    chrEquipItemInfoList = dnfAPI.getItemsDetail(chrEquipItemIdList)
     
     # 장착한 세트 옵션
     chrEquipSetItem = chrEquipData[1]
     chrEquipSetItemIdList = [i['setItemId'] for i in chrEquipSetItem]
-    chrEquipSetItemInfoList = DNFAPI.getSetItemInfos(chrEquipSetItemIdList)
+    chrEquipSetItemInfoList = dnfAPI.getSetItemInfos(chrEquipSetItemIdList)
     chrEquipSetItemActiveSetNo = {}
     for i in chrEquipSetItem:
         chrEquipSetItemActiveSetNo.update( {i['setItemName'] : i['activeSetNo']} )
@@ -340,7 +340,7 @@ def getApplyStatFromBuffEquip(chrBuffEquip):
     return result
 
 def updateAuctionData(name, auctionData):
-    from SRC import Search
+    from src import search
     isCard = True if name in '카드' else False
 
     if isCard:
@@ -359,12 +359,12 @@ def updateAuctionData(name, auctionData):
         # 가격 변동률 계산
         prevPriceAvg, prevPriceDay = -1, ''
         try:
-            keys = list(Search.AUCTION_DATA.data[name].keys())
+            keys = list(search.AUCTION_DATA.data[name].keys())
             if keys[-1] == getToday():
                 key = keys[-2]
             else:
                 key = keys[-1]
-            prevPriceAvg = Search.AUCTION_DATA.data[name][key]['평균가']
+            prevPriceAvg = search.AUCTION_DATA.data[name][key]['평균가']
             prevPriceDay = convertDateToHyphen(str(key))
         except: pass
 
@@ -382,10 +382,10 @@ def updateAuctionData(name, auctionData):
 
     ### 데이터 저장 ###
     try:
-        Search.AUCTION_DATA.data[name].update( {getToday() : data} )
+        search.AUCTION_DATA.data[name].update({getToday() : data})
     except:
-        Search.AUCTION_DATA.data[name] = {getToday() : data}
-    Search.AUCTION_DATA.update()
+        search.AUCTION_DATA.data[name] = {getToday() : data}
+    search.AUCTION_DATA.update()
 
     return data, volatility
 
@@ -479,7 +479,7 @@ def getBuffOptionFromItemDetailInfo(itemDetailInfo):
                           description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
 
     # 스탯
-    statInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
+    statInfo = dnfAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
     embed.add_field(name='> 스탯', value=statInfo, inline=False)
 
     # 버프 스킬 레벨 옵션
@@ -500,7 +500,7 @@ def getBuffOptionFromItemDetailInfo(itemDetailInfo):
 
     # 신화 옵션
     try:
-        mythicInfo = DNFAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'], buff=True)
+        mythicInfo = dnfAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'], buff=True)
         embed.add_field(name='> 신화 전용 옵션', value=mythicInfo)
     except: pass
 
@@ -508,7 +508,7 @@ def getBuffOptionFromItemDetailInfo(itemDetailInfo):
     embed.set_footer(text=itemDetailInfo['itemFlavorText'])
 
     # 아이콘
-    icon = DNFAPI.getItemImageUrl(itemDetailInfo['itemId'])
+    icon = dnfAPI.getItemImageUrl(itemDetailInfo['itemId'])
     embed.set_thumbnail(url=icon)
 
     return embed
@@ -532,11 +532,43 @@ def getBuffOptionFromItemSetOption(setItemInfo):
         except: pass
         value += option['itemBuff']['explain']
         embed.add_field(name='> ' + str(option['optionNo']) + '세트 옵션', value=value)
-    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
+    embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     return embed
 
 def getRecentAuctionPrice(name):
-    from SRC import Search
-    auction = Search.AUCTION_DATA.data[name]
+    from src import search
+    auction = search.AUCTION_DATA.data[name]
     recent = list(auction.keys())[-1]
     return auction[recent]['평균가']
+
+def getDailyReward():
+    """
+    확률  금액      누적
+    1%  : 0         : 1%
+    1%  : 100,000   : 2%
+    4%  : 200,000   : 6%
+    8%  : 300,000   : 14%
+    16% : 400,000   : 30%
+    20% : 500,000   : 50%
+    20% : 600,000   : 70%
+    16% : 700,000   : 86%
+    8%  : 800,000   : 94%
+    4%  : 900,000   : 98%
+    1%  : 1,000,000 : 99%
+    1%  : 2,000,000 : 100%
+    """
+
+    import random
+    seed = int(random.random() * 100)
+    if 0 <= seed < 1:       return 0
+    elif 1 <= seed < 2:     return 100000
+    elif 2 <= seed < 6:     return 200000
+    elif 6 <= seed < 14:    return 300000
+    elif 14 <= seed < 30:   return 400000
+    elif 30 <= seed < 50:   return 500000
+    elif 50 <= seed < 70:   return 600000
+    elif 70 <= seed < 86:   return 700000
+    elif 86 <= seed < 94:   return 800000
+    elif 94 <= seed < 98:   return 900000
+    elif 98 <= seed < 99:   return 1000000
+    else:                   return 2000000

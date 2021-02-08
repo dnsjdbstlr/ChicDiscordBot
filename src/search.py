@@ -1,14 +1,14 @@
 import discord
 import json
 import re
-from SRC import Util, DNFAPI
+from src import util, dnfAPI
 from datetime   import datetime
 
-class itemAuctionData:
+class auction:
     def __init__(self):
         self.data = {}
         try:
-            with open('Data/itemAuctionPrice.json', 'r') as f:
+            with open('data/auction.json', 'r') as f:
                 self.data = json.load(f)
                 print('[알림][아이템 시세를 불러왔습니다.]')
         except:
@@ -16,14 +16,14 @@ class itemAuctionData:
 
     def update(self):
         # 파일로 저장
-        with open('Data/itemAuctionPrice.json', 'w') as f:
+        with open('data/auction.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
 
-class playerEpicRankData:
+class epic:
     def __init__(self):
         self.data = {}
         try:
-            with open('Data/epicRank.json', 'r') as f:
+            with open('data/epicRank.json', 'r') as f:
                 self.data = json.load(f)
                 print('[알림][기린 랭킹을 불러왔습니다.]')
         except:
@@ -37,7 +37,7 @@ class playerEpicRankData:
         self.data = dict(sorted(self.data.items(), key=key, reverse=True)[:15])
 
         # 파일로 저장
-        with open('Data/epicRank.json', 'w') as f:
+        with open('data/epicRank.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
 
     def update(self, month):
@@ -48,8 +48,8 @@ class playerEpicRankData:
                 self.data.clear()
             break
 
-EPIC_RANK_DATA = playerEpicRankData()
-AUCTION_DATA = itemAuctionData()
+EPIC_RANK_DATA = epic()
+AUCTION_DATA = auction()
 async def 등급(ctx):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 오늘의 아이템 등급을 읽어오고있어요...')
@@ -79,7 +79,7 @@ async def 등급(ctx):
         }
     }
 
-    shopItemInfo = [DNFAPI.getShopItemInfo(i) for i in itemIdList]
+    shopItemInfo = [dnfAPI.getShopItemInfo(i) for i in itemIdList]
 
     embed = discord.Embed(title='오늘의 아이템 등급을 알려드릴게요!')
     for i in shopItemInfo:
@@ -114,17 +114,18 @@ async def 캐릭터(bot, ctx, name='None', server='전체'):
         return
 
     try:
-        chrIdList = DNFAPI.getChrIdList(server, name)
-        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+        chrIdList = dnfAPI.getChrIdList(server, name)
+        server, chrId, name = await util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except:
         return False
+    imageUrl = 'https://img-api.neople.co.kr/df/servers/' + dnfAPI.SERVER_ID.get(server) + '/characters/' + chrId
 
-    chrEquipItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
+    chrEquipItemInfo = dnfAPI.getChrEquipItemInfoList(server, chrId)
     chrEquipItemIds  = []
     for i in chrEquipItemInfo['equipment']:
         if i['slotName'] in ['칭호', '보조무기']: continue
         chrEquipItemIds.append(i['itemId'])
-    chrEquipSetInfo = DNFAPI.getChrEquipSetItemInfo(chrEquipItemIds)
+    chrEquipSetInfo = dnfAPI.getChrEquipSetItemInfo(chrEquipItemIds)
 
     ### embed 선언 ###
     embed = discord.Embed(title=name + '님의 캐릭터 정보를 알려드릴게요.')
@@ -159,17 +160,38 @@ async def 캐릭터(bot, ctx, name='None', server='전체'):
         except: pass
 
         embed.add_field(name='> ' + i['slotName'], value=text)
-    embed.set_footer(text=name + '님의 캐릭터 이미지도 챙겨왔어요!')
-    embed.set_image(url='https://img-api.neople.co.kr/df/servers/' + DNFAPI.SERVER_ID[server] + '/characters/' + chrId + '?zoom=1')
-    await ctx.channel.send(embed=embed)
+    #embed.set_thumbnail(url=imageUrl)
+    embed.set_footer(text='❤️이모지를 클릭하면 아바타 정보를 알려드려요.')
+    msg = await ctx.channel.send(embed=embed)
+
+    # 아바타 정보
+    await msg.add_reaction('❤️')
+    try:
+        def check(reaction, user):
+            return str(reaction) == '❤️' and user == ctx.author and reaction.message.id == msg.id
+        reaction, user = await bot.wait_for('reaction_add', check=check)
+    except: pass
+    else:
+        avatar = dnfAPI.getChrAvatarData(server, chrId)
+        embed2 = discord.Embed(title=name + '님의 아바타 정보를 알려드릴게요.')
+        for i in avatar['avatar']:
+            if i['slotName'] == '오라 아바타': continue
+            value = i['itemName'] + '\r\n'
+            if i['clone']['itemName'] is not None:
+                value += i['clone']['itemName']
+            embed2.add_field(name='> ' + i['slotName'], value=value)
+        embed2.set_image(url=imageUrl)
+        embed2.set_footer(text='클론하고 있는 아바타가 있는 경우 해당 아바타도 표시해요.')
+        await msg.edit(embed=embed2)
+        await msg.clear_reactions()
 
 async def 시세(ctx, *input):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
 
-    itemName = Util.mergeString(*input)
-    itemName = DNFAPI.getMostSimilarItemName(itemName)
-    inputAuctionPrice = DNFAPI.getItemAuctionPrice(itemName)
+    itemName = util.mergeString(*input)
+    itemName = dnfAPI.getMostSimilarItemName(itemName)
+    inputAuctionPrice = dnfAPI.getItemAuctionPrice(itemName)
     if not inputAuctionPrice:
         await waiting.delete()
         await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
@@ -206,12 +228,12 @@ async def 시세(ctx, *input):
         prevPriceAvg, prevPriceDay = {}, ''
         try:
             keys = list(AUCTION_DATA.data[itemName].keys())
-            if keys[-1] == Util.getToday():
+            if keys[-1] == util.getToday():
                 key = keys[-2]
             else:
                 key = keys[-1]
             prevPriceAvg = AUCTION_DATA.data[itemName][key]
-            prevPriceDay = Util.convertDateToHyphen(str(key))
+            prevPriceDay = util.convertDateToHyphen(str(key))
         except:
             for k in data.keys():
                 prevPriceAvg.update( {k : {'평균가' : -1}} )
@@ -235,7 +257,7 @@ async def 시세(ctx, *input):
             embed.add_field(name='> 최근 판매량', value=format(data[i]['판매량'], ',') + '개')
             embed.add_field(name='> 가격 변동률', value=volatility)
         embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
-        embed.set_thumbnail(url=DNFAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
+        embed.set_thumbnail(url=dnfAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
 
     # 그 외
     else:
@@ -253,12 +275,12 @@ async def 시세(ctx, *input):
         prevPriceAvg, prevPriceDay = -1, ''
         try:
             keys = list(AUCTION_DATA.data[itemName].keys())
-            if keys[-1] == Util.getToday():
+            if keys[-1] == util.getToday():
                 key = keys[-2]
             else:
                 key = keys[-1]
             prevPriceAvg = AUCTION_DATA.data[itemName][key]['평균가']
-            prevPriceDay = Util.convertDateToHyphen(str(key))
+            prevPriceDay = util.convertDateToHyphen(str(key))
         except: pass
 
         if prevPriceAvg == -1:
@@ -278,20 +300,20 @@ async def 시세(ctx, *input):
         embed.add_field(name='> 최근 판매량', value=format(itemAmountSum, ',') + '개')
         embed.add_field(name='> 가격 변동률', value=volatility)
         embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
-        embed.set_thumbnail(url=DNFAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
+        embed.set_thumbnail(url=dnfAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
 
     ### 데이터 저장 ###
     try:
-        AUCTION_DATA.data[itemName].update( {Util.getToday() : data} )
+        AUCTION_DATA.data[itemName].update({util.getToday() : data})
     except:
-        AUCTION_DATA.data[itemName] = {Util.getToday() : data}
+        AUCTION_DATA.data[itemName] = {util.getToday() : data}
     AUCTION_DATA.update()
 
     await waiting.delete()
     await ctx.channel.send(embed=embed)
 
 async def 장비(bot, ctx, *input):
-    name = Util.mergeString(*input)
+    name = util.mergeString(*input)
 
     if len(name) < 1:
         await ctx.message.delete()
@@ -299,22 +321,22 @@ async def 장비(bot, ctx, *input):
         return
 
     try:
-        itemIdList = DNFAPI.getItemId(name)
-        itemId = await Util.getSelectionFromItemIdList(bot, ctx, itemIdList)
+        itemIdList = dnfAPI.getItemId(name)
+        itemId = await util.getSelectionFromItemIdList(bot, ctx, itemIdList)
         if itemId is False: return
     except: return
 
-    itemDetailInfo = DNFAPI.getItemDetail(itemId)
-    itemImageUrl = DNFAPI.getItemImageUrl(itemId)
+    itemDetailInfo = dnfAPI.getItemDetail(itemId)
+    itemImageUrl = dnfAPI.getItemImageUrl(itemId)
     embed = discord.Embed(title=itemDetailInfo['itemName'],
                           description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
     # 스탯
-    itemStatInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
+    itemStatInfo = dnfAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
     embed.add_field(name='> 스탯', value=itemStatInfo, inline=False)
 
     # 스킬 레벨
     try:
-        itemSkillLvInfo = DNFAPI.getItemSkillLvInfo(itemDetailInfo['itemReinforceSkill'][0]['jobName'],
+        itemSkillLvInfo = dnfAPI.getItemSkillLvInfo(itemDetailInfo['itemReinforceSkill'][0]['jobName'],
                                                     itemDetailInfo['itemReinforceSkill'][0]['levelRange'])
         embed.add_field(name='> 스킬', value=itemSkillLvInfo)
     except: pass
@@ -330,7 +352,7 @@ async def 장비(bot, ctx, *input):
 
     # 신화옵션
     try:
-        itemMythicInfo = DNFAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'])
+        itemMythicInfo = dnfAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'])
         embed.add_field(name='> 신화 전용 옵션', value=itemMythicInfo, inline=False)
     except: pass
 
@@ -349,11 +371,11 @@ async def 장비(bot, ctx, *input):
         reaction, user = await bot.wait_for('reaction_add', check=check)
     except: pass
     else:
-        await msg.edit(embed=Util.getBuffOptionFromItemDetailInfo(itemDetailInfo))
+        await msg.edit(embed=util.getBuffOptionFromItemDetailInfo(itemDetailInfo))
         await msg.clear_reactions()
 
 async def 세트(bot, ctx, *input):
-    name = Util.mergeString(*input)
+    name = util.mergeString(*input)
 
     if len(name) < 1:
         await ctx.message.delete()
@@ -361,12 +383,12 @@ async def 세트(bot, ctx, *input):
         return
 
     try:
-        setItemIdList = DNFAPI.getSetItemIdList(name)
-        setItemId, name = await Util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
+        setItemIdList = dnfAPI.getSetItemIdList(name)
+        setItemId, name = await util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
     except:
         return
 
-    setItemInfo = DNFAPI.getSetItemInfoList(setItemId)
+    setItemInfo = dnfAPI.getSetItemInfoList(setItemId)
     embed = discord.Embed(title=name + '의 정보를 알려드릴게요.')
     for setItem in setItemInfo['setItems']:
         embed.add_field(name='> ' + setItem['itemRarity'] + ' ' + setItem['slotName'], value=setItem['itemName'])
@@ -377,7 +399,7 @@ async def 세트(bot, ctx, *input):
                 value += status['name'] + ' ' + status['value'] + '\r\n'
         except: pass
         embed.add_field(name='> ' + str(option['optionNo']) + '세트 옵션', value=value + option['explain'])
-    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
+    embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     msg = await ctx.channel.send(embed=embed)
 
     ### 버퍼 전용 옵션 ###
@@ -388,7 +410,7 @@ async def 세트(bot, ctx, *input):
         reaction, user = await bot.wait_for('reaction_add', check=check)
     except: pass
     else:
-        await msg.edit(embed=Util.getBuffOptionFromItemSetOption(setItemInfo))
+        await msg.edit(embed=util.getBuffOptionFromItemSetOption(setItemInfo))
         await msg.clear_reactions()
 
 async def 버프력(bot, ctx, name, server='전체'):
@@ -399,30 +421,30 @@ async def 버프력(bot, ctx, name, server='전체'):
 
     # 검색
     try:
-        chrIdList = DNFAPI.getChrIdList(server, name)
-        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+        chrIdList = dnfAPI.getChrIdList(server, name)
+        server, chrId, name = await util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except: return False
 
     ### 계산에 필요한 데이터 불러오기 ###
-    chrStatInfo     = DNFAPI.getChrStatInfo(server, chrId)
-    chrSkillStyle   = DNFAPI.getChrSkillStyle(server, chrId)
-    chrEquipData    = DNFAPI.getChrEquipItemInfoList(server, chrId)
-    chrAvatarData   = DNFAPI.getChrAvatarData(server, chrId)
-    chrBuffEquip    = DNFAPI.getChrBuffEquip(server, chrId)
-    allItemOption   = Util.getChrAllItemOptions(chrEquipData, chrAvatarData)
+    chrStatInfo     = dnfAPI.getChrStatInfo(server, chrId)
+    chrSkillStyle   = dnfAPI.getChrSkillStyle(server, chrId)
+    chrEquipData    = dnfAPI.getChrEquipItemInfoList(server, chrId)
+    chrAvatarData   = dnfAPI.getChrAvatarData(server, chrId)
+    chrBuffEquip    = dnfAPI.getChrBuffEquip(server, chrId)
+    allItemOption   = util.getChrAllItemOptions(chrEquipData, chrAvatarData)
 
-    Util.getApplyStatFromBuffEquip(chrBuffEquip)
+    util.getApplyStatFromBuffEquip(chrBuffEquip)
 
     ### 스킬 정보 불러오기 ###
-    ACTIVE_BUFF2_INFO = DNFAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', '56fca6cff74d828e92301a40cd2148b9') # 1각 액티브
-    ACTIVE_BUFF3_INFO = DNFAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', 'caef38e23a8ae551466f8a8eb039df22') # 진각 액티브
-    PASSIVE_BUFF_INFO = DNFAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', '0dbdeaf846356f8b9380f8fbb8e97377') # 1각 패시브
+    ACTIVE_BUFF2_INFO = dnfAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', '56fca6cff74d828e92301a40cd2148b9') # 1각 액티브
+    ACTIVE_BUFF3_INFO = dnfAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', 'caef38e23a8ae551466f8a8eb039df22') # 진각 액티브
+    PASSIVE_BUFF_INFO = dnfAPI.getSkillInfo('3909d0b188e9c95311399f776e331da5', '0dbdeaf846356f8b9380f8fbb8e97377') # 1각 패시브
 
     ### 캐릭터 스킬 레벨 ###
-    chrApplyStat    = Util.getChrSpecificStat(chrStatInfo, '지능')
-    chr48LvSkillLv  = Util.getChrSkillLv(chrSkillStyle, '0dbdeaf846356f8b9380f8fbb8e97377', False)
-    chr50LvSkillLv  = Util.getChrSkillLv(chrSkillStyle, '56fca6cff74d828e92301a40cd2148b9')
-    chr100LvSkillLv = Util.getChrSkillLv(chrSkillStyle, 'caef38e23a8ae551466f8a8eb039df22')
+    chrApplyStat    = util.getChrSpecificStat(chrStatInfo, '지능')
+    chr48LvSkillLv  = util.getChrSkillLv(chrSkillStyle, '0dbdeaf846356f8b9380f8fbb8e97377', False)
+    chr50LvSkillLv  = util.getChrSkillLv(chrSkillStyle, '56fca6cff74d828e92301a40cd2148b9')
+    chr100LvSkillLv = util.getChrSkillLv(chrSkillStyle, 'caef38e23a8ae551466f8a8eb039df22')
 
     ### 변수 선언 ###
     ACTIVE_BUFF1_SKILL_LV    = 0 # 30레벨 버프 스킬 레벨
@@ -536,19 +558,19 @@ async def 버프력(bot, ctx, name, server='전체'):
     # ACTIVE_BUFF1_INT = int((1 + chrApplyStat / 665) * int(values[4]) * (1 + ACTIVE_BUFF1_SKILL_STAT / 100))
 
     ### 마리오네트로 오르는 스탯 ###
-    ACTIVE_BUFF2_STAT = Util.getSkillValue(ACTIVE_BUFF2_INFO, chr50LvSkillLv + ACTIVE_BUFF2_SKILL_LV + MarionetteLv + 1).get('value2')
+    ACTIVE_BUFF2_STAT = util.getSkillValue(ACTIVE_BUFF2_INFO, chr50LvSkillLv + ACTIVE_BUFF2_SKILL_LV + MarionetteLv + 1).get('value2')
     ACTIVE_BUFF2_STAT += ACTIVE_BUFF2_SKILL_STAT1
     ACTIVE_BUFF2_STAT *= 1 + ACTIVE_BUFF2_SKILL_STAT2 / 100
     ACTIVE_BUFF2_STAT *= 1 + chrApplyStat / 750
     ACTIVE_BUFF2_STAT = int(ACTIVE_BUFF2_STAT)
 
     ### 종막극으로 오르는 스탯 ###
-    ACTIVE_BUFF3_STAT = Util.getSkillValue(ACTIVE_BUFF3_INFO, chr100LvSkillLv + ACTIVE_BUFF3_SKILL_LV).get('value8')
+    ACTIVE_BUFF3_STAT = util.getSkillValue(ACTIVE_BUFF3_INFO, chr100LvSkillLv + ACTIVE_BUFF3_SKILL_LV).get('value8')
     ACTIVE_BUFF3_STAT = ACTIVE_BUFF2_STAT * (ACTIVE_BUFF3_STAT / 100)
     ACTIVE_BUFF3_STAT = int(ACTIVE_BUFF3_STAT)
 
     ### 소악마로 오르는 스탯 ###
-    PASSIVE_BUFF_STAT = Util.getSkillValue(PASSIVE_BUFF_INFO, chr48LvSkillLv + PASSIVE_BUFF_SKILL_LV + smallDevilLv).get('value3')
+    PASSIVE_BUFF_STAT = util.getSkillValue(PASSIVE_BUFF_INFO, chr48LvSkillLv + PASSIVE_BUFF_SKILL_LV + smallDevilLv).get('value3')
 
     ### 총 버프력 ###
     # TOTAL1 = (1 + ((15000 + ACTIVE_BUFF1_STR + ACTIVE_BUFF2_STAT + ACTIVE_BUFF3_STAT + PASSIVE_BUFF_STAT) / 250)) *\
@@ -598,12 +620,12 @@ async def 획득에픽(bot, ctx, name='None', server='전체'):
         return
 
     try:
-        chrIdList = DNFAPI.getChrIdList(server, name)
-        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+        chrIdList = dnfAPI.getChrIdList(server, name)
+        server, chrId, name = await util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except: return False
 
     waiting = await ctx.channel.send('> ' + name + '님의 획득한 에픽을 확인 중이예요...')
-    chrTimeLineData = DNFAPI.getChrTimeLine(server, chrId, '505')
+    chrTimeLineData = dnfAPI.getChrTimeLine(server, chrId, '505')
     await waiting.delete()
 
     if len(chrTimeLineData) == 0:
@@ -615,20 +637,19 @@ async def 획득에픽(bot, ctx, name='None', server='전체'):
     while index < len(chrTimeLineData):
         start = index
         end = min(start + 15, len(chrTimeLineData))
+        index += 15
 
         if start == 0:
             embed = discord.Embed(title=name + '님이 이번 달에 획득한 에픽을 알려드릴게요!',
                                   description='총 ' + str(len(chrTimeLineData)) + '개의 에픽을 획득하셨네요!')
         else:
-            embed = discord.Embed(title=str(start + 1) + ' ~ ' + str(end) + '번째 획득한 에픽들')
+            embed = discord.Embed(title=str(start + 1) + ' ~ ' + str(end) + '번째 획득한 에픽 목록')
 
         for i in chrTimeLineData[start:end]:
             embed.add_field(
                 name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'],
                 value=i['data']['itemName'])
         await ctx.channel.send(embed=embed)
-
-        index += 15
 
     # 데이터 저장
     today = datetime.today()
@@ -646,14 +667,13 @@ async def 기린랭킹(ctx):
     embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
     embed.set_footer(text='모두 원하는 에픽/신화를 얻을 수 있으면 좋겠어요!')
 
-    rank = 1
-    for k in EPIC_RANK_DATA.data.keys():
-        name  = '> ' + str(rank) + '등\r\n> ' + EPIC_RANK_DATA.data[k]['server'] + ' ' + EPIC_RANK_DATA.data[k]['name']
-        value = '에픽 ' + str(EPIC_RANK_DATA.data[k]['score']) + '개 획득!'
+    for index, key in enumerate(EPIC_RANK_DATA.data.keys()):
+        name  = '> ' + str(index + 1) + '등\r\n> ' + EPIC_RANK_DATA.data[key]['server'] + ' ' + EPIC_RANK_DATA.data[key]['name']
+        value = '에픽 ' + str(EPIC_RANK_DATA.data[key]['score']) + '개 획득!'
         embed.add_field(name=name, value=value)
-        rank += 1
+        index += 1
 
-    if rank == 1:
+    if len(EPIC_RANK_DATA.data) == 0:
         embed.add_field(name='> 랭킹에 아무도 없어요!', value='> !획득에픽 <닉네임> 으로 자신의 캐릭터를 랭킹에 추가해보세요!')
     await ctx.message.delete()
     await ctx.channel.send(embed=embed)

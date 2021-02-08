@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from SRC import Search, Stock, Admin, Etc
+from src import search, stock, admin, etc
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
@@ -19,87 +19,87 @@ async def on_message(msg):
     await bot.process_commands(msg)
 
     # 명령어 사용 빈도수 저장
-    Admin.saveCmdStatistics(msg)
+    admin.saveCmdStatistics(msg)
 
 ### 검색 명령어 ###
 @bot.command()
 async def 등급(ctx):
-    await Search.등급(ctx)
+    await search.등급(ctx)
 
 @bot.command()
 async def 캐릭터(ctx, name='None', server='전체'):
-    await Search.캐릭터(bot, ctx, name, server)
+    await search.캐릭터(bot, ctx, name, server)
 
 @bot.command()
 async def 장비(ctx, *input):
-    await Search.장비(bot, ctx, *input)
+    await search.장비(bot, ctx, *input)
 
 @bot.command()
 async def 세트(ctx, *input):
-    await Search.세트(bot, ctx, *input)
+    await search.세트(bot, ctx, *input)
 
 @bot.command()
 async def 시세(ctx, *input):
-    await Search.시세(ctx, *input)
+    await search.시세(ctx, *input)
 
 @bot.command()
 async def 획득에픽(ctx, name='None', server='전체'):
-    await Search.획득에픽(bot, ctx, name, server)
+    await search.획득에픽(bot, ctx, name, server)
 
 @bot.command()
 async def 기린랭킹(ctx):
-    await Search.기린랭킹(ctx)
+    await search.기린랭킹(ctx)
 
 ### 게임 명령어 ###
 @bot.command()
 async def 출석(ctx):
-    await Stock.출석(ctx)
+    await stock.출석(bot, ctx)
 
 @bot.command()
 async def 주식(ctx):
-    await Stock.주식(ctx)
+    await stock.주식(ctx)
 
 @bot.command()
 async def 주식매수(ctx, *input):
-    await Stock.주식매수(bot, ctx, *input)
+    await stock.주식매수(bot, ctx, *input)
 
 @bot.command()
 async def 주식매도(ctx):
-    await Stock.주식매도(bot, ctx)
+    await stock.주식매도(bot, ctx)
 
 @bot.command()
 async def 주식랭킹(ctx):
-    await Stock.주식랭킹(ctx)
+    await stock.주식랭킹(ctx)
 
 ### 기타 명령어 ###
 @bot.command()
 async def 도움말(ctx):
-    await Etc.도움말(ctx)
+    await etc.도움말(ctx)
 
 @bot.command()
 async def 명령어(ctx):
-    await Etc.도움말(ctx)
+    await etc.도움말(ctx)
 
 @bot.command()
 async def 청소(ctx):
-    await Etc.청소(bot, ctx)
+    await etc.청소(bot, ctx)
 
 ### 어드민 명령어 ###
 @bot.command()
 async def 연결(ctx):
-    await Admin.연결(bot, ctx)
+    await admin.연결(bot, ctx)
 
 @bot.command()
 async def 상태(ctx, *state):
-    await Admin.상태(bot, ctx, *state)
+    await admin.상태(bot, ctx, *state)
 
 @bot.command()
 async def 통계(ctx):
-    await Admin.통계(ctx)
+    await admin.통계(ctx)
 
 @bot.command()
 async def 출석확인(ctx):
-    await Admin.출석확인(ctx)
+    await admin.출석확인(ctx)
 
 bot.remove_command('help')
 bot.run(token)

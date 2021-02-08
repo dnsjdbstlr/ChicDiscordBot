@@ -2,7 +2,7 @@ import discord
 
 async def 도움말(ctx):
     await ctx.message.delete()
-    embed = discord.Embed(title='시크봇의 명령어들을 알려드릴게요!', description='최근 업데이트 날짜 : 2021/02/05')
+    embed = discord.Embed(title='시크봇의 명령어들을 알려드릴게요!', description='최근 업데이트 날짜 : 2021/02/08')
     embed.add_field(name='> !등급',
                     value='오늘의 장비 등급을 알려드릴게요.')
     embed.add_field(name="> !캐릭터 '닉네임'",
@@ -24,10 +24,10 @@ async def 도움말(ctx):
     embed.add_field(name="> !주식랭킹", value='보유금과 평가금을 합친 것을 기준으로한 랭킹을 보여드려요.')
     embed.add_field(name="> !출석", value='매일마다 주식을 구매할 수 있는 골드를 얻을 수 있어요.')
     embed.add_field(name='> !청소', value='시크봇이 말한 것들을 모두 삭제할게요.')
+    embed.add_field(name='> 더 자세한 설명은', value='[여기에서 확인해보세요!](https://blog.naver.com/dnsjdbstlr/222158093456)', inline=False)
     await ctx.channel.send(embed=embed)
-    await ctx.channel.send('> 명령어들의 상세한 사용법은 https://bit.ly/3jaHYcy 에서 확인할 수 있어요!')
 
 async def 청소(bot, ctx):
-    await ctx.message.delete()
     def check(m): return m.author == bot.user
     await ctx.channel.purge(check=check)
+    await ctx.message.delete()

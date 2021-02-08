@@ -139,4 +139,4 @@ cython_debug/
 
 # 개인적으로 추가함
 .idea/
-Data/
+data/

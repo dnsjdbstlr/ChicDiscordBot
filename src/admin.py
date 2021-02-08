@@ -1,9 +1,9 @@
 import discord
 import json
-from SRC import Util
+from src import util
 ownerId = 247361856904232960
 
-class userCommandStatistics:
+class commands:
     def __init__(self):
         self.data = {
             '!도움말'   : 0, '!등급'     : 0, '!캐릭터'   : 0,
@@ -14,7 +14,7 @@ class userCommandStatistics:
         }
 
         try:
-            with open('Data/cmdStatistics.json', 'r') as f:
+            with open('data/commands.json', 'r') as f:
                 temp = json.load(f)
                 for k in temp.keys():
                     self.data.update( {k : temp[k]} )
@@ -24,9 +24,9 @@ class userCommandStatistics:
 
     def update(self):
         # 파일로 저장
-        with open('Data/cmdStatistics.json', 'w') as f:
+        with open('data/commands.json', 'w') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
-USER_COMMAND_DATA = userCommandStatistics()
+USER_COMMAND_DATA = commands()
 
 def saveCmdStatistics(msg):
     cmd = msg.content.split(' ')[0]
@@ -36,7 +36,7 @@ def saveCmdStatistics(msg):
 
 async def 상태(bot, ctx, *state):
     if ctx.message.author.id == ownerId:
-        state = Util.mergeString(*state)
+        state = util.mergeString(*state)
         await bot.change_presence(status=discord.Status.online, activity=discord.Game(state))
         await ctx.message.delete()
         await ctx.channel.send("> '" + state + " 하는 중' 으로 상태를 바꿨습니다.")
@@ -57,12 +57,12 @@ async def 통계(ctx):
 async def 출석확인(ctx):
     if ctx.message.author.id == ownerId:
         await ctx.message.delete()
-        from SRC import Stock
+        from src import stock
 
         count = 0
-        for key in Stock.STOCK_DATA.data.keys():
-            stock = Stock.STOCK_DATA.data[key]
-            if stock['daily'] == Util.getToday2():
+        for key in stock.STOCK_DATA.data.keys():
+            stock = stock.STOCK_DATA.data[key]
+            if stock['daily'] == util.getToday2():
                 count += 1
 
-        await ctx.channel.send('> ' + Util.getToday2() + ' : ' + str(count) + '명이 출석체크를 했어요!')
+        await ctx.channel.send('> ' + util.getToday2() + ' : ' + str(count) + '명이 출석체크를 했어요!')
