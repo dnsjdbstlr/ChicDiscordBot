@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from src import search, stock, admin, etc
+from src import search, stock, admin, etc, util
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
@@ -16,7 +16,12 @@ async def on_ready():
 @bot.event
 async def on_message(msg):
     if msg.author.bot: return None
-    await bot.process_commands(msg)
+
+    chs = util.getChicBotCH(msg)
+    if not chs:
+        await bot.process_commands(msg)
+    if chs and msg.channel in chs:
+        await bot.process_commands(msg)
 
     # 명령어 사용 빈도수 저장
     admin.saveCmdStatistics(msg)

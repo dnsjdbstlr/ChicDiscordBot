@@ -572,3 +572,13 @@ def getDailyReward():
     elif 94 <= seed < 98:   return 900000
     elif 98 <= seed < 99:   return 1000000
     else:                   return 2000000
+
+def getChicBotCH(msg):
+    result = []
+    tch = msg.guild.text_channels
+    for ch in tch:
+        try:
+            if '#시크봇' in ch.topic:
+                result.append(ch)
+        except: pass
+    return result
