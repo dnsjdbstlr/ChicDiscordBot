@@ -25,7 +25,7 @@ async def 도움말(ctx):
     embed.add_field(name="> !출석", value='매일마다 주식을 구매할 수 있는 골드를 얻을 수 있어요.')
     embed.add_field(name='> !청소', value='시크봇이 말한 것들을 모두 삭제할게요.', inline=False)
     embed.add_field(name='> 더 자세한 설명은', value='[여기에서 확인해보세요!](https://blog.naver.com/dnsjdbstlr/222158093456)')
-    embed.add_field(name='> 1윤시크 :: 커뮤니티', value='[여러분과 소통하고싶어요!](https://discord.com/invite/k8YsUeP7Qq)')
+    embed.add_field(name='> 1윤시크 :: 커뮤니티', value='[여러분과 소통하고싶어요!](https://discord.gg/ZUbjgY4jg2)')
     await ctx.channel.send(embed=embed)
 
 async def 청소(bot, ctx):

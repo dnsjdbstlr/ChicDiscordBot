@@ -15,17 +15,13 @@ async def getSelectionFromChrIdList(bot, ctx, chrIdList):
             value = 'Lv. ' + chrIdList[i]['level'] + ' ' + chrIdList[i]['characterName'] + '\r\n' + \
                     chrIdList[i]['server'] + ' | ' + chrIdList[i]['jobGrowName']
             embed.add_field(name='> ' + str(i + 1), value=value)
-        embed.set_footer(text='명령어 뒤에 서버이름을 적으면 해당 서버만 검색해요!')
+        embed.set_footer(text='가장 뒤에 서버 이름을 적으면 해당 서버만 검색해요!')
         selection = await ctx.channel.send(embed=embed)
 
         ### 반응을 대기함 ###
         try:
             def check(m):
-                if ctx.channel.id == m.channel.id and ctx.message.author == m.author:
-                    if m.content == '':
-                        return False
-                    else:
-                        return True
+                return ctx.channel.id == m.channel.id and ctx.message.author == m.author
             result = await bot.wait_for('message', check=check, timeout=15)
 
         ### 시간 종료 ###
@@ -70,11 +66,7 @@ async def getSelectionFromItemIdList(bot, ctx, itemIdList):
 
         try:
             def check(m):
-                if ctx.channel.id == m.channel.id and ctx.message.author == m.author:
-                    if m.content == '':
-                        return False
-                    else:
-                        return True
+                return ctx.channel.id == m.channel.id and ctx.message.author == m.author
             result = await bot.wait_for('message', check=check, timeout=15)
 
         except asyncio.TimeoutError:
@@ -108,11 +100,7 @@ async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
 
         try:
             def check(m):
-                if ctx.channel.id == m.channel.id and ctx.message.author == m.author:
-                    if m.content == '':
-                        return False
-                    else:
-                        return True
+                return ctx.channel.id == m.channel.id and ctx.message.author == m.author
             result = await bot.wait_for('message', check=check, timeout=15)
         except asyncio.TimeoutError:
             await selection.delete()

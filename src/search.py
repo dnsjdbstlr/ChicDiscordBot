@@ -160,7 +160,6 @@ async def 캐릭터(bot, ctx, name='None', server='전체'):
         except: pass
 
         embed.add_field(name='> ' + i['slotName'], value=text)
-    #embed.set_thumbnail(url=imageUrl)
     embed.set_footer(text='❤️이모지를 클릭하면 아바타 정보를 알려드려요.')
     msg = await ctx.channel.send(embed=embed)
 
@@ -664,7 +663,7 @@ async def 획득에픽(bot, ctx, name='None', server='전체'):
 async def 기린랭킹(ctx):
     today = datetime.today()
     EPIC_RANK_DATA.update(today.month)
-    embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='랭킹은 매달 초기화되며 15등까지만 보여드려요.')
+    embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='기린랭킹은 매달 초기화되며 15등까지만 보여드려요.')
     embed.set_footer(text='모두 원하는 에픽/신화를 얻을 수 있으면 좋겠어요!')
 
     for index, key in enumerate(EPIC_RANK_DATA.data.keys()):
