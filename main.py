@@ -17,14 +17,14 @@ async def on_ready():
 async def on_message(msg):
     if msg.author.bot: return None
 
+    # 명령 로그
+    admin.log(msg)
+
     chs = util.getChicBotCH(msg)
     if not chs:
         await bot.process_commands(msg)
     if chs and msg.channel in chs:
         await bot.process_commands(msg)
-
-    # 명령어 사용 빈도수 저장
-    admin.saveCmdStatistics(msg)
 
 ### 검색 명령어 ###
 @bot.command()

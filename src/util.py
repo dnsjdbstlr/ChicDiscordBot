@@ -3,6 +3,7 @@ import asyncio
 import re
 from src import dnfAPI
 from datetime import datetime
+from database import connection
 
 ### 선택 ###
 async def getSelectionFromChrIdList(bot, ctx, chrIdList):
@@ -327,55 +328,48 @@ def getApplyStatFromBuffEquip(chrBuffEquip):
 
     return result
 
-def updateAuctionData(name, auctionData):
-    from src import search
-    isCard = True if name in '카드' else False
+def updateAuctionData(name, auction, upgrade=-1):
+    if upgrade != -1:
+        temp = []
+        for i in auction:
+            if i['upgrade'] == upgrade:
+                temp.append(i)
+        auction = temp
+        name += ' +' + str(upgrade)
 
-    if isCard:
-        pass
-    else:
-        itemPriceSum  = 0  # 총 가격
-        itemAmountSum = 0  # 총 갯수
-        priceAverage  = 0  # 평균 가격
-
-        for i in auctionData:
-            itemPriceSum  += i['price']
-            itemAmountSum += i['count']
-        priceAverage = itemPriceSum // itemAmountSum
-        data = {'평균가': priceAverage, '판매량': itemAmountSum}
-
-        # 가격 변동률 계산
-        prevPriceAvg, prevPriceDay = -1, ''
-        try:
-            keys = list(search.AUCTION_DATA.data[name].keys())
-            if keys[-1] == getToday():
-                key = keys[-2]
-            else:
-                key = keys[-1]
-            prevPriceAvg = search.AUCTION_DATA.data[name][key]['평균가']
-            prevPriceDay = convertDateToHyphen(str(key))
-        except: pass
-
-        if prevPriceAvg == -1:
-            volatility = '데이터 없음'
-        else:
-            volatility = ((priceAverage / prevPriceAvg) - 1) * 100
-            if volatility > 0:
-                volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
-            elif volatility == 0:
-                volatility = '- 0.00%'
-            else:
-                volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
-            volatility += ' ' + prevPriceDay
-
-    ### 데이터 저장 ###
+    p, c = 0, 0
+    for i in auction:
+        p += i['price']
+        c += i['count']
+    price = {'평균가': p // c,
+             '판매량': c,
+             '최근가': -1}
     try:
-        search.AUCTION_DATA.data[name].update({getToday() : data})
-    except:
-        search.AUCTION_DATA.data[name] = {getToday() : data}
-    search.AUCTION_DATA.update()
+        conn, cur = connection.getConnection()
 
-    return data, volatility
+        # 데이터 저장
+        sql = 'INSERT INTO auction (date, name, price) values (%s, %s, %s)'
+        date = datetime.now().strftime('%Y-%m-%d')
+        cur.execute(sql, (date, name, price['평균가']))
+        conn.commit()
+    except Exception as e:
+        # 데이터 최신화
+        sql = 'UPDATE auction SET price=%s WHERE date=%s and name=%s'
+        cur.execute(sql, (price['평균가'], date, name))
+        conn.commit()
+    finally:
+        try:
+            # 최근 가격 불러오기
+            sql = 'SELECT * FROM auction WHERE name=%s'
+            cur.execute(sql, name)
+            rs = cur.fetchall()
+            prev = {'price': rs[-2]['price'],
+                    'date': rs[-2]['date']}
+        except:
+            prev = {'price': -1,
+                    'date': -1}
+        conn.close()
+    return prev, price
 
 ### 편리 ###
 def getToday():
@@ -523,12 +517,6 @@ def getBuffOptionFromItemSetOption(setItemInfo):
     embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     return embed
 
-def getRecentAuctionPrice(name):
-    from src import search
-    auction = search.AUCTION_DATA.data[name]
-    recent = list(auction.keys())[-1]
-    return auction[recent]['평균가']
-
 def getDailyReward():
     """
     확률  금액      누적
@@ -570,3 +558,15 @@ def getChicBotCH(msg):
                 result.append(ch)
         except: pass
     return result
+
+def getVolatility(prev, now):
+    if prev['price'] == -1:
+        return '데이터 없음'
+    volatility = ((now / prev['price']) - 1) * 100
+    if volatility > 0:
+        volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
+    elif volatility == 0:
+        volatility = '- 0.00%'
+    else:
+        volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
+    return volatility + ' (' + prev['date'].strftime('%Y-%m-%d') + ')'

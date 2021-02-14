@@ -1,23 +1,24 @@
-import discord
-import json
 import re
+import json
+import discord
 from src import util, dnfAPI
-from datetime   import datetime
+from datetime import datetime
+from database import connection
 
-class auction:
-    def __init__(self):
-        self.data = {}
-        try:
-            with open('data/auction.json', 'r') as f:
-                self.data = json.load(f)
-                print('[알림][아이템 시세를 불러왔습니다.]')
-        except:
-            print('[알림][아이템 시세 데이터가 없습니다.]')
-
-    def update(self):
-        # 파일로 저장
-        with open('data/auction.json', 'w') as f:
-            json.dump(self.data, f, indent=4, ensure_ascii=False)
+# class auction:
+#     def __init__(self):
+#         self.data = {}
+#         try:
+#             with open('data/auction.json', 'r') as f:
+#                 self.data = json.load(f)
+#                 print('[알림][아이템 시세를 불러왔습니다.]')
+#         except:
+#             print('[알림][아이템 시세 데이터가 없습니다.]')
+#
+#     def update(self):
+#         # 파일로 저장
+#         with open('data/auction.json', 'w') as f:
+#             json.dump(self.data, f, indent=4, ensure_ascii=False)
 
 class epic:
     def __init__(self):
@@ -49,7 +50,7 @@ class epic:
             break
 
 EPIC_RANK_DATA = epic()
-AUCTION_DATA = auction()
+#AUCTION_DATA = auction()
 async def 등급(ctx):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 오늘의 아이템 등급을 읽어오고있어요...')
@@ -188,126 +189,35 @@ async def 시세(ctx, *input):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
 
-    itemName = util.mergeString(*input)
-    itemName = dnfAPI.getMostSimilarItemName(itemName)
-    inputAuctionPrice = dnfAPI.getItemAuctionPrice(itemName)
-    if not inputAuctionPrice:
+    name = util.mergeString(*input)
+    name = dnfAPI.getMostSimilarItemName(name)
+    auction = dnfAPI.getItemAuctionPrice(name)
+    if not auction:
         await waiting.delete()
         await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
         return
 
-    # 카드일 경우
-    if '카드' in itemName:
-        data, priceAndAmountSum = {}, {}
-        itemPriceSum, itemAmountSum = {}, {}
+    if '카드' in name:
+        upgrades = [i['upgrade'] for i in auction]
+        upgrades = list(set(upgrades))
+        upgrades.sort()
 
-        ### 가격합과 판매량을 계산 ###
-        for i in inputAuctionPrice:
-            prevPriceSum, prevAmountSum = 0, 0
-            try:
-                prevPriceSum = itemPriceSum[i['upgrade']]
-                prevAmountSum = itemAmountSum[i['upgrade']]
-            except: pass
-            itemPriceSum.update( {i['upgrade'] : prevPriceSum + i['price']} )
-            itemAmountSum.update( {i['upgrade'] : prevAmountSum + i['count']} )
-            priceAndAmountSum.update( { i['upgrade'] :
-                                           {'가격합' : itemPriceSum[i['upgrade']],
-                                            '판매량' : itemAmountSum[i['upgrade']]}
-                                       } )
-        priceAndAmountSum = dict(sorted(priceAndAmountSum.items(), key=lambda x: x[0]))
-
-        ### 계산한 가격합과 판매량으로 평균가 계산 ###
-        for i in priceAndAmountSum.keys():
-            data.update( {str(i) :
-                              {'평균가' : priceAndAmountSum[i]['가격합'] // priceAndAmountSum[i]['판매량'],
-                               '판매량' : priceAndAmountSum[i]['판매량']
-                               }})
-
-        ### 최근 평균가 불러오기 ###
-        prevPriceAvg, prevPriceDay = {}, ''
-        try:
-            keys = list(AUCTION_DATA.data[itemName].keys())
-            if keys[-1] == util.getToday():
-                key = keys[-2]
-            else:
-                key = keys[-1]
-            prevPriceAvg = AUCTION_DATA.data[itemName][key]
-            prevPriceDay = util.convertDateToHyphen(str(key))
-        except:
-            for k in data.keys():
-                prevPriceAvg.update( {k : {'평균가' : -1}} )
-
-        ### 출력 ###
-        embed = discord.Embed(title="'" + itemName + "' 시세를 알려드릴게요")
-        for i in data.keys():
-            if prevPriceAvg[i]['평균가'] == -1:
-                volatility = '데이터 없음'
-            else:
-                volatility = (data[i]['평균가'] / prevPriceAvg[i]['평균가'] - 1) * 100
-                volatility = float(format(volatility, '.2f'))
-                if volatility > 0:
-                    volatility = '▲ ' + str(volatility) + '%'
-                elif volatility == 0:
-                    volatility = '- 0.00%'
-                else:
-                    volatility = '▼ ' + str(volatility) + '%'
-                volatility += ' ' + prevPriceDay
-            embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(data[i]['평균가'], ',') + '골드')
-            embed.add_field(name='> 최근 판매량', value=format(data[i]['판매량'], ',') + '개')
-            embed.add_field(name='> 가격 변동률', value=volatility)
-        embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
-        embed.set_thumbnail(url=dnfAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
-
-    # 그 외
+        embed = discord.Embed(title="'" + name + "' 시세를 알려드릴게요")
+        for i in upgrades:
+            prev, price = util.updateAuctionData(name, auction, upgrade=i)
+            embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(price['평균가'], ',') + '골드')
+            embed.add_field(name='> 최근 판매량',               value=format(price['판매량'], ',') + '개')
+            embed.add_field(name='> 가격 변동률',               value=util.getVolatility(prev, price['평균가']))
+        embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
+        embed.set_thumbnail(url=dnfAPI.getItemImageUrl(auction[0]['itemId']))
     else:
-        itemPriceSum  = 0  # 총 가격
-        itemAmountSum = 0  # 총 갯수
-        priceAverage  = 0  # 평균 가격
-
-        for i in inputAuctionPrice:
-            itemPriceSum  += i['price']
-            itemAmountSum += i['count']
-        priceAverage = itemPriceSum // itemAmountSum
-        data = {'평균가': priceAverage, '판매량': itemAmountSum}
-
-        # 가격 변동률 계산
-        prevPriceAvg, prevPriceDay = -1, ''
-        try:
-            keys = list(AUCTION_DATA.data[itemName].keys())
-            if keys[-1] == util.getToday():
-                key = keys[-2]
-            else:
-                key = keys[-1]
-            prevPriceAvg = AUCTION_DATA.data[itemName][key]['평균가']
-            prevPriceDay = util.convertDateToHyphen(str(key))
-        except: pass
-
-        if prevPriceAvg == -1:
-            volatility = '데이터 없음'
-        else:
-            volatility = ((priceAverage / prevPriceAvg) - 1) * 100
-            if volatility > 0:
-                volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
-            elif volatility == 0:
-                volatility = '- 0.00%'
-            else:
-                volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
-            volatility += ' ' + prevPriceDay
-
-        embed = discord.Embed(title="'" + itemName + "' 시세를 알려드릴게요")
-        embed.add_field(name='> 평균 가격', value=format(priceAverage, ',') + '골드')
-        embed.add_field(name='> 최근 판매량', value=format(itemAmountSum, ',') + '개')
-        embed.add_field(name='> 가격 변동률', value=volatility)
-        embed.set_footer(text=inputAuctionPrice[-1]['soldDate'] + '부터 ' + inputAuctionPrice[0]['soldDate'] + '까지 집계된 자료예요.')
-        embed.set_thumbnail(url=dnfAPI.getItemImageUrl(inputAuctionPrice[0]['itemId']))
-
-    ### 데이터 저장 ###
-    try:
-        AUCTION_DATA.data[itemName].update({util.getToday() : data})
-    except:
-        AUCTION_DATA.data[itemName] = {util.getToday() : data}
-    AUCTION_DATA.update()
-
+        prev, price = util.updateAuctionData(name, auction)
+        embed = discord.Embed(title="'" + name + "' 시세를 알려드릴게요")
+        embed.add_field(name='> 평균 가격',   value=format(price['평균가'], ',') + '골드')
+        embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
+        embed.add_field(name='> 가격 변동률', value=util.getVolatility(prev, price['평균가']))
+        embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
+        embed.set_thumbnail(url=dnfAPI.getItemImageUrl(auction[0]['itemId']))
     await waiting.delete()
     await ctx.channel.send(embed=embed)
 
@@ -612,8 +522,8 @@ async def 버프력(bot, ctx, name, server='전체'):
     embed.set_footer(text='실제 버프 수치와 결과값이 다를 수 있어요!')
     await ctx.channel.send(embed=embed)
 
-async def 획득에픽(bot, ctx, name='None', server='전체'):
-    if name == 'None':
+async def 획득에픽(bot, ctx, name, server='전체'):
+    if ctx.message.content.split(' ')[-1] == '!획득에픽':
         await ctx.message.delete()
         await ctx.channel.send('> !획득에픽 <닉네임> 의 형태로 적어야해요!')
         return
@@ -623,56 +533,86 @@ async def 획득에픽(bot, ctx, name='None', server='전체'):
         server, chrId, name = await util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except: return False
 
-    waiting = await ctx.channel.send('> ' + name + '님의 획득한 에픽을 확인 중이예요...')
-    chrTimeLineData = dnfAPI.getChrTimeLine(server, chrId, '505')
+    waiting = await ctx.channel.send('> ' + name + '님이 획득한 에픽을 확인 중이예요...')
+    timeline = dnfAPI.getChrTimeLine(server, chrId, '505')
     await waiting.delete()
 
-    if len(chrTimeLineData) == 0:
+    if len(timeline) == 0:
         await ctx.channel.send('> ' + name + '님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
         return
 
-    ### 결과 출력 ###
+    # 에픽을 가장 많이 획득한 채널
+    chs = ['ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'] for i in timeline]
+    count = {}
+    for i in chs:
+        try:    count[i] += 1
+        except: count[i] = 1
+    bestCH = sorted(count.items(), key=lambda item: item[1], reverse=True)[0]
+
+    # 저장, 랭킹 순위
+    try:
+        conn, cur = connection.getConnection()
+        sql = 'INSERT INTO epic (date, server, name, count, channel) values (%s, %s, %s, %s, %s)'
+        date = datetime.now().strftime('%Y-%m-%d')
+        cur.execute(sql, (date, server, name, len(timeline), bestCH[0]))
+        conn.commit()
+    except Exception as e:
+        sql = 'UPDATE epic SET count=%s, channel=%s WHERE date=%s and server=%s and name=%s'
+        cur.execute(sql, (len(timeline), bestCH[0], date, server, name))
+        conn.commit()
+    finally:
+
+        sql = 'SELECT * FROM epic WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
+        cur.execute(sql)
+        rank = cur.fetchall()
+        rank = list(sorted(rank, key=lambda x: x['count'], reverse=True))
+
+        myRank = -1
+        for index, i in enumerate(rank):
+            if (i['server'], i['name']) == (server, name):
+                myRank = index + 1
+                break
+        conn.close()
+
     index = 0
-    while index < len(chrTimeLineData):
+    while index < len(timeline):
         start = index
-        end = min(start + 15, len(chrTimeLineData))
+        end   = min(start + 15, len(timeline))
         index += 15
 
         if start == 0:
-            embed = discord.Embed(title=name + '님이 이번 달에 획득한 에픽을 알려드릴게요!',
-                                  description='총 ' + str(len(chrTimeLineData)) + '개의 에픽을 획득하셨네요!')
+            embed = discord.Embed(title=name + '님은 이번 달에 ' + str(len(timeline)) + '개의 에픽을 획득했어요.',
+                                  description='`' + bestCH[0] + '` 에서 에픽을 가장 많이 획득했어요!')
+            embed.set_footer(text='기린랭킹 ' + str(myRank) + '등이예요!')
         else:
             embed = discord.Embed(title=str(start + 1) + ' ~ ' + str(end) + '번째 획득한 에픽 목록')
 
-        for i in chrTimeLineData[start:end]:
-            embed.add_field(
-                name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'],
-                value=i['data']['itemName'])
+        for i in timeline[start:end]:
+            embed.add_field(name='> ' + i['date'][:10] + '\r\n> ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'],
+                            value=i['data']['itemName'])
         await ctx.channel.send(embed=embed)
 
-    # 데이터 저장
-    today = datetime.today()
-    EPIC_RANK_DATA.add(chrId, {
-        'year'  : today.year,
-        'month' : today.month,
-        'server': server,
-        'name'  : name,
-        'score' : len(chrTimeLineData)
-    })
-
 async def 기린랭킹(ctx):
-    today = datetime.today()
-    EPIC_RANK_DATA.update(today.month)
-    embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!', description='기린랭킹은 매달 초기화되며 15등까지만 보여드려요.')
-    embed.set_footer(text='모두 원하는 에픽/신화를 얻을 수 있으면 좋겠어요!')
+    try:
+        conn, cur = connection.getConnection()
+        sql = 'SELECT * FROM epic WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
+        cur.execute(sql)
+        rank = cur.fetchall()
+        rank = list(sorted(rank, key=lambda x: x['count'], reverse=True))[:15]
 
-    for index, key in enumerate(EPIC_RANK_DATA.data.keys()):
-        name  = '> ' + str(index + 1) + '등\r\n> ' + EPIC_RANK_DATA.data[key]['server'] + ' ' + EPIC_RANK_DATA.data[key]['name']
-        value = '에픽 ' + str(EPIC_RANK_DATA.data[key]['score']) + '개 획득!'
-        embed.add_field(name=name, value=value)
-        index += 1
-
-    if len(EPIC_RANK_DATA.data) == 0:
-        embed.add_field(name='> 랭킹에 아무도 없어요!', value='> !획득에픽 <닉네임> 으로 자신의 캐릭터를 랭킹에 추가해보세요!')
-    await ctx.message.delete()
-    await ctx.channel.send(embed=embed)
+        today = datetime.today()
+        embed = discord.Embed(title=str(today.year) + '년 ' + str(today.month) + '월 기린 랭킹을 알려드릴게요!',
+                              description='기린랭킹은 매달 초기화되며 15등까지만 보여드려요.')
+        for index, r in enumerate(rank):
+            embed.add_field(name='> ' + str(index + 1) + '등\r\n> ' + r['server'] + ' ' + r['name'],
+                            value='`' + r['channel'] + '`\r\n에픽 ' + str(r['count']) + '개 획득!')
+        embed.set_footer(text='기린들이 에픽을 많이 먹은 채널도 알려드릴게요.')
+        await ctx.message.delete()
+        await ctx.channel.send(embed=embed)
+    except Exception as e:
+        print(e)
+    finally:
+        conn.close()
+        
+    # TODO
+    # 기린랭킹에 아무도 없을 경우

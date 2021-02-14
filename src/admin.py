@@ -1,38 +1,26 @@
-import discord
 import json
+import discord
 from src import util
+from datetime import datetime
+from database import connection
 ownerId = 247361856904232960
 
-class commands:
-    def __init__(self):
-        self.data = {
-            '!도움말'   : 0, '!등급'     : 0, '!캐릭터'   : 0,
-            '!장비'     : 0, '!세트'     : 0, '!시세'     : 0,
-            '!획득에픽' : 0, '!기린랭킹' : 0, '!주식'     : 0,
-            '!주식매수' : 0, '!주식매도' : 0, '!주식랭킹' : 0,
-            '!출석'     : 0, '!청소'     : 0
-        }
+cmds = ['!등급', '!캐릭터', '!장비', '!세트', '!시세',
+        '!획득에픽', '!기린랭킹',
+        '!주식', '!주식매수', '!주식매도', '!주식랭킹', '!출석',
+        '!청소']
 
-        try:
-            with open('data/commands.json', 'r') as f:
-                temp = json.load(f)
-                for k in temp.keys():
-                    self.data.update( {k : temp[k]} )
-                print('[알림][명령어 통계를 불러왔습니다.]')
-        except:
-            print('[알림][명령어 통계 데이터가 없습니다.]')
-
-    def update(self):
-        # 파일로 저장
-        with open('data/commands.json', 'w') as f:
-            json.dump(self.data, f, indent=4, ensure_ascii=False)
-USER_COMMAND_DATA = commands()
-
-def saveCmdStatistics(msg):
+def log(msg):
     cmd = msg.content.split(' ')[0]
-    if cmd in USER_COMMAND_DATA.data.keys():
-        USER_COMMAND_DATA.data[cmd] += 1
-        USER_COMMAND_DATA.update()
+    if cmd in cmds:
+        try:
+            conn, cur = connection.getConnection()
+            sql = 'INSERT INTO log (did, gid, command, time) values (%s, %s, %s, %s)'
+            date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cur.execute(sql, (msg.author.id, msg.guild.id, msg.content, date))
+            conn.commit()
+        finally:
+            conn.close()
 
 async def 상태(bot, ctx, *state):
     if ctx.message.author.id == ownerId:
@@ -49,20 +37,19 @@ async def 연결(bot, ctx):
 async def 통계(ctx):
     if ctx.message.author.id == ownerId:
         await ctx.message.delete()
-        embed = discord.Embed(title='유저들이 사용한 각 명령어의 사용 횟수를 알려드릴게요.')
-        for k in USER_COMMAND_DATA.data.keys():
-            embed.add_field(name='> ' + k, value=str(USER_COMMAND_DATA.data[k]) + '번')
-        await ctx.channel.send(embed=embed)
+        wait = await ctx.channel.send('> 통계 데이터를 불러오고있어요...')
 
-async def 출석확인(ctx):
-    if ctx.message.author.id == ownerId:
-        await ctx.message.delete()
-        from src import stock
-
-        count = 0
-        for key in stock.STOCK_DATA.data.keys():
-            stock = stock.STOCK_DATA.data[key]
-            if stock['daily'] == util.getToday2():
-                count += 1
-
-        await ctx.channel.send('> ' + util.getToday2() + ' : ' + str(count) + '명이 출석체크를 했어요!')
+        try:
+            conn, cur = connection.getConnection()
+            sql = 'SELECT command FROM log'
+            cur.execute(sql)
+            rs = cur.fetchall()
+            
+            statistics = [i['command'].split(' ')[0] for i in rs]
+            embed = discord.Embed(title='유저들이 사용한 각 명령어의 사용 횟수를 알려드릴게요.')
+            for k in cmds:
+                embed.add_field(name='> ' + k, value=str(statistics.count(k)) + '회')
+            await wait.delete()
+            await ctx.channel.send(embed=embed)
+        finally:
+            conn.close()
