@@ -3,6 +3,7 @@ import discord
 from src import util
 from datetime import datetime
 from database import connection
+
 ownerId = 247361856904232960
 
 cmds = ['!등급', '!캐릭터', '!장비', '!세트', '!시세',
@@ -14,13 +15,13 @@ def log(msg):
     cmd = msg.content.split(' ')[0]
     if cmd in cmds:
         try:
-            conn, cur = connection.getConnection()
+            conn, cur = connection.db.getConnection()
             sql = 'INSERT INTO log (did, gid, command, time) values (%s, %s, %s, %s)'
             date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cur.execute(sql, (msg.author.id, msg.guild.id, msg.content, date))
             conn.commit()
-        finally:
-            conn.close()
+        except Exception as e:
+            print(e)
 
 async def 상태(bot, ctx, *state):
     if ctx.message.author.id == ownerId:
@@ -44,7 +45,7 @@ async def 통계(ctx):
             sql = 'SELECT command FROM log'
             cur.execute(sql)
             rs = cur.fetchall()
-            
+
             statistics = [i['command'].split(' ')[0] for i in rs]
             embed = discord.Embed(title='유저들이 사용한 각 명령어의 사용 횟수를 알려드릴게요.')
             for k in cmds:

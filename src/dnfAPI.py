@@ -59,6 +59,9 @@ def getItemId(name, exactly=False):
 def getItemImageUrl(itemId):
     return 'https://img-api.neople.co.kr/df/items/' + itemId
 
+def getChrImageUrl(server, chrId):
+    return 'https://img-api.neople.co.kr/df/servers/' + SERVER_ID.get(server) + '/characters/' + chrId
+
 def getMostSimilarItemName(name):
     name = parse.quote(name)
     url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&q=trade:true&limit=1&wordType=front&apikey=' + apikey

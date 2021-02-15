@@ -345,7 +345,7 @@ def updateAuctionData(name, auction, upgrade=-1):
              '판매량': c,
              '최근가': -1}
     try:
-        conn, cur = connection.getConnection()
+        conn, cur = connection.db.getConnection()
 
         # 데이터 저장
         sql = 'INSERT INTO auction (date, name, price) values (%s, %s, %s)'
@@ -357,18 +357,17 @@ def updateAuctionData(name, auction, upgrade=-1):
         sql = 'UPDATE auction SET price=%s WHERE date=%s and name=%s'
         cur.execute(sql, (price['평균가'], date, name))
         conn.commit()
-    finally:
-        try:
-            # 최근 가격 불러오기
-            sql = 'SELECT * FROM auction WHERE name=%s'
-            cur.execute(sql, name)
-            rs = cur.fetchall()
-            prev = {'price': rs[-2]['price'],
-                    'date': rs[-2]['date']}
-        except:
-            prev = {'price': -1,
-                    'date': -1}
-        conn.close()
+
+    try:
+        # 최근 가격 불러오기
+        sql = 'SELECT * FROM auction WHERE name=%s'
+        cur.execute(sql, name)
+        rs = cur.fetchall()
+        prev = {'price': rs[-2]['price'],
+                'date': rs[-2]['date']}
+    except:
+        prev = {'price': -1,
+                'date': -1}
     return prev, price
 
 ### 편리 ###
@@ -456,67 +455,6 @@ def getSkillLevelingInfo(reinforceSkill):
                     result[jobName].append(text)
     return result
 
-def getBuffOptionFromItemDetailInfo(itemDetailInfo):
-    embed = discord.Embed(title=itemDetailInfo['itemName'],
-                          description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
-
-    # 스탯
-    statInfo = dnfAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
-    embed.add_field(name='> 스탯', value=statInfo, inline=False)
-
-    # 버프 스킬 레벨 옵션
-    buffLvInfo = getSkillLevelingInfo(itemDetailInfo['itemBuff']['reinforceSkill'])
-    buffLvInfoValue = ''
-    for key in buffLvInfo.keys():
-        if key != '모든 직업':
-            buffLvInfoValue += key + '\r\n'
-        for lv in buffLvInfo[key]:
-            if key == '모든 직업':
-                buffLvInfoValue += key + ' ' + lv + '\r\n'
-            else:
-                buffLvInfoValue += lv + '\r\n'
-
-    # 버프 옵션
-    buffInfo = itemDetailInfo['itemBuff']['explain']
-    embed.add_field(name='> 버퍼 전용 옵션', value=buffLvInfoValue + buffInfo, inline=False)
-
-    # 신화 옵션
-    try:
-        mythicInfo = dnfAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'], buff=True)
-        embed.add_field(name='> 신화 전용 옵션', value=mythicInfo)
-    except: pass
-
-    # 플레이버 텍스트
-    embed.set_footer(text=itemDetailInfo['itemFlavorText'])
-
-    # 아이콘
-    icon = dnfAPI.getItemImageUrl(itemDetailInfo['itemId'])
-    embed.set_thumbnail(url=icon)
-
-    return embed
-
-def getBuffOptionFromItemSetOption(setItemInfo):
-    embed = discord.Embed(title=setItemInfo['setItemName'] + '의 정보를 알려드릴게요.')
-    for setItem in setItemInfo['setItems']:
-        embed.add_field(name='> ' + setItem['itemRarity'] + ' ' + setItem['slotName'], value=setItem['itemName'])
-    for option in setItemInfo['setItemOption']:
-        value = ''
-        try:
-            skill = getSkillLevelingInfo(option['itemBuff']['reinforceSkill'])
-            for key in skill.keys():
-                if key != '모든 직업':
-                    value += key + '\r\n'
-                for lv in skill[key]:
-                    if key == '모든 직업':
-                        value += key + ' ' + lv + '\r\n'
-                    else:
-                        value += lv + '\r\n'
-        except: pass
-        value += option['itemBuff']['explain']
-        embed.add_field(name='> ' + str(option['optionNo']) + '세트 옵션', value=value)
-    embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
-    return embed
-
 def getDailyReward():
     """
     확률  금액      누적
@@ -570,3 +508,16 @@ def getVolatility(prev, now):
     else:
         volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
     return volatility + ' (' + prev['date'].strftime('%Y-%m-%d') + ')'
+
+def getVolatility2(prev, now):
+    if prev == -1:
+        return '데이터 없음'
+    volatility = ((now / prev) - 1) * 100
+    if volatility > 0:
+        volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
+    elif volatility == 0:
+        volatility = '- 0.00%'
+    else:
+        volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
+    return volatility
+

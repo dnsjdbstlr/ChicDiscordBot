@@ -1,11 +1,12 @@
 import discord
 from discord.ext import commands
 from src import search, stock, admin, etc, util
+
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
 ### 이벤트 ###
 @bot.event
@@ -17,9 +18,7 @@ async def on_ready():
 async def on_message(msg):
     if msg.author.bot: return None
 
-    # 명령 로그
     admin.log(msg)
-
     chs = util.getChicBotCH(msg)
     if not chs:
         await bot.process_commands(msg)
@@ -53,7 +52,7 @@ async def 획득에픽(ctx, name='None', server='전체'):
 
 @bot.command()
 async def 기린랭킹(ctx):
-    await search.기린랭킹(ctx)
+    await search.기린랭킹(bot, ctx)
 
 ### 게임 명령어 ###
 @bot.command()
@@ -74,16 +73,16 @@ async def 주식매도(ctx):
 
 @bot.command()
 async def 주식랭킹(ctx):
-    await stock.주식랭킹(ctx)
+    await stock.주식랭킹(bot, ctx)
 
 ### 기타 명령어 ###
 @bot.command()
 async def 도움말(ctx):
-    await etc.도움말(ctx)
+    await etc.도움말(bot, ctx)
 
 @bot.command()
 async def 명령어(ctx):
-    await etc.도움말(ctx)
+    await etc.도움말(bot, ctx)
 
 @bot.command()
 async def 청소(ctx):
