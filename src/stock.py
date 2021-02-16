@@ -13,9 +13,10 @@ def iniStock(conn, cur, did):
 def getHoldings(stock):
     holdings = []
     for i in [stock['holding1'], stock['holding2'], stock['holding3']]:
-        holding = json.loads(i)
-        if holding is not None:
-            holdings.append(holding)
+        if i is not None:
+            holding = json.loads(i)
+            if holding is not None:
+                holdings.append(holding)
     return holdings
 
 async def 출석(bot, ctx):
