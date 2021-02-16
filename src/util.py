@@ -345,7 +345,7 @@ def updateAuctionData(name, auction, upgrade=-1):
              '판매량': c,
              '최근가': -1}
     try:
-        conn, cur = connection.db.getConnection()
+        conn, cur = connection.getConnection()
 
         # 데이터 저장
         sql = 'INSERT INTO auction (date, name, price) values (%s, %s, %s)'
@@ -489,8 +489,7 @@ def getDailyReward():
 
 def getChicBotCH(msg):
     result = []
-    tch = msg.guild.text_channels
-    for ch in tch:
+    for ch in msg.guild.text_channels:
         try:
             if '#시크봇' in ch.topic:
                 result.append(ch)

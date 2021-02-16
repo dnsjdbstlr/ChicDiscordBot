@@ -2,8 +2,8 @@ import pymysql
 
 class Connection:
     def __init__(self):
-        self.host = '127.0.0.1'
-        #self.host    = '34.121.37.217'
+        #self.host = '127.0.0.1'
+        self.host    = '34.121.37.217'
         self.user    = 'chic'
         self.pw      = '9892'
         self.db      = 'chicBot'
@@ -15,7 +15,6 @@ class Connection:
         self.conn.close()
         print('[알림][DB 연결을 끊었습니다.]')
 
-    def getConnection(self):
-        return self.conn, self.cur
-
 db = Connection()
+def getConnection():
+    return db.conn, db.cur

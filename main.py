@@ -1,11 +1,11 @@
 import discord
 from discord.ext import commands
-from src import search, stock, admin, etc, util
+from src import search, stock, adventure, admin, etc, util
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
 ### 이벤트 ###
 @bot.event
@@ -16,12 +16,9 @@ async def on_ready():
 @bot.event
 async def on_message(msg):
     if msg.author.bot: return None
-
     admin.log(msg)
     chs = util.getChicBotCH(msg)
-    if not chs:
-        await bot.process_commands(msg)
-    if chs and msg.channel in chs:
+    if (not chs) or (chs and msg.channel in chs):
         await bot.process_commands(msg)
 
 ### 검색 명령어 ###
@@ -59,6 +56,10 @@ async def 출석(ctx):
     await stock.출석(bot, ctx)
 
 @bot.command()
+async def 출석체크(ctx):
+    await stock.출석(bot, ctx)
+
+@bot.command()
 async def 주식(ctx):
     await stock.주식(ctx)
 
@@ -73,6 +74,14 @@ async def 주식매도(ctx):
 @bot.command()
 async def 주식랭킹(ctx):
     await stock.주식랭킹(bot, ctx)
+
+@bot.command()
+async def 모험(ctx):
+    await adventure.모험(ctx)
+
+@bot.command()
+async def 모험뽑기(ctx):
+    await adventure.모험뽑기(bot, ctx)
 
 ### 기타 명령어 ###
 @bot.command()

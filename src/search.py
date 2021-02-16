@@ -433,7 +433,7 @@ async def 획득에픽(bot, ctx, *input):
 
     # 저장
     try:
-        conn, cur = connection.db.getConnection()
+        conn, cur = connection.getConnection()
         sql = 'INSERT INTO epic (date, server, name, count, channel) values (%s, %s, %s, %s, %s)'
         date = datetime.now().strftime('%Y-%m-%d')
         cur.execute(sql, (date, server, name, gainEpicCount, bestCH[0]))
@@ -488,7 +488,7 @@ async def 기린랭킹(bot, ctx):
     waiting = await ctx.channel.send('> 기린 랭킹을 불러오는 중이예요...')
 
     try:
-        conn, cur = connection.db.getConnection()
+        conn, cur = connection.getConnection()
         sql = 'SELECT * FROM epic WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
         cur.execute(sql)
         rank = cur.fetchall()

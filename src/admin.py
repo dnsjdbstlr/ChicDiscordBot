@@ -14,7 +14,7 @@ def log(msg):
     cmd = msg.content.split(' ')[0]
     if cmd in cmds:
         try:
-            conn, cur = connection.db.getConnection()
+            conn, cur = connection.getConnection()
             sql = 'INSERT INTO log (did, gid, command, time) values (%s, %s, %s, %s)'
             date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cur.execute(sql, (msg.author.id, msg.guild.id, msg.content, date))
@@ -40,7 +40,7 @@ async def 통계(ctx):
         wait = await ctx.channel.send('> 통계 데이터를 불러오고있어요...')
 
         try:
-            conn, cur = connection.db.getConnection()
+            conn, cur = connection.getConnection()
             sql = 'SELECT command FROM log'
             cur.execute(sql)
             rs = cur.fetchall()
@@ -58,7 +58,7 @@ async def 출석확인(ctx):
     await ctx.message.delete()
 
     try:
-        conn, cur = connection.db.getConnection()
+        conn, cur = connection.getConnection()
         sql = f'SELECT * FROM dailyCheck WHERE date=CURDATE()'
         cur.execute(sql)
         rs = cur.fetchall()

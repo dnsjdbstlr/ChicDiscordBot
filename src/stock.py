@@ -26,7 +26,7 @@ async def 출석(bot, ctx):
     today = datetime.now().strftime('%Y-%m-%d')
 
     # 커넥션
-    conn, cur = connection.db.getConnection()
+    conn, cur = connection.getConnection()
 
     # 주식 정보 확인
     try:
@@ -152,7 +152,7 @@ async def 주식(ctx):
     did = str(ctx.message.author.id)
 
     # 커넥션
-    conn, cur = connection.db.getConnection()
+    conn, cur = connection.getConnection()
 
     try:
         sql = f'SELECT * FROM stock WHERE did={did}'
@@ -269,7 +269,7 @@ async def 주식매수(bot, ctx, *input):
         await ctx.channel.send('> 오류가 발생했어요.\r\n> ' + str(e))
 
 async def buyStock(bot, ctx, did, name, price):
-    conn, cur = connection.db.getConnection()
+    conn, cur = connection.getConnection()
     try:
         sql = f'SELECT * FROM stock WHERE did={did}'
         cur.execute(sql)
@@ -387,7 +387,7 @@ async def 주식매도(bot, ctx):
     did = str(ctx.message.author.id)
 
     # 커넥션
-    conn, cur = connection.db.getConnection()
+    conn, cur = connection.getConnection()
 
     try:
         sql = f'SELECT * FROM stock WHERE did={did}'
@@ -496,7 +496,7 @@ async def sellStock(bot, ctx, did, stock, index, offer):
                 stock[f'holding{i + 1}'] = None
 
         try:
-            conn, cur = connection.db.getConnection()
+            conn, cur = connection.getConnection()
             sql = 'UPDATE stock SET gold=%s, holding1=%s, holding2=%s, holding3=%s WHERE did=%s'
             cur.execute(sql, (stock['gold'],
                               json.dumps(stock['holding1'], ensure_ascii=False),
@@ -529,7 +529,7 @@ async def 주식랭킹(bot, ctx):
     waiting = await ctx.channel.send('> 주식 랭킹을 불러오는 중이예요...')
 
     try:
-        conn, cur = connection.db.getConnection()
+        conn, cur = connection.getConnection()
         sql = 'SELECT * FROM stock'
         cur.execute(sql)
         stocks = cur.fetchall()
