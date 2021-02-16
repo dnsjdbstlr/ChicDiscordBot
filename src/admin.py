@@ -1,7 +1,7 @@
 import json
 import discord
 from src import util
-from datetime import datetime
+import datetime
 from database import connection
 
 ownerId = 247361856904232960
@@ -17,7 +17,7 @@ def log(msg):
         try:
             conn, cur = connection.db.getConnection()
             sql = 'INSERT INTO log (did, gid, command, time) values (%s, %s, %s, %s)'
-            date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cur.execute(sql, (msg.author.id, msg.guild.id, msg.content, date))
             conn.commit()
         except Exception as e:
@@ -54,3 +54,16 @@ async def 통계(ctx):
             await ctx.channel.send(embed=embed)
         finally:
             conn.close()
+
+async def 출석확인(ctx):
+    await ctx.message.delete()
+
+    try:
+        conn, cur = connection.db.getConnection()
+        sql = f'SELECT * FROM dailyCheck WHERE date=CURDATE()'
+        cur.execute(sql)
+        rs = cur.fetchall()
+    except Exception as e:
+        await ctx.channel.send(f'> dailyCheck 테이블을 불러오지못했습니다.\r\n> {e}')
+        return
+    await ctx.channel.send(f'> 현재까지 {len(rs)}명이 출석했습니다.')

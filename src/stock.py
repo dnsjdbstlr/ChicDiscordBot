@@ -13,8 +13,9 @@ def iniStock(conn, cur, did):
 def getHoldings(stock):
     holdings = []
     for i in [stock['holding1'], stock['holding2'], stock['holding3']]:
-        if i is not None and i != 'null':
-            holdings.append(json.loads(i))
+        holding = json.loads(i)
+        if holding is not None:
+            holdings.append(holding)
     return holdings
 
 async def 출석(bot, ctx):
@@ -58,9 +59,9 @@ async def 출석(bot, ctx):
         await ctx.channel.send(text)
         return
 
-    # 출석 처리
     try:
         # 보상 지급
+        isFirst = False
         sql = f'SELECT gold FROM stock WHERE did={did}'
         cur.execute(sql)
         rs = cur.fetchone()
@@ -72,18 +73,23 @@ async def 출석(bot, ctx):
         cur.execute(sql)
         conn.commit()
 
-        # 처음 출석
-        sql = 'INSERT INTO dailyCheck (did, count, date) values (%s, %s, %s)'
-        cur.execute(sql, (did, 1, today))
-        conn.commit()
-    except:
         # 출석 최신화
         sql = 'UPDATE dailyCheck SET count=%s, date=%s WHERE did=%s'
         cur.execute(sql, (daily['count'] + 1, today, did))
         conn.commit()
+    except:
+        # 처음 출석
+        isFirst = True
+        sql = 'INSERT INTO dailyCheck (did, count, date) values (%s, %s, %s)'
+        cur.execute(sql, (did, 1, today))
+        conn.commit()
+
+        sql = f'SELECT * FROM dailyCheck WHERE did={did}'
+        cur.execute(sql)
+        daily = cur.fetchone()
 
     infoSwitch = True
-    embed = getDailyCheckInfoEmbed(ctx.message.author.display_name, today, daily, reward)
+    embed = getDailyCheckInfoEmbed(ctx.message.author.display_name, today, daily, reward, isFirst)
     await waiting.delete()
     msg = await ctx.channel.send(embed=embed)
     await msg.add_reaction('▶️')
@@ -111,10 +117,13 @@ async def 출석(bot, ctx):
             await msg.delete()
             await ctx.channel.send('> 오류가 발생했어요.')
 
-def getDailyCheckInfoEmbed(name, today, daily, reward):
+def getDailyCheckInfoEmbed(name, today, daily, reward, isFirst):
     embed = discord.Embed(title=f'{name}님 출석체크 완료!')
     embed.add_field(name='> 출석 날짜', value=today)
-    embed.add_field(name='> 출석 일수', value=str(daily['count'] + 1) + '일')
+    if isFirst:
+        embed.add_field(name='> 출석 일수', value=f"{daily['count']}일")
+    else:
+        embed.add_field(name='> 출석 일수', value=f"{daily['count'] + 1}일")
     embed.add_field(name='> 출석 보상', value=format(reward, ',') + '골드')
     embed.set_footer(text='매일 00시마다 초기화되요.')
     return embed
@@ -229,7 +238,7 @@ async def 주식매수(bot, ctx, *input):
 
     prev, price = util.updateAuctionData(name, auction)
     embed = discord.Embed(title=ctx.message.author.display_name + '님의 매수 주문',
-                          description=name + ' 시세 정보입니다.\r\n매수하려면 O, 취소하려면 X 이모지를 눌러주세요.')
+                          description='매수하려면 O, 취소하려면 X 이모지를 입력해주세요.')
     embed.add_field(name='> 단가',        value=format(price['평균가'], ',') + '골드')
     embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
     embed.add_field(name='> 가격 변동률', value=util.getVolatility(prev, price['평균가']))
@@ -583,7 +592,8 @@ def getSortedStockRank(stocks, auction):
 def getStockRankEmbed(ctx, rank, auction, page):
     rank = rank[page * 15:page * 15 + 15]
 
-    embed = discord.Embed(title='타이틀', description='설명')
+    embed = discord.Embed(title='주식 랭킹을 알려드릴게요!',
+                          description='현재 어떤 주식을 보유중인지도 알려드려요.')
     for index, i in enumerate(rank):
         # name 계산
         name = f'> {page * 15 + index + 1}등'
