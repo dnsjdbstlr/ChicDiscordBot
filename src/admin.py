@@ -1,7 +1,6 @@
-import json
 import discord
-from src import util
 import datetime
+from src import util
 from database import connection
 
 ownerId = 247361856904232960
@@ -41,7 +40,7 @@ async def 통계(ctx):
         wait = await ctx.channel.send('> 통계 데이터를 불러오고있어요...')
 
         try:
-            conn, cur = connection.getConnection()
+            conn, cur = connection.db.getConnection()
             sql = 'SELECT command FROM log'
             cur.execute(sql)
             rs = cur.fetchall()
@@ -52,8 +51,8 @@ async def 통계(ctx):
                 embed.add_field(name='> ' + k, value=str(statistics.count(k)) + '회')
             await wait.delete()
             await ctx.channel.send(embed=embed)
-        finally:
-            conn.close()
+        except Exception as e:
+            print(e)
 
 async def 출석확인(ctx):
     await ctx.message.delete()

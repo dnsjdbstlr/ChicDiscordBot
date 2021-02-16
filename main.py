@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from src import search, stock, admin, etc, util
-
 bot = commands.Bot(command_prefix='!')
 
 ### 기본설정 ###
@@ -31,8 +30,8 @@ async def 등급(ctx):
     await search.등급(ctx)
 
 @bot.command()
-async def 캐릭터(ctx, name='None', server='전체'):
-    await search.캐릭터(bot, ctx, name, server)
+async def 캐릭터(ctx, *input):
+    await search.캐릭터(bot, ctx, *input)
 
 @bot.command()
 async def 장비(ctx, *input):
@@ -47,8 +46,8 @@ async def 시세(ctx, *input):
     await search.시세(ctx, *input)
 
 @bot.command()
-async def 획득에픽(ctx, name='None', server='전체'):
-    await search.획득에픽(bot, ctx, name, server)
+async def 획득에픽(ctx, *input):
+    await search.획득에픽(bot, ctx, *input)
 
 @bot.command()
 async def 기린랭킹(ctx):

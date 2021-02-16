@@ -60,11 +60,18 @@ async def 등급(ctx):
     await waiting.delete()
     await ctx.channel.send(embed=embed)
 
-async def 캐릭터(bot, ctx, name, server='전체'):
-    if ctx.message.content.split(' ')[-1] == '!캐릭터':
+async def 캐릭터(bot, ctx, *input):
+    if not input:
         await ctx.message.delete()
-        await ctx.channel.send('> !캐릭터 <닉네임> 의 형태로 적어야해요!')
+        await ctx.channel.send('> !캐릭터 <닉네임> 또는 !캐릭터 <서버> <닉네임> 의 형태로 적어야해요!')
         return
+
+    if len(input) == 2:
+        server = input[0]
+        name   = input[1]
+    else:
+        server = '전체'
+        name   = input[0]
 
     try:
         chrIdList = dnfAPI.getChrIdList(server, name)
@@ -388,11 +395,18 @@ def getSetItemBuffOptionEmbed(setItemInfo):
     embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     return embed
 
-async def 획득에픽(bot, ctx, name, server='전체'):
-    if ctx.message.content.split(' ')[-1] == '!획득에픽':
+async def 획득에픽(bot, ctx, *input):
+    if not input:
         await ctx.message.delete()
-        await ctx.channel.send('> !획득에픽 <닉네임> 의 형태로 적어야해요!')
+        await ctx.channel.send('> !획득에픽 <닉네임> 또는 !획득에픽 <서버> <닉네임> 의 형태로 적어야해요!')
         return
+
+    if len(input) == 2:
+        server = input[0]
+        name   = input[1]
+    else:
+        server = '전체'
+        name   = input[0]
 
     try:
         chrIdList = dnfAPI.getChrIdList(server, name)
@@ -405,6 +419,7 @@ async def 획득에픽(bot, ctx, name, server='전체'):
     # 획득한 에픽 갯수
     gainEpicCount = len(timeline)
     if gainEpicCount == 0:
+        await waiting.delete()
         await ctx.channel.send(f'> {name}님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
         return
 
