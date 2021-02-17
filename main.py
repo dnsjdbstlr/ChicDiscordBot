@@ -1,9 +1,10 @@
 import discord
 from discord.ext import commands
-from src import search, stock, adventure, admin, etc, util
-bot = commands.Bot(command_prefix='!')
+from src import search, stock, admin, etc, util
+from src.adv import adventure
 
 ### 기본설정 ###
+bot = commands.Bot(command_prefix='!')
 #token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
@@ -80,8 +81,12 @@ async def 모험(ctx):
     await adventure.모험(ctx)
 
 @bot.command()
-async def 모험뽑기(ctx):
-    await adventure.모험뽑기(bot, ctx)
+async def 무기뽑기(ctx):
+    await adventure.무기가챠(bot, ctx)
+
+@bot.command()
+async def 인벤토리(ctx):
+    await adventure.인벤토리(bot, ctx)
 
 ### 기타 명령어 ###
 @bot.command()
