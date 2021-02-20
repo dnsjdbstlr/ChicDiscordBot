@@ -14,9 +14,10 @@ async def 모험(ctx):
         return
 
     if rs is None:
-        inventory = { 'weapon' : None, 'accessory' : None, 'additional' : None }
+        inventory = { 'inventory' : [] }
+        equipment = { 'weapon' : [], 'accessory' : [], 'additional' : [] }
         sql = 'INSERT INTO adventure values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
-        cur.execute(sql, (ctx.message.author.id, 0, 1, 0, 5, 0, 0, 50, 50, json.dumps(inventory), json.dumps(inventory)))
+        cur.execute(sql, (ctx.message.author.id, 0, 1, 0, 5, 0, 0, 50, 50, json.dumps(inventory), json.dumps(equipment)))
         conn.commit()
 
         sql = f'SELECT * FROM adventure WHERE did={ctx.message.author.id}'
@@ -27,6 +28,7 @@ async def 모험(ctx):
     embed.add_field(name='> 직업',     value=getJobInfo(rs['job']))
     embed.add_field(name='> 레벨',     value=getLevelInfo(rs['level']))
     embed.add_field(name='> 경험치',   value=getExpInfo(rs['level'], rs['exp']))
+    embed.add_field(name='> 능력치',   value=getStatInfo(rs['equipment'], rs['ap'], rs['def'], rs['stat'], rs['maxhp'], rs['maxmp']), inline=False)
     embed.add_field(name='> 장착장비', value=getItemInfo( json.loads(rs['equipment']) ))
     await ctx.message.delete()
     await ctx.channel.send(embed=embed)
@@ -53,19 +55,50 @@ def getExpInfo(level, exp):
     _per = format(exp / expTable[level] * 100, '.2f')
     return f"{_per}% ({_exp} / {_tot})"
 
+def getStatInfo(equipment, ap, _def, stat, maxhp, maxmp):
+    equipment = json.loads(equipment)
+    cri, dmgInc, criDmgInc = 10, 0, 0
+
+    for i in equipment:
+        try:
+            temp = equipment[i]['option'].get('치명타 확률')
+            if temp is not None:
+                cri += temp
+        except: pass
+
+        try:
+            temp = equipment[i]['option'].get('데미지 증가')
+            if temp is not None:
+                dmgInc += temp
+        except: pass
+
+        try:
+            temp = equipment[i]['option'].get('치명타 데미지 증가')
+            if temp is not None:
+                criDmgInc += temp
+        except: pass
+
+    desc = f'공격력 : {ap} | 방어력 : {_def} | 스탯 : {stat} | 체력 : {maxhp} | 마력 : {maxmp}\r\n'
+    desc += f'치명타 확률 : {cri}% | 데미지 증가 : {dmgInc}% | 치명타 데미지 증가 : {criDmgInc}%'
+    return desc
+
 def getItemInfo(item):
     try:
-        desc = f"+{item['info']['reinforce']} {item['info']['name']} ({getWeaponType(item['info']['id'])})\r\n"
+        if item['info']['reinforce'] > 0:
+            desc = f"+{item['info']['reinforce']} "
+        else:
+            desc = ''
+        desc += f"{item['info']['name']}\r\n"
+        desc += f"타입 : {item['info']['rarity']} {getWeaponType(item['info']['id'])}\r\n"
         for key in item['option']:
-            desc += f"{key} : {item['option'][key]}\r\n"
+            desc += f"{key} : {item['option'][key]}"
+            if key in ['추가데미지']:
+                desc += '%\r\n'
+            else:
+                desc += '\r\n'
         return desc
     except:
         return '없음'
-
-# desc = f'{rarity} {_type}\r\n'
-# for key in WEAPON.get(itemId):
-#     desc += f"{key} : {WEAPON.get(itemId)[key]}\r\n"
-# return desc
 
 def getWeaponType(itemId):
     if itemId // 10000 != 1:
@@ -96,7 +129,7 @@ def getWeaponType(itemId):
     if itemId // 100 == 14:
         return '빗자루'
 
-async def 무기가챠(bot, ctx):
+async def 장비뽑기(bot, ctx):
     try:
         conn, cur = connection.getConnection()
         sql = f'SELECT * FROM stock WHERE did={ctx.message.author.id}'
@@ -133,7 +166,7 @@ async def 무기가챠(bot, ctx):
             await msg.delete()
             await gacha(bot, ctx, 9)
     except Exception as e:
-        await ctx.channel.send(str(e))
+        await ctx.channel.send(f'{e}')
         return
 
 async def gacha(bot, ctx, count):
@@ -156,24 +189,17 @@ async def gacha(bot, ctx, count):
         except:
             inv = None
 
-        if inv is not None and len(inv['data']) + count > 45:
+        if inv is not None and len(inv['inventory']) + count > 45:
             await ctx.channel.send(f'> 인벤토리 공간이 부족합니다.')
             return
-
-        sql = f'UPDATE stock SET gold=%s WHERE did=%s'
-        cur.execute(sql, (rs['gold'] - (100000 * count), ctx.message.author.id))
-        conn.commit()
     except Exception as e:
         await ctx.channel.send(f'> 뽑기에 실패했습니다.\r\n{e}')
         return
 
     ###
 
-    reward, summary = getGachaReward(count)
-    saveGachaReward(reward, ctx.message.author.id)
-    desc = getRewardSummaryDesc(summary)
-
-    embed = discord.Embed(title=f'{ctx.message.author.display_name}님의 모험 뽑기 결과', description=f"`{desc}`")
+    reward = doGacha(ctx, count)
+    embed = discord.Embed(title=f'{ctx.message.author.display_name}님의 모험 뽑기 결과')
     for index, i in enumerate(reward):
         embed.add_field(name=f"> {index + 1}", value=getItemInfo(i))
     embed.set_footer(text=f'🔁 이모지를 추가하면 {count}번 뽑기를 진행합니다.')
@@ -189,55 +215,43 @@ async def gacha(bot, ctx, count):
             await gacha(bot, ctx, count)
         except: pass
 
-def getGachaReward(count):
+def doGacha(ctx, count):
+    reward = []
+
     import random
-    reward  = []
-    summary = [0, 0, 0, 0]
-
-    unique    = [100, 101, 102]
-    legendary = [200, 201, 202]
-    epic      = [300, 301, 302]
-    mythic    = [400, 401, 402]
-
     for i in range(count):
-        seed = random.randint(1, 100)
-        if 1 <= seed <= 70:
-            reward.append(random.choice(unique))
-            summary[0] += 1
-        elif 70 < seed <= 90:
-            reward.append(random.choice(legendary))
-            summary[1] += 1
-        elif 90 < seed <= 99:
-            reward.append(random.choice(epic))
-            summary[2] += 1
-        else:
-            reward.append(random.choice(mythic))
-            summary[3] += 1
-    return reward, summary
+        part = random.choice(['weapon'])
+        if part == 'weapon':
+            legendary = [10000, 10100, 10200, 10300, 10400]
+            epic      = []
+            mythic    = []
 
-def saveGachaReward(reward, did):
+            seed = random.randint(1, 100)
+            if 1 <= seed <= 100:
+                itemId = random.choice(legendary)
+                reward.append(createItem(itemId))
+
+    # 인벤토리 저장
     try:
         conn, cur = connection.getConnection()
-        sql = f'SELECT * FROM adventure WHERE did={did}'
+        sql = f'SELECT * FROM adventure WHERE did={ctx.message.author.id}'
         cur.execute(sql)
         rs = cur.fetchone()
         rs = rs['inventory']
-    except: return
-    if rs is None:
-        rs = {'data' : []}
-    else:
-        rs = json.loads(rs)
 
-    for i in reward:
-        rs['data'].append(createItem(i))
+        if rs is None:
+            rs = {'inventory': []}
+        else:
+            rs = json.loads(rs)
+        for i in reward: rs['inventory'].append(i) 
 
-    try:
-        sql = f'UPDATE adventure SET inventory=%s WHERE did={did}'
+        sql = f'UPDATE adventure SET inventory=%s WHERE did={ctx.message.author.id}'
         cur.execute(sql, json.dumps(rs, ensure_ascii=False))
         conn.commit()
     except Exception as e:
-        print(f'> 업데이트 오류\r\n> {e}')
-        return
+        print(e)
+        return None
+    return reward
 
 def getRewardSummaryDesc(summary):
     desc = ''
@@ -255,33 +269,10 @@ def getRewardSummaryDesc(summary):
     return desc
 
 def createItem(itemId):
-    if itemId // 100 == 1:
-        rarity = '유니크 '
-    elif itemId // 100 == 2:
-        rarity = '레전더리 '
-    elif itemId // 100 == 3:
-        rarity = '에픽 '
-    elif itemId // 100 == 4:
-        rarity = '신화 '
+    if itemId // 10000 == 1:
+        return item.WEAPON.get(str(itemId))
     else:
-        rarity = 'Err'
-
-    if itemId % 10 == 0:
-        _type = '대검'
-    elif itemId % 10 == 1:
-        _type = '자동권총'
-    elif itemId % 10 == 2:
-        _type = '스탭'
-    else:
-        _type = 'Err'
-
-    info = {
-        'id' : itemId,
-        'type' : _type,
-        'rarity' : rarity
-    }
-    option = WEAPON[itemId]
-    return {'info' : info, 'option' : option, 'reinforce' : 0}
+        return None
 
 async def 인벤토리(bot, ctx):
     try:
@@ -293,7 +284,7 @@ async def 인벤토리(bot, ctx):
 
         try:
             rs = json.loads(rs)
-            inv = rs['data']
+            inv = rs['inventory']
         except:
             embed = discord.Embed(title=f"{ctx.message.author.display_name}님의 모험 인벤토리를 보여드릴게요.",
                                   description=f"인벤토리에 아이템이 없어요! `!모험뽑기` 를 통해서 아이템을 획득해보세요.")
@@ -313,7 +304,7 @@ async def 인벤토리(bot, ctx):
 
     await ctx.message.delete()
     selection = await getInventorySelection(bot, ctx, inv, 0)
-    await setEquipItem(ctx, inv, selection)
+    await setEquipItem(bot, ctx, inv, selection)
 
 async def getInventorySelection(bot, ctx, inv, page,
                                 title=None, description=None, msg=None):
@@ -323,9 +314,9 @@ async def getInventorySelection(bot, ctx, inv, page,
         embed = discord.Embed(title=title, description=description)
     else:
         embed = discord.Embed(title=f"{ctx.message.author.display_name}님의 모험 인벤토리를 보여드릴게요.",
-                              description=f"장착하고 싶은 아이템의 번호와 동일한 이모지를 추가해주세요.")
+                              description=f"장착할 아이템의 번호와 동일한 이모지를 추가해주세요.")
     for index, item in enumerate(_inv):
-        embed.add_field(name=f"> {index + 1}", value=getInvItemInfo(item))
+        embed.add_field(name=f"> {index + 1}", value=getItemInfo(item))
     embed.set_footer(text=f'{(len(inv) - 1) // 9 + 1}쪽 중 {page + 1}쪽')
 
     if msg is None:
@@ -391,20 +382,55 @@ async def getInventorySelection(bot, ctx, inv, page,
         except Exception as e:
             return -1
 
-async def setEquipItem(ctx, inv, index):
-    equip = inv[index]
-    del inv[index]
+async def setEquipItem(bot, ctx, inv, index):
+
+    # del inv[index]
+    # try:
+    #     conn, cur = connection.getConnection()
+    #     sql = f'UPDATE adventure SET inventory=%s, equipment=%s WHERE did={ctx.message.author.id}'
+    #     cur.execute(sql, (json.dumps({'inventory' : inv}, ensure_ascii=False), json.dumps(equip, ensure_ascii=False)))
+    #     conn.commit()
+    # except Exception as e:
+    #     await ctx.channel.send(f'> 장비를 장착하는데 오류가 발생했습니다.\r\n> {e}')
+    #     return
+
     try:
         conn, cur = connection.getConnection()
-        sql = f'UPDATE adventure SET inventory=%s, equipment=%s WHERE did={ctx.message.author.id}'
-        cur.execute(sql, (json.dumps({'data' : inv}, ensure_ascii=False), json.dumps(equip, ensure_ascii=False)))
-        conn.commit()
+        sql = f'SELECT * FROM adventure WHERE did={ctx.message.author.id}'
+        cur.execute(sql)
+        rs = cur.fetchone()
+    except: return
 
-    except Exception as e:
-        await ctx.channel.send(f'> 장비를 장착하는데 오류가 발생했습니다.\r\n> {e}')
-        return
+    equipment = json.loads(rs['equipment'])
+
+    new_equip = inv[index]
+    if new_equip['info']['id'] // 10000 == 1:
+        _type = 'weapon'
+    elif new_equip['info']['id'] // 10000 == 2:
+        _type = 'accessory'
+    elif new_equip['info']['id'] // 10000 == 3:
+        _type = 'additional'
+    else:
+        _type = 'err'
+    old_equip = equipment[_type]
 
     embed = discord.Embed(title=f"{ctx.message.author.display_name}님의 장비 착용",
                           description='장착되어있는 장비는 사라져요. 선택한 장비를 착용할까요?')
-    embed.add_field(name='> 장착 장비', value=getInvItemInfo(equip))
-    await ctx.channel.send(embed=embed)
+    embed.add_field(name='> 기존 장비', value=getItemInfo(old_equip))
+    embed.add_field(name='> 장착 장비', value=getItemInfo(new_equip))
+    msg = await ctx.channel.send(embed=embed)
+    await msg.add_reaction('⭕')
+    await msg.add_reaction('❌')
+    
+    try:
+        def check(reaction, user):
+            return (str(reaction) == '⭕' or str(reaction) == '❌') \
+                   and user == ctx.author and reaction.message.id == msg.id
+        reaction, user = await bot.wait_for('reaction_add', check=check)
+        if str(reaction) == '⭕':
+            await msg.delete()
+            await ctx.channel.send(f"대충 성공적으로 장착했다는 메세지")
+        elif str(reaction) == '❌':
+            await msg.delete()
+            await ctx.channel.send('> 장착이 취소되었습니다.')
+    except: pass

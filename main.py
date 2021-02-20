@@ -81,8 +81,8 @@ async def 모험(ctx):
     await adventure.모험(ctx)
 
 @bot.command()
-async def 무기뽑기(ctx):
-    await adventure.무기가챠(bot, ctx)
+async def 장비뽑기(ctx):
+    await adventure.장비뽑기(bot, ctx)
 
 @bot.command()
 async def 인벤토리(ctx):
