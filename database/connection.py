@@ -17,4 +17,5 @@ class Connection:
 
 db = Connection()
 def getConnection():
+    db.conn.ping()
     return db.conn, db.cur
