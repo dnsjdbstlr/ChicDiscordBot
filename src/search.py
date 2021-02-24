@@ -1,7 +1,7 @@
 import discord
 from src import util, dnfAPI
 from datetime import datetime
-from database import connection
+from database import connection, tool
 
 async def 등급(ctx):
     await ctx.message.delete()
@@ -117,6 +117,256 @@ async def 캐릭터(bot, ctx, *input):
                 infoSwitch = not infoSwitch
         except: pass
 
+async def 시세(ctx, *input):
+    await ctx.message.delete()
+    waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
+
+    name = dnfAPI.getMostSimilarItemName(util.mergeString(*input))
+    auction = dnfAPI.getItemAuctionPrice(name)
+    if not auction:
+        await waiting.delete()
+        await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
+        return
+
+    embed = discord.Embed(title=f"'{name}' 시세를 알려드릴게요")
+    if '카드' in name:
+        upgrades = [i['upgrade'] for i in auction]
+        upgrades = list(set(upgrades))
+        upgrades.sort()
+
+        for i in upgrades:
+            prev, price = util.updateAuctionData(name, auction, upgrade=i)
+            embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(price['평균가'], ',') + '골드')
+            embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
+            embed.add_field(name='> 가격 변동률', value=util.getVolatility(prev, price['평균가']))
+    else:
+        prev, price = util.updateAuctionData(name, auction)
+        embed.add_field(name='> 평균 가격', value=format(price['평균가'], ',') + '골드')
+        embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
+        embed.add_field(name='> 가격 변동률', value=util.getVolatility(prev, price['평균가']))
+
+    embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
+    embed.set_thumbnail(url=dnfAPI.getItemImageUrl(auction[0]['itemId']))
+    await waiting.delete()
+    await ctx.channel.send(embed=embed)
+
+async def 장비(bot, ctx, *input):
+    name = util.mergeString(*input)
+    if len(name) < 1:
+        await ctx.message.delete()
+        await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해요!')
+        return
+
+    try:
+        itemIdList = dnfAPI.getItemId(name)
+        itemId = await util.getSelectionFromItemIdList(bot, ctx, itemIdList)
+        if itemId is False: return
+    except: return
+    itemDetailInfo = dnfAPI.getItemDetail(itemId)
+
+    infoSwitch = True
+    embed = getItemOptionEmbed(itemDetailInfo)
+    msg = await ctx.channel.send(embed=embed)
+    await msg.add_reaction('▶️')
+
+    while True:
+        try:
+            def check(reaction, user):
+                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
+                       and user == ctx.author and reaction.message.id == msg.id
+
+            reaction, user = await bot.wait_for('reaction_add', check=check)
+
+            # 버퍼 옵션
+            if infoSwitch and str(reaction) == '▶️':
+                await msg.edit(embed=getItemBuffOptionEmbed(itemDetailInfo))
+                await msg.clear_reactions()
+                await msg.add_reaction('◀️')
+                infoSwitch = not infoSwitch
+
+            # 딜러 옵션
+            elif not infoSwitch and str(reaction) == '◀️':
+                await msg.edit(embed=getItemOptionEmbed(itemDetailInfo))
+                await msg.clear_reactions()
+                await msg.add_reaction('▶️')
+                infoSwitch = not infoSwitch
+        except:
+            pass
+
+async def 세트(bot, ctx, *input):
+    name = util.mergeString(*input)
+
+    if len(name) < 1:
+        await ctx.message.delete()
+        await ctx.channel.send('> !세트 <세트옵션이름> 의 형태로 적어야해요!')
+        return
+
+    try:
+        setItemIdList = dnfAPI.getSetItemIdList(name)
+        setItemId, name = await util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
+    except:
+        return
+    setItemInfo = dnfAPI.getSetItemInfoList(setItemId)
+
+    infoSwitch = True
+    embed = getSetItemOptionEmbed(setItemInfo)
+    msg = await ctx.channel.send(embed=embed)
+    await msg.add_reaction('▶️')
+
+    while True:
+        try:
+            def check(reaction, user):
+                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
+                       and user == ctx.author and reaction.message.id == msg.id
+            reaction, user = await bot.wait_for('reaction_add', check=check)
+
+            # 버퍼 옵션
+            if infoSwitch and str(reaction) == '▶️':
+                await msg.edit(embed=getSetItemBuffOptionEmbed(setItemInfo))
+                await msg.clear_reactions()
+                await msg.add_reaction('◀️')
+                infoSwitch = not infoSwitch
+
+            # 딜러 옵션
+            elif not infoSwitch and str(reaction) == '◀️':
+                await msg.edit(embed=getSetItemOptionEmbed(setItemInfo))
+                await msg.clear_reactions()
+                await msg.add_reaction('▶️')
+                infoSwitch = not infoSwitch
+        except: pass
+
+async def 획득에픽(bot, ctx, *input):
+    if not input:
+        await ctx.message.delete()
+        await ctx.channel.send('> !획득에픽 <닉네임> 또는 !획득에픽 <서버> <닉네임> 의 형태로 적어야해요!')
+        return
+
+    if len(input) == 2:
+        server = input[0]
+        name   = input[1]
+    else:
+        server = '전체'
+        name   = input[0]
+
+    try:
+        chrIdList = dnfAPI.getChrIdList(server, name)
+        server, chrId, name = await util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+    except: return False
+
+    waiting = await ctx.channel.send(f'> {name}님이 획득한 에픽을 확인 중이예요...')
+    timeline = dnfAPI.getChrTimeLine(server, chrId, '505')
+    today = datetime.now().strftime('%Y-%m-%d')
+
+    # 획득한 에픽 갯수
+    gainEpicCount = len(timeline)
+    if gainEpicCount == 0:
+        await waiting.delete()
+        await ctx.channel.send(f'> {name}님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
+        return
+
+    # 에픽을 가장 많이 획득한 채널
+    count = {}
+    chs = ['ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'] for i in timeline]
+    for i in chs:
+        try:    count[i] += 1
+        except: count[i] = 1
+    bestCH = sorted(count.items(), key=lambda item: item[1], reverse=True)[0]
+
+    epic = tool.getEpic(server, name)
+    conn, cur = connection.getConnection()
+    if epic is None:
+        sql = 'INSERT INTO epic (date, server, name, count, channel) values (%s, %s, %s, %s, %s)'
+        cur.execute(sql, (today, server, name, gainEpicCount, bestCH[0]))
+        conn.commit()
+    else:
+        sql = 'UPDATE epic SET count=%s, channel=%s, date=%s WHERE server=%s and name=%s'
+        cur.execute(sql, (gainEpicCount, bestCH[0], today, server, name))
+        conn.commit()
+
+    page = 0
+    embed = getGainEpicEmbed(name, bestCH[0], timeline, page)
+    embed.set_footer(text=f'{(gainEpicCount - 1) // 15 + 1}쪽 중 1쪽')
+    await waiting.delete()
+    msg = await ctx.channel.send(embed=embed)
+    if gainEpicCount > 15:
+        await msg.add_reaction('▶️')
+    while gainEpicCount > 15:
+        try:
+            def check(reaction, user):
+                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
+                       and user == ctx.author and reaction.message.id == msg.id
+            reaction, user = await bot.wait_for('reaction_add', check=check)
+
+            if str(reaction) == '◀️' and page > 0:
+                page -= 1
+            if str(reaction) == '▶️' and page < (gainEpicCount - 1) // 15:
+                page += 1
+
+            embed = getGainEpicEmbed(name, bestCH[0], timeline, page)
+            embed.set_footer(text=f'{(gainEpicCount - 1) // 15 + 1}쪽 중 {page + 1}쪽')
+            await msg.edit(embed=embed)
+            await msg.clear_reactions()
+
+            if page > 0:
+                await msg.add_reaction('◀️')
+            if page < (gainEpicCount - 1) // 15:
+                await msg.add_reaction('▶️')
+        except: pass
+
+async def 기린랭킹(bot, ctx):
+    await ctx.message.delete()
+    waiting = await ctx.channel.send('> 기린 랭킹을 불러오는 중이예요...')
+
+    try:
+        conn, cur = connection.getConnection()
+        sql = 'SELECT * FROM epic WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
+        cur.execute(sql)
+        rank = cur.fetchall()
+    except Exception as e:
+        print(e)
+
+    rank = list(sorted(rank, key=lambda x: x['count'], reverse=True))
+
+    if not rank:
+        today = datetime.today()
+        embed = discord.Embed(title=f'{today.year}년 {today.month}월 기린 랭킹을 알려드릴게요!',
+                              description='> 랭킹 데이터가 없어요.\r\n'
+                                          '> !획득에픽으로 랭킹에 등록해보세요!')
+        await waiting.delete()
+        await ctx.channel.send(embed=embed)
+        return
+
+    page = 0
+    embed = getEpicRankEmbed(rank, page)
+    embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 {page + 1}쪽')
+    await waiting.delete()
+    msg = await ctx.channel.send(embed=embed)
+    if len(rank) > 15:
+        await msg.add_reaction('▶️')
+
+    while len(rank) > 15:
+        try:
+            def check(reaction, user):
+                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
+                       and user == ctx.author and reaction.message.id == msg.id
+            reaction, user = await bot.wait_for('reaction_add', check=check)
+
+            if str(reaction) == '◀️' and page > 0:
+                page -= 1
+            if str(reaction) == '▶️' and page < (len(rank) - 1) // 15:
+                page += 1
+
+            embed = getEpicRankEmbed(rank, page)
+            embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 {page + 1}쪽')
+            await msg.edit(embed=embed)
+            await msg.clear_reactions()
+
+            if page > 0:
+                await msg.add_reaction('◀️')
+            if page < (len(rank) - 1) // 15:
+                await msg.add_reaction('▶️')
+        except: pass
+
 def getChrInfoEmbed(name, chrEquipSetInfo, chrEquipItemInfo):
     embed = discord.Embed(title=name + '님의 캐릭터 정보를 알려드릴게요.')
 
@@ -162,82 +412,6 @@ def getChrAvatarInfoEmbed(name, avatar):
         embed.add_field(name='> ' + i['slotName'], value=value)
     embed.set_footer(text='클론하고 있는 아바타가 있는 경우 해당 아바타도 표시해요.')
     return embed
-
-async def 시세(ctx, *input):
-    await ctx.message.delete()
-    waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
-
-    name = util.mergeString(*input)
-    name = dnfAPI.getMostSimilarItemName(name)
-    auction = dnfAPI.getItemAuctionPrice(name)
-    if not auction:
-        await waiting.delete()
-        await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
-        return
-
-    embed = discord.Embed(title="'" + name + "' 시세를 알려드릴게요")
-    if '카드' in name:
-        upgrades = [i['upgrade'] for i in auction]
-        upgrades = list(set(upgrades))
-        upgrades.sort()
-
-        for i in upgrades:
-            prev, price = util.updateAuctionData(name, auction, upgrade=i)
-            embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(price['평균가'], ',') + '골드')
-            embed.add_field(name='> 최근 판매량',               value=format(price['판매량'], ',') + '개')
-            embed.add_field(name='> 가격 변동률',               value=util.getVolatility(prev, price['평균가']))
-    else:
-        prev, price = util.updateAuctionData(name, auction)
-        embed.add_field(name='> 평균 가격',   value=format(price['평균가'], ',') + '골드')
-        embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
-        embed.add_field(name='> 가격 변동률', value=util.getVolatility(prev, price['평균가']))
-
-    embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
-    embed.set_thumbnail(url=dnfAPI.getItemImageUrl(auction[0]['itemId']))
-    await waiting.delete()
-    await ctx.channel.send(embed=embed)
-
-async def 장비(bot, ctx, *input):
-    name = util.mergeString(*input)
-
-    if len(name) < 1:
-        await ctx.message.delete()
-        await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해요!')
-        return
-
-    try:
-        itemIdList = dnfAPI.getItemId(name)
-        itemId = await util.getSelectionFromItemIdList(bot, ctx, itemIdList)
-        if itemId is False: return
-    except: return
-    itemDetailInfo = dnfAPI.getItemDetail(itemId)
-
-    infoSwitch = True
-    embed = getItemOptionEmbed(itemDetailInfo)
-    msg = await ctx.channel.send(embed=embed)
-    await msg.add_reaction('▶️')
-
-    while True:
-        try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
-            reaction, user = await bot.wait_for('reaction_add', check=check)
-
-            # 버퍼 옵션
-            if infoSwitch and str(reaction) == '▶️':
-                await msg.edit(embed=getItemBuffOptionEmbed(itemDetailInfo))
-                await msg.clear_reactions()
-                await msg.add_reaction('◀️')
-                infoSwitch = not infoSwitch
-                
-            # 딜러 옵션
-            elif not infoSwitch and str(reaction) == '◀️':
-                await msg.edit(embed=getItemOptionEmbed(itemDetailInfo))
-                await msg.clear_reactions()
-                await msg.add_reaction('▶️')
-                infoSwitch = not infoSwitch
-        except: pass
 
 def getItemOptionEmbed(itemDetailInfo):
     embed = discord.Embed(title=itemDetailInfo['itemName'],
@@ -317,48 +491,6 @@ def getItemBuffOptionEmbed(itemDetailInfo):
 
     return embed
 
-async def 세트(bot, ctx, *input):
-    name = util.mergeString(*input)
-
-    if len(name) < 1:
-        await ctx.message.delete()
-        await ctx.channel.send('> !세트 <세트옵션이름> 의 형태로 적어야해요!')
-        return
-
-    try:
-        setItemIdList = dnfAPI.getSetItemIdList(name)
-        setItemId, name = await util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
-    except:
-        return
-    setItemInfo = dnfAPI.getSetItemInfoList(setItemId)
-
-    infoSwitch = True
-    embed = getSetItemOptionEmbed(setItemInfo)
-    msg = await ctx.channel.send(embed=embed)
-    await msg.add_reaction('▶️')
-
-    while True:
-        try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
-            reaction, user = await bot.wait_for('reaction_add', check=check)
-
-            # 버퍼 옵션
-            if infoSwitch and str(reaction) == '▶️':
-                await msg.edit(embed=getSetItemBuffOptionEmbed(setItemInfo))
-                await msg.clear_reactions()
-                await msg.add_reaction('◀️')
-                infoSwitch = not infoSwitch
-
-            # 딜러 옵션
-            elif not infoSwitch and str(reaction) == '◀️':
-                await msg.edit(embed=getSetItemOptionEmbed(setItemInfo))
-                await msg.clear_reactions()
-                await msg.add_reaction('▶️')
-                infoSwitch = not infoSwitch
-        except: pass
-
 def getSetItemOptionEmbed(setItemInfo):
     embed = discord.Embed(title=setItemInfo['setItemName'] + '의 정보를 알려드릴게요.')
     for setItem in setItemInfo['setItems']:
@@ -395,85 +527,6 @@ def getSetItemBuffOptionEmbed(setItemInfo):
     embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     return embed
 
-async def 획득에픽(bot, ctx, *input):
-    if not input:
-        await ctx.message.delete()
-        await ctx.channel.send('> !획득에픽 <닉네임> 또는 !획득에픽 <서버> <닉네임> 의 형태로 적어야해요!')
-        return
-
-    if len(input) == 2:
-        server = input[0]
-        name   = input[1]
-    else:
-        server = '전체'
-        name   = input[0]
-
-    try:
-        chrIdList = dnfAPI.getChrIdList(server, name)
-        server, chrId, name = await util.getSelectionFromChrIdList(bot, ctx, chrIdList)
-    except: return False
-
-    waiting = await ctx.channel.send(f'> {name}님이 획득한 에픽을 확인 중이예요...')
-    timeline = dnfAPI.getChrTimeLine(server, chrId, '505')
-
-    # 획득한 에픽 갯수
-    gainEpicCount = len(timeline)
-    if gainEpicCount == 0:
-        await waiting.delete()
-        await ctx.channel.send(f'> {name}님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
-        return
-
-    # 에픽을 가장 많이 획득한 채널
-    count = {}
-    chs = ['ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'] for i in timeline]
-    for i in chs:
-        try:    count[i] += 1
-        except: count[i] = 1
-    bestCH = sorted(count.items(), key=lambda item: item[1], reverse=True)[0]
-
-    # 저장
-    try:
-        conn, cur = connection.getConnection()
-        sql = 'INSERT INTO epic (date, server, name, count, channel) values (%s, %s, %s, %s, %s)'
-        date = datetime.now().strftime('%Y-%m-%d')
-        cur.execute(sql, (date, server, name, gainEpicCount, bestCH[0]))
-        conn.commit()
-    except Exception as e:
-        sql = 'UPDATE epic SET count=%s, channel=%s WHERE date=%s and server=%s and name=%s'
-        cur.execute(sql, (gainEpicCount, bestCH[0], date, server, name))
-        conn.commit()
-    await waiting.delete()
-
-    page = 0
-    embed = getGainEpicEmbed(name, bestCH[0], timeline, page)
-    embed.set_footer(text=f'{(gainEpicCount - 1) // 15 + 1}쪽 중 1쪽')
-    msg = await ctx.channel.send(embed=embed)
-    if gainEpicCount > 15:
-        await msg.add_reaction('▶️')
-    
-    while gainEpicCount > 15:
-        try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
-            reaction, user = await bot.wait_for('reaction_add', check=check)
-
-            if str(reaction) == '◀️' and page > 0:
-                page -= 1
-            if str(reaction) == '▶️' and page < (gainEpicCount - 1) // 15:
-                page += 1
-
-            embed = getGainEpicEmbed(name, bestCH[0], timeline, page)
-            embed.set_footer(text=f'{(gainEpicCount - 1) // 15 + 1}쪽 중 {page + 1}쪽')
-            await msg.edit(embed=embed)
-            await msg.clear_reactions()
-
-            if page > 0:
-                await msg.add_reaction('◀️')
-            if page < (gainEpicCount - 1) // 15:
-                await msg.add_reaction('▶️')
-        except: pass
-
 def getGainEpicEmbed(name, bestCH, timeline, page):
     embed = discord.Embed(title=f'{name} 님은 이번 달에 {len(timeline)}개의 에픽을 획득했어요.',
                           description=f'`{bestCH}`에서 에픽을 가장 많이 획득했어요!')
@@ -482,60 +535,6 @@ def getGainEpicEmbed(name, bestCH, timeline, page):
         embed.add_field(name=f"> {i['date'][:10]}\r\nch{i['data']['channelNo']}.{i['data']['channelName']}",
                         value=i['data']['itemName'])
     return embed
-
-async def 기린랭킹(bot, ctx):
-    await ctx.message.delete()
-    waiting = await ctx.channel.send('> 기린 랭킹을 불러오는 중이예요...')
-
-    try:
-        conn, cur = connection.getConnection()
-        sql = 'SELECT * FROM epic WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
-        cur.execute(sql)
-        rank = cur.fetchall()
-    except Exception as e:
-        print(e)
-
-    rank = list(sorted(rank, key=lambda x: x['count'], reverse=True))
-
-    if not rank:
-        today = datetime.today()
-        embed = discord.Embed(title=f'{today.year}년 {today.month}월 기린 랭킹을 알려드릴게요!',
-                              description='> 랭킹 데이터가 없어요.\r\n'
-                                          '> !획득에픽으로 랭킹에 등록해보세요!')
-        await waiting.delete()
-        await ctx.channel.send(embed=embed)
-        return
-
-    page = 0
-    embed = getEpicRankEmbed(rank, page)
-    embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 {page + 1}쪽')
-    await waiting.delete()
-    msg = await ctx.channel.send(embed=embed)
-    if len(rank) > 15:
-        await msg.add_reaction('▶️')
-
-    while len(rank) > 15:
-        try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
-            reaction, user = await bot.wait_for('reaction_add', check=check)
-
-            if str(reaction) == '◀️' and page > 0:
-                page -= 1
-            if str(reaction) == '▶️' and page < (len(rank) - 1) // 15:
-                page += 1
-
-            embed = getEpicRankEmbed(rank, page)
-            embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 {page + 1}쪽')
-            await msg.edit(embed=embed)
-            await msg.clear_reactions()
-
-            if page > 0:
-                await msg.add_reaction('◀️')
-            if page < (len(rank) - 1) // 15:
-                await msg.add_reaction('▶️')
-        except: pass
 
 def getEpicRankEmbed(rank, page):
     rank = rank[page * 15:page * 15 + 15]

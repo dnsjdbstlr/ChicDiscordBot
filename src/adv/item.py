@@ -17,3 +17,6 @@
 import json
 with open('src/adv/weapon.json', 'r', encoding='UTF8') as f:
     WEAPON = json.load(f)
+
+with open('src/adv/accessory.json', 'r', encoding='UTF8') as f:
+    ACCESSORY = json.load(f)

@@ -54,11 +54,11 @@ async def 기린랭킹(ctx):
 ### 게임 명령어 ###
 @bot.command()
 async def 출석(ctx):
-    await stock.출석(bot, ctx)
+    await stock.출석(ctx)
 
 @bot.command()
 async def 출석체크(ctx):
-    await stock.출석(bot, ctx)
+    await stock.출석(ctx)
 
 @bot.command()
 async def 주식(ctx):

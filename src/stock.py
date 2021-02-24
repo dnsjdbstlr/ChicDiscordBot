@@ -3,171 +3,58 @@ import discord
 import asyncio
 from src import dnfAPI, util
 from datetime import datetime
-from database import connection
+from database import connection, tool
 
-def iniStock(conn, cur, did):
-    sql = f'INSERT INTO stock (did, gold) values ({did}, {10000000})'
-    cur.execute(sql)
-    conn.commit()
-
-def getHoldings(stock):
-    holdings = []
-    for i in [stock['holding1'], stock['holding2'], stock['holding3']]:
-        if i is not None:
-            holding = json.loads(i)
-            if holding is not None:
-                holdings.append(holding)
-    return holdings
-
-async def 출석(bot, ctx):
+async def 출석(ctx):
     await ctx.message.delete()
-    waiting = await ctx.channel.send(f'> {ctx.message.author.display_name}님의 출석을 확인하고있어요...')
-    did = str(ctx.message.author.id)
-    today = datetime.now().strftime('%Y-%m-%d')
-
-    # 커넥션
-    conn, cur = connection.getConnection()
+    did, name = str(ctx.message.author.id), ctx.message.author.display_name
+    waiting = await ctx.channel.send(f'> {name}님의 출석을 확인하고있어요...')
 
     # 주식 정보 확인
-    try:
-        sql = f'SELECT * FROM stock WHERE did={did}'
-        cur.execute(sql)
-        stock = cur.fetchone()
-    except Exception as e:
-        await ctx.channel.send(f'> 주식 정보를 불러오지 못했어요.\r\n> {e}')
-        return
-
+    stock = tool.getStock(did)
     if stock is None:
-        text = f'> {ctx.message.author.display_name}님의 주식 정보를 찾을 수 없어요.\r\n'
-        text += '> !주식 명령어를 사용한 후 다시 입력해주세요.'
+        embed = discord.Embed(title=f'{name}님의 출석체크',
+                              description='`!주식` 명령어를 사용한 후 다시 시도해주세요.')
         await waiting.delete()
-        await ctx.channel.send(text)
+        await ctx.channel.send(embed=embed)
         return
 
     # 출석 체크 확인
-    try:
-        sql = f'SELECT * FROM dailyCheck WHERE did={did}'
-        cur.execute(sql)
-        daily = cur.fetchone()
-    except Exception as e:
-        await ctx.channel.send(f'> 출석 정보를 불러오지 못했어요.\r\n> {e}')
-        return
-
-    if daily is not None and str(daily.get('date')) == today:
-        text = f'> {ctx.message.author.display_name}님은 이미 출석체크 하셨어요.\r\n'
-        text += '> 출석체크는 매일 00시에 초기화되요!'
+    dailyCheck = tool.getDailyCheck(did)
+    today = datetime.now().strftime('%Y-%m-%d')
+    if str(dailyCheck.get('date')) == today:
+        embed = discord.Embed(title=f'{name}님의 출석체크')
+        embed.add_field(name='> 출석 날짜', value=today)
+        embed.add_field(name='> 출석 일수', value=f"{dailyCheck['count']}일")
+        embed.add_field(name='> 출석 보상', value='X')
+        embed.set_footer(text='이미 출석체크를 했어요.')
         await waiting.delete()
-        await ctx.channel.send(text)
+        await ctx.channel.send(embed=embed)
         return
 
-    try:
-        # 보상 지급
-        isFirst = False
-        sql = f'SELECT gold FROM stock WHERE did={did}'
-        cur.execute(sql)
-        rs = cur.fetchone()
+    # 출석 체크
+    reward = util.getDailyReward()
+    tool.gainGold(did, reward)
+    tool.updateDailyCheck(did)
+    dailyCheck = tool.getDailyCheck(did)
 
-        reward = util.getDailyReward()
-        gold = rs['gold'] + reward
-
-        sql = f'UPDATE stock SET gold={gold} WHERE did={did}'
-        cur.execute(sql)
-        conn.commit()
-
-        # 출석 최신화
-        sql = 'UPDATE dailyCheck SET count=%s, date=%s WHERE did=%s'
-        cur.execute(sql, (daily['count'] + 1, today, did))
-        conn.commit()
-    except:
-        # 처음 출석
-        isFirst = True
-        sql = 'INSERT INTO dailyCheck (did, count, date) values (%s, %s, %s)'
-        cur.execute(sql, (did, 1, today))
-        conn.commit()
-
-        sql = f'SELECT * FROM dailyCheck WHERE did={did}'
-        cur.execute(sql)
-        daily = cur.fetchone()
-
-    infoSwitch = True
-    embed = getDailyCheckInfoEmbed(ctx.message.author.display_name, today, daily, reward, isFirst)
-    await waiting.delete()
-    msg = await ctx.channel.send(embed=embed)
-    await msg.add_reaction('▶️')
-
-    while True:
-        try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
-            reaction, user = await bot.wait_for('reaction_add', check=check)
-
-            if infoSwitch and str(reaction) == '▶️':
-                embed = getRewardInfoEmbed()
-                await msg.edit(embed=embed)
-                await msg.clear_reactions()
-                await msg.add_reaction('◀️')
-                infoSwitch = not infoSwitch
-            if not infoSwitch and str(reaction) == '◀️':
-                embed = getDailyCheckInfoEmbed(ctx.message.author.display_name, today, daily, reward)
-                await msg.edit(embed=embed)
-                await msg.clear_reactions()
-                await msg.add_reaction('▶️')
-                infoSwitch = not infoSwitch
-        except:
-            await msg.delete()
-            await ctx.channel.send('> 오류가 발생했어요.')
-
-def getDailyCheckInfoEmbed(name, today, daily, reward, isFirst):
-    embed = discord.Embed(title=f'{name}님 출석체크 완료!')
+    embed = discord.Embed(title=f'{name}님의 출석체크')
     embed.add_field(name='> 출석 날짜', value=today)
-    if isFirst:
-        embed.add_field(name='> 출석 일수', value=f"{daily['count']}일")
-    else:
-        embed.add_field(name='> 출석 일수', value=f"{daily['count'] + 1}일")
+    embed.add_field(name='> 출석 일수', value=f"{dailyCheck['count']}일")
     embed.add_field(name='> 출석 보상', value=format(reward, ',') + '골드')
-    embed.set_footer(text='매일 00시마다 초기화되요.')
-    return embed
-
-def getRewardInfoEmbed():
-    embed = discord.Embed(title='출석 보상 확률을 알려드릴게요.')
-    embed.add_field(name='> 0골드', value='1%')
-    embed.add_field(name='> 100,000골드', value='1%')
-    embed.add_field(name='> 200,000골드', value='4%')
-    embed.add_field(name='> 300,000골드', value='8%')
-    embed.add_field(name='> 400,000골드', value='16%')
-    embed.add_field(name='> 500,000골드', value='20%')
-    embed.add_field(name='> 600,000골드', value='20%')
-    embed.add_field(name='> 700,000골드', value='16%')
-    embed.add_field(name='> 800,000골드', value='8%')
-    embed.add_field(name='> 900,000골드', value='4%')
-    embed.add_field(name='> 1,000,000골드', value='1%')
-    embed.add_field(name='> 2,000,000골드', value='1%')
-    embed.set_footer(text='평균 기대값은 559,000골드예요.')
-    return embed
+    embed.set_footer(text='출석체크 완료!')
+    await waiting.delete()
+    await ctx.channel.send(embed=embed)
 
 async def 주식(ctx):
     await ctx.message.delete()
-    waiting = await ctx.channel.send('> ' + ctx.message.author.display_name + '님의 주식 정보를 불러오고 있어요...')
-    did = str(ctx.message.author.id)
+    did, name = ctx.message.author.id, ctx.message.author.display_name
+    waiting = await ctx.channel.send(f'> {name}님의 주식 정보를 불러오고 있어요...')
 
-    # 커넥션
-    conn, cur = connection.getConnection()
-
-    try:
-        sql = f'SELECT * FROM stock WHERE did={did}'
-        cur.execute(sql)
-        stock = cur.fetchone()
-    except Exception as e:
-        await ctx.channel.send(f'> 주식 정보를 불러오지 못했어요.\r\n> {e}')
-        return
-
-    # 초기세팅
+    stock = tool.getStock(did)
     if stock is None:
-        iniStock(conn, cur, did)
-        sql = f'SELECT * FROM stock WHERE did={did}'
-        cur.execute(sql)
-        stock = cur.fetchone()
+        tool.iniStock(did)
+        stock = tool.getStock(did)
 
     # 기존 코드와 호환
     stock['holdings'] = getHoldings(stock)
@@ -196,18 +83,15 @@ async def 주식(ctx):
     for i in range(3):
         try:
             holdings = stock['holdings'][i]
-            volatility = util.getVolatility2(holdings['bid'], newPrice[i])
-
             name = '> ' + holdings['name']
             value = '현재 단가 : ' + format(newPrice[i], ',') + '골드\r\n'
             value += '매수 단가 : ' + format(holdings['bid'], ',') + '골드\r\n'
             value += '매수량 : ' + format(holdings['count'], ',') + '개\r\n'
             #value += '매수금 : ' + format(holdings['bid'] * holdings['count'], ',') + '골드\r\n'
-            value += '수익률 : ' + volatility
+            value += '수익률 : ' + util.getVolatility2(holdings['bid'], newPrice[i])
         except Exception as e:
             name = '> 종목' + str(i + 1)
             value = '보유 중인 주식이 없습니다.'
-            #print(e)
         embed.add_field(name=name, value=value)
     await waiting.delete()
     await ctx.channel.send(embed=embed)
@@ -220,10 +104,7 @@ async def 주식매수(bot, ctx, *input):
         return
 
     waiting = await ctx.channel.send('> 해당 주식의 정보를 불러오는 중입니다...')
-
-    name = util.mergeString(*input)
-    name = dnfAPI.getMostSimilarItemName(name)
-
+    name = dnfAPI.getMostSimilarItemName(util.mergeString(*input))
     if '카드' in name:
         text = '> 현재 카드는 매수할 수 없어요.\r\n'
         text += '> 카드도 매수할 수 있도록 노력해볼게요!'
@@ -257,8 +138,7 @@ async def 주식매수(bot, ctx, *input):
         reaction, user = await bot.wait_for('reaction_add', check=check, timeout=30)
         if str(reaction) == '⭕':
             await msg.delete()
-            did = str(ctx.message.author.id)
-            await buyStock(bot, ctx, did, name, price)
+            await buyStock(bot, ctx, name, price)
         elif str(reaction) == '❌':
             await msg.delete()
             await ctx.channel.send('> 매수가 취소되었습니다.')
@@ -268,20 +148,150 @@ async def 주식매수(bot, ctx, *input):
     except Exception as e:
         await ctx.channel.send('> 오류가 발생했어요.\r\n> ' + str(e))
 
-async def buyStock(bot, ctx, did, name, price):
-    conn, cur = connection.getConnection()
+async def 주식매도(bot, ctx):
+    await ctx.message.delete()
+    did, name = ctx.message.author.id, ctx.message.author.display_name
+    waiting = await ctx.channel.send(f'> {name}님의 보유 주식을 불러오는 중입니다...')
+
+    stock = tool.getStock(did)
+    if stock is None:
+        text = f'> {name}님의 주식 정보를 찾을 수 없어요.\r\n'
+        text += '> `!주식` 명령어를 사용한 후 다시 입력해주세요.'
+        await waiting.delete()
+        await ctx.channel.send(text)
+        return
+
+    stock['holdings'] = getHoldings(stock)
+    if len(stock['holdings']) == 0:
+        text = f'> {name}님은 매도할 주식이 없어요.\r\n'
+        text += '> `!주식매수` 명령어를 사용해서 주식을 매수해보세요!'
+        await waiting.delete()
+        await ctx.channel.send(text)
+        return
+
+    newPrice = []
+    embed = discord.Embed(title='판매할 종목을 선택해주세요.')
+    for i in stock['holdings']:
+        # 주가 최신화
+        if i is None: break
+        auction = dnfAPI.getItemAuctionPrice(i['name'])
+        _, price = util.updateAuctionData(i['name'], auction)
+        newPrice.append(price['평균가'])
+
+        value = '매도 단가 : '  + format(price['평균가'], ',') + '\r\n'
+        value += '매수 단가 : ' + format(i['bid'], ',') + '\r\n'
+        value += '보유량 : '    + format(i['count'], ',')
+        embed.add_field(name='> ' + i['name'], value=value)
+    embed.set_footer(text='30초 안에 결정해야합니다.')
+    await waiting.delete()
+    msg = await ctx.channel.send(embed=embed)
+
+    if len(stock['holdings']) >= 1: await msg.add_reaction('1️⃣')
+    if len(stock['holdings']) >= 2: await msg.add_reaction('2️⃣')
+    if len(stock['holdings']) >= 3: await msg.add_reaction('3️⃣')
+
     try:
+        def check(reaction, user):
+            return str(reaction) in ['1️⃣', '2️⃣', '3️⃣'] and user == ctx.author and reaction.message.id == msg.id
+        reaction, user = await bot.wait_for('reaction_add', check=check, timeout=30)
+
+        if str(reaction) == '1️⃣' and len(stock['holdings']) >= 1:
+            await msg.delete()
+            await sellStock(bot, ctx, stock, 0, newPrice[0])
+        elif str(reaction) == '2️⃣' and len(stock['holdings']) >= 2:
+            await msg.delete()
+            await sellStock(bot, ctx, stock, 1, newPrice[1])
+        elif str(reaction) == '3️⃣' and len(stock['holdings']) >= 3:
+            await msg.delete()
+            await sellStock(bot, ctx, stock, 2, newPrice[2])
+    except asyncio.TimeoutError:
+        await msg.delete()
+        await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
+    except Exception as e:
+        await ctx.channel.send('> 오류가 발생했어요.\r\n> ' + str(e))
+
+async def 주식랭킹(bot, ctx):
+    await ctx.message.delete()
+    waiting = await ctx.channel.send('> 주식 랭킹을 불러오는 중이예요...')
+
+    try:
+        conn, cur = connection.getConnection()
+        sql = 'SELECT * FROM stock'
+        cur.execute(sql)
+        stocks = cur.fetchall()
+
+        sql = 'SELECT * FROM auction'
+        cur.execute(sql)
+        auction = cur.fetchall()
+    except Exception as e: return
+    rank = getSortedStockRank(stocks, auction)
+
+    if not rank:
+        embed = discord.Embed(title='주식 랭킹을 알려드릴게요!',
+                              description='> 랭킹 데이터가 없어요.\r\n'
+                                          '> 여러분만의 주식을 보여주세요!')
+        await waiting.delete()
+        await ctx.channel.send(embed=embed)
+        return
+
+    page = 0
+    embed = getStockRankEmbed(ctx, rank, auction, page)
+    embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 1쪽')
+    await waiting.delete()
+    msg = await ctx.channel.send(embed=embed)
+
+    if len(rank) > 15:
+        await msg.add_reaction('▶️')
+    while len(rank) > 15:
+        try:
+            def check(reaction, user):
+                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
+                       and user == ctx.author and reaction.message.id == msg.id
+            reaction, user = await bot.wait_for('reaction_add', check=check)
+
+            if str(reaction) == '◀️' and page > 0:
+                page -= 1
+            if str(reaction) == '▶️' and page < (len(rank) - 1) // 15:
+                page += 1
+
+            embed = getStockRankEmbed(ctx, rank, auction, page)
+            embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 {page + 1}쪽')
+            await msg.edit(embed=embed)
+            await msg.clear_reactions()
+
+            if page > 0:
+                await msg.add_reaction('◀️')
+            if page < (len(rank) - 1) // 15:
+                await msg.add_reaction('▶️')
+        except: pass
+
+def isValid(did):
+    try:
+        conn, cur = connection.getConnection()
         sql = f'SELECT * FROM stock WHERE did={did}'
         cur.execute(sql)
         stock = cur.fetchone()
-    except Exception as e:
-        await ctx.channel.send(f'> 주식 정보를 불러오지 못했어요.\r\n> {e}')
-        return
+    except: return False
+    if stock is not None:
+        return True
+    else:
+        return False
 
+def getHoldings(stock):
+    holdings = []
+    for i in [stock['holding1'], stock['holding2'], stock['holding3']]:
+        if i is None: continue
+        holding = json.loads(i)
+        if holding is not None:
+            holdings.append(holding)
+    return holdings
+
+async def buyStock(bot, ctx, name, price):
+    stock = tool.getStock(ctx.message.author.id)
     if stock is None:
-        text = f'> {ctx.message.author.display_name}님의 주식 정보를 찾을 수 없어요.\r\n'
-        text += '> !주식 명령어를 사용한 후 다시 입력해주세요.'
-        await ctx.channel.send(text)
+        embed = discord.Embed(title=ctx.message.author.display_name + '님의 매수 주문',
+                              description='주식 정보를 찾을 수 없어요. `!주식` 명령어를 사용한 후에 다시 시도해주세요.')
+        await ctx.channel.send(embed=embed)
         return
 
     stock['holdings'] = getHoldings(stock)
@@ -291,11 +301,12 @@ async def buyStock(bot, ctx, did, name, price):
     for i in stock['holdings']:
         if i['name'] == name:
             isOverride = True
+            break
 
     if len(stock['holdings']) >= 3 and not isOverride:
-        text = '> 최대 3가지 종목만 보유할 수 있어요.\r\n'
-        text += '> 보유 중인 주식을 매도하고 다시 시도해주세요.'
-        await ctx.channel.send(text)
+        embed = discord.Embed(title=ctx.message.author.display_name + '님의 매수 주문',
+                              description='최대 3가지 종목만 보유할 수 있어요. `!주식매도` 명령어를 사용해서 보유한 주식을 매도할 수 있어요.')
+        await ctx.channel.send(embed=embed)
         return
 
     embed = discord.Embed(title=ctx.message.author.display_name + '님의 매수 주문',
@@ -349,17 +360,17 @@ async def buyStock(bot, ctx, did, name, price):
 
         # 저장
         for i in range(3):
-            try:
-                stock[f'holding{i + 1}'] = stock['holdings'][i]
-            except:
-                stock[f'holding{i + 1}'] = None
+            try:    stock[f'holding{i + 1}'] = stock['holdings'][i]
+            except: stock[f'holding{i + 1}'] = None
 
         try:
+            conn, cur = connection.getConnection()
             sql = 'UPDATE stock SET gold=%s, holding1=%s, holding2=%s, holding3=%s WHERE did=%s'
             cur.execute(sql, (stock['gold'],
                               json.dumps(stock['holding1'], ensure_ascii=False),
                               json.dumps(stock['holding2'], ensure_ascii=False),
-                              json.dumps(stock['holding3'], ensure_ascii=False), did))
+                              json.dumps(stock['holding3'], ensure_ascii=False),
+                              ctx.message.author.id))
             conn.commit()
         except Exception as e:
             await ctx.channel.send(f'> 매수에 실패했어요.\r\n> {e}')
@@ -381,79 +392,8 @@ async def buyStock(bot, ctx, did, name, price):
         await result.delete()
         await ctx.channel.send('> 입력이 잘못되었어요. 다시 시도해주세요.')
 
-async def 주식매도(bot, ctx):
-    await ctx.message.delete()
-    waiting = await ctx.channel.send(f'> {ctx.message.author.display_name}님의 보유 주식을 불러오는 중입니다...')
-    did = str(ctx.message.author.id)
-
-    # 커넥션
-    conn, cur = connection.getConnection()
-
-    try:
-        sql = f'SELECT * FROM stock WHERE did={did}'
-        cur.execute(sql)
-        stock = cur.fetchone()
-    except Exception as e:
-        await ctx.channel.send(f'> 주식 정보를 불러오지 못했어요.\r\n> {e}')
-        return
-
-    if stock is None:
-        text = f'> {ctx.message.author.display_name}님의 주식 정보를 찾을 수 없어요.\r\n'
-        text += '> !주식 명령어를 사용한 후 다시 입력해주세요.'
-        await ctx.channel.send(text)
-        return
-
-    stock['holdings'] = getHoldings(stock)
-    if len(stock['holdings']) == 0:
-        await waiting.delete()
-        await ctx.channel.send(f'> {ctx.message.author.display_name}님은 매도할 주식이 없어요.')
-        return
-
-    newPrice = []
-    embed = discord.Embed(title='판매할 종목을 선택해주세요.')
-    for i in stock['holdings']:
-        # 주가 최신화
-        if i is None: break
-        auction = dnfAPI.getItemAuctionPrice(i['name'])
-        _, price = util.updateAuctionData(i['name'], auction)
-        newPrice.append(price['평균가'])
-
-        value = '매도 단가 : '  + format(price['평균가'], ',') + '\r\n'
-        value += '매수 단가 : ' + format(i['bid'], ',') + '\r\n'
-        value += '보유량 : '    + format(i['count'], ',')
-        embed.add_field(name='> ' + i['name'], value=value)
-    embed.set_footer(text='30초 안에 결정해야합니다.')
-    await waiting.delete()
-    msg = await ctx.channel.send(embed=embed)
-
-    if len(stock['holdings']) >= 1:
-        await msg.add_reaction('1️⃣')
-    if len(stock['holdings']) >= 2:
-        await msg.add_reaction('2️⃣')
-    if len(stock['holdings']) >= 3:
-        await msg.add_reaction('3️⃣')
-
-    try:
-        def check(reaction, user):
-            return str(reaction) in ['1️⃣', '2️⃣', '3️⃣'] and user == ctx.author and reaction.message.id == msg.id
-        reaction, user = await bot.wait_for('reaction_add', check=check, timeout=30)
-
-        if str(reaction) == '1️⃣' and len(stock['holdings']) >= 1:
-            await msg.delete()
-            await sellStock(bot, ctx, did, stock, 0, newPrice[0])
-        elif str(reaction) == '2️⃣' and len(stock['holdings']) >= 2:
-            await msg.delete()
-            await sellStock(bot, ctx, did, stock, 1, newPrice[1])
-        elif str(reaction) == '3️⃣' and len(stock['holdings']) >= 3:
-            await msg.delete()
-            await sellStock(bot, ctx, did, stock, 2, newPrice[2])
-    except asyncio.TimeoutError:
-        await msg.delete()
-        await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-    except Exception as e:
-        await ctx.channel.send('> 오류가 발생했어요.\r\n> ' + str(e))
-
-async def sellStock(bot, ctx, did, stock, index, offer):
+async def sellStock(bot, ctx, stock, index, offer):
+    did = ctx.message.author.id
     embed = discord.Embed(title=ctx.message.author.display_name + '님의 매도 주문',
                           description='매도할 양을 입력해주세요.\r\n매도 채결 시 1%의 수수료가 발생해요.')
     embed.add_field(name='> 종목', value=stock['holdings'][index]['name'])
@@ -523,61 +463,6 @@ async def sellStock(bot, ctx, did, stock, index, offer):
         await result.delete()
         await ctx.channel.send('> 입력이 잘못되었어요. 다시 시도해주세요.')
         print(e)
-
-async def 주식랭킹(bot, ctx):
-    await ctx.message.delete()
-    waiting = await ctx.channel.send('> 주식 랭킹을 불러오는 중이예요...')
-
-    try:
-        conn, cur = connection.getConnection()
-        sql = 'SELECT * FROM stock'
-        cur.execute(sql)
-        stocks = cur.fetchall()
-
-        sql = 'SELECT * FROM auction'
-        cur.execute(sql)
-        auction = cur.fetchall()
-    except Exception as e: return
-    rank = getSortedStockRank(stocks, auction)
-
-    if not rank:
-        embed = discord.Embed(title='주식 랭킹을 알려드릴게요!',
-                              description='> 랭킹 데이터가 없어요.\r\n'
-                                          '> 여러분만의 주식을 보여주세요!')
-        await waiting.delete()
-        await ctx.channel.send(embed=embed)
-        return
-
-    page = 0
-    embed = getStockRankEmbed(ctx, rank, auction, page)
-    embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 1쪽')
-    await waiting.delete()
-    msg = await ctx.channel.send(embed=embed)
-
-    if len(rank) > 15:
-        await msg.add_reaction('▶️')
-    while len(rank) > 15:
-        try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
-            reaction, user = await bot.wait_for('reaction_add', check=check)
-
-            if str(reaction) == '◀️' and page > 0:
-                page -= 1
-            if str(reaction) == '▶️' and page < (len(rank) - 1) // 15:
-                page += 1
-
-            embed = getStockRankEmbed(ctx, rank, auction, page)
-            embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 {page + 1}쪽')
-            await msg.edit(embed=embed)
-            await msg.clear_reactions()
-
-            if page > 0:
-                await msg.add_reaction('◀️')
-            if page < (len(rank) - 1) // 15:
-                await msg.add_reaction('▶️')
-        except: pass
 
 def getSortedStockRank(stocks, auction):
     def key(x):
