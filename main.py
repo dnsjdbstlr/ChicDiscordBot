@@ -5,8 +5,8 @@ from src.adv import adventure
 
 ### 기본설정 ###
 bot = commands.Bot(command_prefix='!')
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
 ### 이벤트 ###
 @bot.event
@@ -79,6 +79,10 @@ async def 주식랭킹(ctx):
 @bot.command()
 async def 모험(ctx):
     await adventure.모험(ctx)
+
+@bot.command()
+async def 강화(ctx):
+    await adventure.강화(bot, ctx)
 
 @bot.command()
 async def 장비뽑기(ctx):

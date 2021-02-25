@@ -78,6 +78,179 @@ async def 인벤토리(bot, ctx):
     selection = await getInventorySelection(bot, ctx, inv, 0)
     if selection != -1: await setEquipItem(bot, ctx, inv, selection)
 
+async def 강화(bot, ctx):
+    did, name = ctx.message.author.id, ctx.message.author.display_name
+    if not isValid(did):
+        await ctx.message.delete()
+        embed = discord.Embed(title=f'{name}님의 장비 강화',
+                              description='`!주식` 또는 `!모험` 명령어를 사용한 후에 다시 시도해주세요.\r\n'
+                                          '두 가지 명령어를 적어도 한 번씩은 사용한 적이 있어야합니다.')
+        await ctx.channel.send(embed=embed)
+        return
+
+    equipment = tool.getEquipment(did)
+    embed = discord.Embed(title=f'{name}님의 장비 강화', description='강화하고 싶은 장비를 선택해주세요.')
+    embed.add_field(name='> 무기',     value=getItemInfo(equipment['weapon']))
+    embed.add_field(name='> 악세서리', value=getItemInfo(equipment['accessory']))
+    embed.add_field(name='> 추가장비', value=getItemInfo(equipment['additional']))
+    await ctx.message.delete()
+    msg = await ctx.channel.send(embed=embed)
+    if equipment['weapon']:     await msg.add_reaction('1️⃣')
+    if equipment['accessory']:  await msg.add_reaction('2️⃣')
+    if equipment['additional']: await msg.add_reaction('3️⃣')
+
+    try:
+        await reinforceConfirm(bot, ctx, equipment, msg)
+    except: pass
+
+async def reinforceConfirm(bot, ctx, equipment, msg):
+    def check(_reaction, _user):
+        return str(_reaction) in ['1️⃣', '2️⃣', '3️⃣'] and _user == ctx.author and _reaction.message.id == msg.id
+    reaction, user = await bot.wait_for('reaction_add', check=check)
+
+    if str(reaction) == '1️⃣':
+        target = equipment['weapon']
+    elif str(reaction) == '2️⃣':
+        target = equipment['accessory']
+    elif str(reaction) == '3️⃣':
+        target = equipment['additional']
+    else: return
+
+    prob = getReinforceProb(target['info']['reinforce'] + 1)
+    cost = getReinforceCost(target['info']['reinforce'] + 1, getItemType(target['info']['id']))
+
+    await msg.delete()
+    embed = discord.Embed(title=f'{ctx.message.author.display_name}님의 장비 강화',
+                          description='강화를 시도하려면 O, 취소하려면 X 이모지를 추가해주세요.')
+    embed.add_field(name='> 선택한 장비', value=f"+{target['info']['reinforce']} {target['info']['name']}")
+    embed.add_field(name='> 성공 확률', value=f"{prob}%")
+    embed.add_field(name='> 강화 비용', value=f"{format(cost, ',')}골드")
+    msg = await ctx.channel.send(embed=embed)
+    await msg.add_reaction('⭕')
+    await msg.add_reaction('❌')
+
+    try:
+        def _check(__reaction, __user):
+            return str(__reaction) in ['⭕', '❌'] and __user == ctx.author and __reaction.message.id == msg.id
+        reaction, user = await bot.wait_for('reaction_add', check=_check)
+        if str(reaction) == '⭕':
+            await msg.delete()
+            await reinforceItem(bot, ctx, target)
+        elif str(reaction) == '❌':
+            await msg.delete()
+            embed = discord.Embed(title=f'{ctx.message.author.display_name}님의 장비 강화',
+                                  description='강화가 취소되었습니다. 다시 한번 생각해보고 시도해주세요.')
+            await ctx.channel.send(embed=embed)
+    except: pass
+
+async def reinforceItem(bot, ctx, target):
+    prob = getReinforceProb(target['info']['reinforce'] + 1)
+    cost = getReinforceCost(target['info']['reinforce'] + 1, getItemType(target['info']['id']))
+    gold = tool.getGold(ctx.message.author.id)
+    if gold < cost:
+        embed = discord.Embed(title=f'{ctx.message.author.display_name}님의 장비 강화',
+                              description='강화에 필요한 골드가 부족합니다.')
+        embed.add_field(name='> 장비', value=f"+{target['info']['reinforce']} {target['info']['name']}")
+        embed.add_field(name='> 보유 골드', value=f"{format(gold, ',')}골드")
+        embed.add_field(name='> 강화 비용', value=f"{format(cost, ',')}골드")
+        await ctx.channel.send(embed=embed)
+        return
+
+    tool.gainGold(ctx.message.author.id, -cost)
+
+    import random
+    seed = random.randint(1, 100)
+    embed = discord.Embed(title=f'{ctx.message.author.display_name}님의 장비 강화')
+    if seed <= prob:
+        target['info']['reinforce'] += 1
+        # _type = getItemType(target['info']['id'])
+        # if _type == 'weapon':
+        #     target['option']['공격력'] += target['info']['reinforce'] ** 2
+        # elif _type == 'accessory' or _type == 'additional':
+        #     try:
+        #         target['option']['스탯'] += target['info']['reinforce'] ** 2
+        #     except:
+        #         target['option']['스탯'] = target['info']['reinforce'] ** 2
+        tool.setEquipment(ctx.message.author.id, target)
+        embed.add_field(name='> 결과', value='성공', inline=False)
+    else:
+        embed.add_field(name='> 결과', value='실패', inline=False)
+    embed.add_field(name='> 장비', value=f"+{target['info']['reinforce']} {target['info']['name']}")
+    embed.add_field(name='> 보유 골드', value=f"{format(gold - cost, ',')}골드")
+    embed.add_field(name='> 강화 비용', value=f"{format(cost, ',')}골드")
+    embed.set_footer(text=f"⚔️이모지를 추가하면 다시 강화를 시도합니다. (성공 확률 : {getReinforceProb(target['info']['reinforce'] + 1)}%)")
+    msg = await ctx.channel.send(embed=embed)
+    await msg.add_reaction('⚔️')
+
+    try:
+        def check(_reaction, _user):
+            return str(_reaction) == '⚔️' and _user == ctx.author and _reaction.message.id == msg.id
+        reaction, user = await bot.wait_for('reaction_add', check=check)
+        await msg.delete()
+        await reinforceItem(bot, ctx, target)
+    except: pass
+
+def getReinforceProb(reinforce):
+    prob = {
+        1 : 100,
+        2 : 100,
+        3 : 100,
+        4 : 100,
+        5 : 80,
+        6 : 70,
+        7 : 60,
+        8 : 50,
+        9 : 40,
+        10 : 30,
+        11 : 25,
+        12 : 18,
+        13 : 17,
+        14 : 16,
+        15 : 14,
+    }
+    return prob[reinforce]
+
+def getReinforceCost(reinforce, _type):
+    weapon_cost = {
+        1 : 354600,
+        2 : 354600,
+        3 : 354600,
+        4 : 354600,
+        5 : 709200,
+        6 : 780120,
+        7 : 851040,
+        8 : 921960,
+        9 : 992880,
+        10 : 1063800,
+        11 : 1063800,
+        12 : 1773000,
+        13 : 2836800,
+        14 : 4255200,
+        15 : 6028200
+    }
+    cost = {
+        1 : 295500,
+        2 : 295500,
+        3 : 295500,
+        4 : 295500,
+        5 : 591000,
+        6 : 650100,
+        7 : 709200,
+        8 : 768300,
+        9 : 827400,
+        10 : 886500,
+        11 : 886500,
+        12 : 1477500,
+        13 : 2364000,
+        14 : 3546000,
+        15 : 5023500
+    }
+
+    if _type == 'weapon':
+        return weapon_cost[reinforce]
+    else:
+        return cost[reinforce]
+
 def isValid(did):
     try:
         conn, cur = connection.getConnection()
@@ -168,16 +341,43 @@ def getItemInfo(item):
             desc += f"타입 : {item['info']['rarity']} 악세서리\r\n"
         elif item['info']['id'] // 10000 == 3:
             desc += f"타입 : {item['info']['rarity']} 추가장비\r\n"
-        
-        for key in item['option']:
-            desc += f"{key} : {item['option'][key]}"
-            if key in ['치명타 확률', '추가 데미지', '데미지 증가', '크리티컬 데미지 증가']:
-                desc += '%\r\n'
+
+        reinforceStat = getReinforceStat(item)
+        for option in ['공격력', '스탯', '체력', '마력', '방어력']:
+            temp = item['option'].get(option)
+            if temp is None: continue
+
+            desc += f"{option} : {temp}"
+            if item['info']['reinforce'] > 0 and reinforceStat.get(option) is not None:
+                if temp is None:
+                    desc += f"{option} : 0(+{reinforceStat.get(option)})\r\n"
+                else:
+                    desc += f"(+{reinforceStat.get(option)})\r\n"
             else:
                 desc += '\r\n'
+        for option in ['크리티컬 확률', '추가 데미지', '데미지 증가', '크리티컬 데미지 증가']:
+            temp = item['option'].get(option)
+            if temp is None: continue
+            desc += f"{option} : {temp}%\r\n"
+        # for key in item['option']:
+        #     desc += f"{key} : {item['option'][key]}"
+        #     if key in ['크리티컬 확률', '추가 데미지', '데미지 증가', '크리티컬 데미지 증가']:
+        #         desc += '%\r\n'
+        #     else:
+        #         desc += '\r\n'
         return desc
     except:
         return '없음'
+
+def getItemType(itemId):
+    typeId = itemId // 10000
+    if typeId == 1:
+        return 'weapon'
+    if typeId == 2:
+        return 'accessory'
+    if typeId == 3:
+        return 'additional'
+    return 'err'
 
 def getWeaponType(itemId):
     if itemId // 10000 != 1:
@@ -208,15 +408,69 @@ def getWeaponType(itemId):
     if itemId // 100 == 14:
         return '빗자루'
 
-def getItemType(itemId):
-    typeId = itemId // 10000
-    if typeId == 1:
-        return 'weapon'
-    if typeId == 2:
-        return 'accessory'
-    if typeId == 3:
-        return 'additional'
-    return 'err'
+def getReinforceStat(item):
+    _type = getItemType(item['info']['id'])
+    weapon_stat = {
+        1 : {'공격력' : 10, '스탯' : 1},
+        2 : {'공격력' : 20, '스탯' : 2},
+        3 : {'공격력' : 30, '스탯' : 3},
+        4 : {'공격력' : 40, '스탯' : 4},
+        5 : {'공격력' : 60, '스탯' : 5},
+        6 : {'공격력' : 80, '스탯' : 6},
+        7 : {'공격력' : 100, '스탯' : 7},
+        8 : {'공격력' : 120, '스탯' : 8},
+        9 : {'공격력' : 140, '스탯' : 9},
+        10 : {'공격력' : 160, '스탯' : 10},
+        11 : {'공격력' : 200, '스탯' : 15},
+        12 : {'공격력' : 250, '스탯' : 20},
+        13 : {'공격력' : 300, '스탯' : 30},
+        14 : {'공격력' : 400, '스탯' : 40},
+        15 : {'공격력' : 600, '스탯' : 50}
+    }
+
+    accessory_stat = {
+        1: {'스탯': 5},
+        2: {'스탯': 10},
+        3: {'스탯': 15},
+        4: {'스탯': 20},
+        5: {'스탯': 25},
+        6: {'스탯': 30},
+        7: {'스탯': 35},
+        8: {'스탯': 40},
+        9: {'스탯': 45},
+        10: {'스탯': 50},
+        11: {'스탯': 65},
+        12: {'스탯': 90},
+        13: {'스탯': 130},
+        14: {'스탯': 180},
+        15: {'스탯': 230}
+    }
+
+    additional_stat = {
+        1: {'체력' : 10, '마력' : 10, '스탯': 3},
+        2: {'체력' : 20, '마력' : 20, '스탯': 6},
+        3: {'체력' : 30, '마력' : 30, '스탯': 9},
+        4: {'체력' : 40, '마력' : 40, '스탯': 12},
+        5: {'체력' : 55, '마력' : 55, '스탯': 15},
+        6: {'체력' : 70, '마력' : 70, '스탯': 18},
+        7: {'체력' : 85, '마력' : 85, '스탯': 21},
+        8: {'체력' : 100, '마력' : 100, '스탯': 24},
+        9: {'체력' : 115, '마력' : 115, '스탯': 27},
+        10: {'체력' : 130, '마력' : 130, '스탯': 30},
+        11: {'체력' : 150, '마력' : 150, '스탯': 40},
+        12: {'체력' : 170, '마력' : 170, '스탯': 50},
+        13: {'체력' : 200, '마력' : 200, '스탯': 70},
+        14: {'체력' : 250, '마력' : 250, '스탯': 100},
+        15: {'체력' : 350, '마력' : 350, '스탯': 150},
+    }
+
+    try:
+        if _type == 'weapon':     return weapon_stat[item['info']['reinforce']]
+        if _type == 'accessory':  return accessory_stat[item['info']['reinforce']]
+        if _type == 'additional': return additional_stat[item['info']['reinforce']]
+        else: return None
+    except:
+        return None
 
 async def gacha(bot, ctx, count):
     did = ctx.message.author.id

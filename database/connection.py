@@ -2,8 +2,8 @@ import pymysql
 
 class Connection:
     def __init__(self):
-        self.host = '127.0.0.1'
-        #self.host    = '34.121.37.217'
+        #self.host = '127.0.0.1'
+        self.host    = '34.121.37.217'
         self.user    = 'chic'
         self.pw      = '9892'
         self.db      = 'chicBot'
