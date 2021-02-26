@@ -18,8 +18,8 @@ async def on_ready():
 async def on_message(msg):
     if msg.author.bot: return None
     admin.log(msg)
-    chs = util.getChicBotCH(msg)
-    if (not chs) or (chs and msg.channel in chs):
+    chicBotChannel = util.getChicBotChannel(msg)
+    if not chicBotChannel or msg.channel in chicBotChannel:
         await bot.process_commands(msg)
 
 ### 검색 명령어 ###

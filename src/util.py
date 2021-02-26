@@ -487,7 +487,7 @@ def getDailyReward():
     elif 98 <= seed < 99:   return 1000000
     else:                   return 2000000
 
-def getChicBotCH(msg):
+def getChicBotChannel(msg):
     result = []
     for ch in msg.guild.text_channels:
         try:
