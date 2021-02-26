@@ -56,11 +56,50 @@ def gainGold(did, gold):
     cur.execute(sql)
     conn.commit()
 
+def iniAdventure(did):
+    conn, cur = connection.getConnection()
+
+    adv = getAdventure(did)
+    if adv is not None:
+        sql = f'DELETE FROM adventure WHERE did={did}'
+        cur.execute(sql)
+        conn.commit()
+
+    inventory = {'inventory': []}
+    equipment = {'weapon': [], 'accessory': [], 'additional': []}
+    sql = 'INSERT INTO adventure values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+    cur.execute(sql, (did, 0, 1, 0, 5, 0, 0, 50, 50, json.dumps(inventory), json.dumps(equipment)))
+    conn.commit()
+
 def getAdventure(did):
     conn, cur = connection.getConnection()
     sql = f'SELECT * FROM adventure WHERE did={did}'
     cur.execute(sql)
     return cur.fetchone()
+
+def changeJob(did, jobId=None, jobName=None):
+    jobTable = {
+        '모험가' : 0,
+        '귀검사' : 100,
+        '격투가' : 200,
+        '거너'   : 300,
+        '마법사' : 400
+    }
+
+    if jobId is not None and jobName is None:
+        job = jobId
+    if jobId is None and jobName is not None:
+        job = jobTable[jobName]
+
+    adv = getAdventure(did)
+    if adv['job'] != 0:
+        iniAdventure(did)
+    adv['job'] = job
+
+    conn, cur = connection.getConnection()
+    sql = f'UPDATE adventure SET job=%s WHERE did={did}'
+    cur.execute(sql, job)
+    conn.commit()
 
 def getInventory(did):
     adv = getAdventure(did)
@@ -100,9 +139,9 @@ def getEquipment(did, _type=None):
 
 def setEquipment(did, item):
     equipment = getEquipment(did)
-    if item['info']['id'] // 10000 == 1:
+    if item['id'] // 10000 == 1:
         equipment['weapon'] = item
-    elif item['info']['id'] // 10000 == 2:
+    elif item['id'] // 10000 == 2:
         equipment['accessory'] = item
 
     conn, cur = connection.getConnection()

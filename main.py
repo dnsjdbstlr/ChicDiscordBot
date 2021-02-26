@@ -81,6 +81,10 @@ async def 모험(ctx):
     await adventure.모험(ctx)
 
 @bot.command()
+async def 직업(ctx):
+    await adventure.직업(bot, ctx)
+
+@bot.command()
 async def 강화(ctx):
     await adventure.강화(bot, ctx)
 
