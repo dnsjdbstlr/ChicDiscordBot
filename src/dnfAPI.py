@@ -30,7 +30,7 @@ SERVERID_TO_NAME = {
     'siroco'  : '시로코'
 }
 
-def getItemId(name, exactly=False):
+def getItem(name, exactly=False, _type=None):
     name = parse.quote(name)
     wordType = 'full' if exactly is False else 'match'
 
@@ -52,7 +52,11 @@ def getItemId(name, exactly=False):
                     isOverride = True
 
             if not isOverride:
-                itemIdList.append(i)
+                # 특정 타입만 추가할 경우
+                if _type is not None and _type == i['itemType']:
+                    itemIdList.append(i)
+                elif _type is None:
+                    itemIdList.append(i)
 
     return itemIdList
 

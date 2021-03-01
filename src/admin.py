@@ -8,6 +8,7 @@ ownerId = 247361856904232960
 cmds = ['!등급', '!캐릭터', '!장비', '!세트', '!시세',
         '!획득에픽', '!기린랭킹',
         '!주식', '!주식매수', '!주식매도', '!주식랭킹', '!출석',
+        '!강화설정', '!강화정보', '!강화', '!공개강화',
         '!청소']
 
 def log(msg):
@@ -37,32 +38,26 @@ async def 연결(bot, ctx):
 async def 통계(ctx):
     if ctx.message.author.id == ownerId:
         await ctx.message.delete()
-        wait = await ctx.channel.send('> 통계 데이터를 불러오고있어요...')
-
         try:
             conn, cur = connection.getConnection()
-            sql = 'SELECT command FROM log'
+            sql = 'SELECT command FROM log WHERE date=CURDATE()'
             cur.execute(sql)
             rs = cur.fetchall()
 
             statistics = [i['command'].split(' ')[0] for i in rs]
-            embed = discord.Embed(title='유저들이 사용한 각 명령어의 사용 횟수를 알려드릴게요.')
+            embed = discord.Embed(title='오늘 명령어 사용 횟수 통계')
             for k in cmds:
                 embed.add_field(name='> ' + k, value=str(statistics.count(k)) + '회')
-            await wait.delete()
             await ctx.channel.send(embed=embed)
-        except Exception as e:
-            print(e)
+        except: return
 
 async def 출석확인(ctx):
-    await ctx.message.delete()
-
-    try:
-        conn, cur = connection.getConnection()
-        sql = f'SELECT * FROM dailyCheck WHERE date=CURDATE()'
-        cur.execute(sql)
-        rs = cur.fetchall()
-    except Exception as e:
-        await ctx.channel.send(f'> dailyCheck 테이블을 불러오지못했습니다.\r\n> {e}')
-        return
-    await ctx.channel.send(f'> 현재까지 {len(rs)}명이 출석했습니다.')
+    if ctx.message.author.id == ownerId:
+        await ctx.message.delete()
+        try:
+            conn, cur = connection.getConnection()
+            sql = f'SELECT * FROM dailyCheck WHERE date=CURDATE()'
+            cur.execute(sql)
+            rs = cur.fetchall()
+        except: return
+        await ctx.channel.send(f'> 현재까지 {len(rs)}명이 출석했습니다.')

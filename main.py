@@ -1,14 +1,13 @@
 import discord
 from discord.ext import commands
-from src import search, stock, admin, etc, util
-from src.adv import adventure
+from src import search, stock, reinfoce, admin, etc, util
 
-### 기본설정 ###
+# # # 설 정 # # #
 bot = commands.Bot(command_prefix='!')
-#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
-### 이벤트 ###
+# # # 이 벤 트 # # #
 @bot.event
 async def on_ready():
     await bot.change_presence(status=discord.Status.online, activity=discord.Game('!도움말'))
@@ -22,7 +21,7 @@ async def on_message(msg):
     if not chicBotChannel or msg.channel in chicBotChannel:
         await bot.process_commands(msg)
 
-### 검색 명령어 ###
+# # # 검 색 # # #
 @bot.command()
 async def 등급(ctx):
     await search.등급(ctx)
@@ -51,7 +50,7 @@ async def 획득에픽(ctx, *input):
 async def 기린랭킹(ctx):
     await search.기린랭킹(bot, ctx)
 
-### 게임 명령어 ###
+# # # 출 석 # # #
 @bot.command()
 async def 출석(ctx):
     await stock.출석(ctx)
@@ -60,6 +59,7 @@ async def 출석(ctx):
 async def 출석체크(ctx):
     await stock.출석(ctx)
 
+# # # 주 식 # # #
 @bot.command()
 async def 주식(ctx):
     await stock.주식(ctx)
@@ -76,27 +76,24 @@ async def 주식매도(ctx):
 async def 주식랭킹(ctx):
     await stock.주식랭킹(bot, ctx)
 
+# # # 강 화 # # #
 @bot.command()
-async def 모험(ctx):
-    await adventure.모험(ctx)
+async def 강화설정(ctx, *input):
+    await reinfoce.강화설정(bot, ctx, *input)
 
 @bot.command()
-async def 직업(ctx):
-    await adventure.직업(bot, ctx)
+async def 강화정보(ctx):
+    await reinfoce.강화정보(ctx)
 
 @bot.command()
 async def 강화(ctx):
-    await adventure.강화(bot, ctx)
+    await reinfoce.강화(bot, ctx)
 
 @bot.command()
-async def 장비뽑기(ctx):
-    await adventure.장비뽑기(bot, ctx)
+async def 공개강화(ctx):
+    await reinfoce.공개강화(bot, ctx)
 
-@bot.command()
-async def 인벤토리(ctx):
-    await adventure.인벤토리(bot, ctx)
-
-### 기타 명령어 ###
+# # # 기 타 # # #
 @bot.command()
 async def 도움말(ctx):
     await etc.도움말(bot, ctx)
@@ -109,7 +106,7 @@ async def 명령어(ctx):
 async def 청소(ctx):
     await etc.청소(bot, ctx)
 
-### 어드민 명령어 ###
+# # # 관 리 자 # # #
 @bot.command()
 async def 연결(ctx):
     await admin.연결(bot, ctx)

@@ -5,7 +5,7 @@ from src import dnfAPI
 from datetime import datetime
 from database import connection
 
-### 선택 ###
+# # # 선 택 # # #
 async def getSelectionFromChrIdList(bot, ctx, chrIdList):
     await ctx.message.delete()
 
@@ -52,38 +52,40 @@ async def getSelectionFromChrIdList(bot, ctx, chrIdList):
 
     return server, chrId, name
 
-async def getSelectionFromItemIdList(bot, ctx, itemIdList):
+async def getSelectionFromItemIdList(bot, ctx, itemList, title=None, description=None):
     await ctx.message.delete()
 
-    if not len(itemIdList):
+    if not len(itemList):
         await ctx.channel.send('> 해당 장비를 찾을 수 없어요.\r\n> 장비 이름을 확인하고 다시 불러주세요!')
         return False
 
-    if len(itemIdList) >= 2:
-        embed = discord.Embed(title='알고싶은 장비 아이템의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
-        for i in range(len(itemIdList)):
-            embed.add_field(name='> ' + str(i + 1), value=itemIdList[i]['itemName'])
+    if len(itemList) >= 2:
+        if title is None or description is None:
+            embed = discord.Embed(title='알고싶은 장비 아이템의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
+        else:
+            embed = discord.Embed(title=title, description=description)
+        for i in range(len(itemList)):
+            embed.add_field(name='> ' + str(i + 1), value=itemList[i]['itemName'])
         selection = await ctx.channel.send(embed=embed)
 
         try:
             def check(m):
                 return ctx.channel.id == m.channel.id and ctx.message.author == m.author
             result = await bot.wait_for('message', check=check, timeout=15)
-
         except asyncio.TimeoutError:
             await selection.delete()
             await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-            return
-        else:
+            return False
+        except:
             await selection.delete()
             await result.delete()
-            try:
-                itemId = itemIdList[int(result.content) - 1]['itemId']
-            except:
-                await ctx.channel.send('> 제대로 입력해주셔야해요! 다시 시도해주세요!')
-                return False
+            await ctx.channel.send('> 제대로 입력해주셔야해요! 다시 시도해주세요!')
+            return False
+        await selection.delete()
+        await result.delete()
+        itemId = itemList[int(result.content) - 1]['itemId']
     else:
-        itemId = itemIdList[0]['itemId']
+        itemId = itemList[0]['itemId']
     return itemId
 
 async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
@@ -120,7 +122,7 @@ async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
         setItemId, setItemName = setItemIdList[0]['setItemId'], setItemIdList[0]['setItemName']
     return setItemId, setItemName
 
-### 계산 ###
+# # # 계 산 # # #
 def getSirocoItemInfo(chrEquipItemInfo, isBuff=False):
     sirocoInfo = {}
 
@@ -370,19 +372,7 @@ def updateAuctionData(name, auction, upgrade=-1):
                 'date': -1}
     return prev, price
 
-### 편리 ###
-def getToday():
-    year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
-    return str(year) + '년' + str(month) + '월' + str(day) + '일'
-
-def getToday2():
-    year, month, day = datetime.today().year, datetime.today().month, datetime.today().day
-    if month < 10:
-        month = '0' + str(month)
-    if day < 10:
-        day = '0' + str(day)
-    return str(year) + str(month) + str(day)
-
+# # # 편 리 # # #
 def mergeString(*input):
     result= ''
     for i in input:
@@ -408,23 +398,6 @@ def getSkillValue(skillInfo, level):
         if i['level'] == level:
             return i['optionValue']
     return None
-
-def convertDateToHyphen(date):
-    reg = re.compile('(?P<year>\d+)년(?P<month>\d+)월(?P<day>\d+)일')
-    res = reg.search(date)
-    result = '(' + res.group('year') + '-'
-
-    if int(res.group('month')) < 10:
-        result += '0' + res.group('month') + '-'
-    else:
-        result += res.group('month') + '-'
-
-    if int(res.group('day')) < 10:
-        result += '0' + res.group('day') + ')'
-    else:
-        result += res.group('day') + ')'
-
-    return result
 
 def getSkillLevelingInfo(reinforceSkill):
     result = {}

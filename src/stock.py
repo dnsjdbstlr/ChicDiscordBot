@@ -265,18 +265,6 @@ async def 주식랭킹(bot, ctx):
                 await msg.add_reaction('▶️')
         except: pass
 
-def isValid(did):
-    try:
-        conn, cur = connection.getConnection()
-        sql = f'SELECT * FROM stock WHERE did={did}'
-        cur.execute(sql)
-        stock = cur.fetchone()
-    except: return False
-    if stock is not None:
-        return True
-    else:
-        return False
-
 def getHoldings(stock):
     holdings = []
     for i in [stock['holding1'], stock['holding2'], stock['holding3']]:

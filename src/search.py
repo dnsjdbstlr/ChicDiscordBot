@@ -158,7 +158,7 @@ async def 장비(bot, ctx, *input):
         return
 
     try:
-        itemIdList = dnfAPI.getItemId(name)
+        itemIdList = dnfAPI.getItem(name)
         itemId = await util.getSelectionFromItemIdList(bot, ctx, itemIdList)
         if itemId is False: return
     except: return

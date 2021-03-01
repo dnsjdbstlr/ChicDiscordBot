@@ -2,11 +2,19 @@ import json
 from datetime import datetime
 from database import connection
 
+# # # 기 린 # # #
 def getEpic(server, name):
     conn, cur = connection.getConnection()
     sql = f'SELECT * FROM epic WHERE server={server} and name={name}'
     cur.execute(sql)
     return cur.fetchone()
+
+# # # 주 식 # # #
+def iniStock(did):
+    conn, cur = connection.getConnection()
+    sql = f'INSERT INTO stock (did, gold) values ({did}, {10000000})'
+    cur.execute(sql)
+    conn.commit()
 
 def getStock(did):
     conn, cur = connection.getConnection()
@@ -14,12 +22,30 @@ def getStock(did):
     cur.execute(sql)
     return cur.fetchone()
 
-def iniStock(did):
+def isValidStock(did):
+    stock = getStock(did)
+    if stock is not None:
+        return True
+    else:
+        return False
+
+def getGold(did):
     conn, cur = connection.getConnection()
-    sql = f'INSERT INTO stock (did, gold) values ({did}, {10000000})'
+    sql = f'SELECT * FROM stock WHERE did={did}'
+    cur.execute(sql)
+    rs = cur.fetchone()
+    return rs['gold']
+
+def gainGold(did, gold):
+    old = getGold(did)
+    new = max(old + gold, 0)
+
+    conn, cur = connection.getConnection()
+    sql = f'UPDATE stock SET gold={new} WHERE did={did}'
     cur.execute(sql)
     conn.commit()
 
+# # # 출 석 # # #
 def getDailyCheck(did):
     conn, cur = connection.getConnection()
     sql = f'SELECT * FROM dailyCheck WHERE did={did}'
@@ -40,111 +66,78 @@ def updateDailyCheck(did):
         cur.execute(sql, (dailyCheck['count'] + 1, today, did))
         conn.commit()
 
-def getGold(did):
+# # # 강 화 # # #
+def iniReinforce(did, _id, name):
     conn, cur = connection.getConnection()
-    sql = f'SELECT * FROM stock WHERE did={did}'
-    cur.execute(sql)
-    rs = cur.fetchone()
-    return rs['gold']
+    sql = f"INSERT INTO reinforce values (%s, %s, %s, %s, %s, %s)"
+    _max = {'name' : name, 'value' : 0}
+    _try = {'success' : 0, 'fail' : 0, 'destroy' : 0}
+    cur.execute(sql, (did, _id, name, 0, json.dumps(_max, ensure_ascii=False), json.dumps(_try, ensure_ascii=False)))
+    conn.commit()
 
-def gainGold(did, gold):
-    old = getGold(did)
-    new = max(old + gold, 0)
-
+def resetReinforce(did, _id, name):
     conn, cur = connection.getConnection()
-    sql = f'UPDATE stock SET gold={new} WHERE did={did}'
+    sql = f"UPDATE reinforce SET id=%s, name=%s, value=%s WHERE did=%s"
+    cur.execute(sql, (_id, name, 0, did))
+    conn.commit()
+
+def delReinforce(did):
+    conn, cur = connection.getConnection()
+    sql = f"DELETE FROM reinforce WHERE did={did}"
     cur.execute(sql)
     conn.commit()
 
-def iniAdventure(did):
+def getReinforce(did):
     conn, cur = connection.getConnection()
-
-    adv = getAdventure(did)
-    if adv is not None:
-        sql = f'DELETE FROM adventure WHERE did={did}'
-        cur.execute(sql)
-        conn.commit()
-
-    inventory = {'inventory': []}
-    equipment = {'weapon': [], 'accessory': [], 'additional': []}
-    sql = 'INSERT INTO adventure values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
-    cur.execute(sql, (did, 0, 1, 0, 5, 0, 0, 50, 50, json.dumps(inventory), json.dumps(equipment)))
-    conn.commit()
-
-def getAdventure(did):
-    conn, cur = connection.getConnection()
-    sql = f'SELECT * FROM adventure WHERE did={did}'
+    sql = f"SELECT * FROM reinforce WHERE did={did}"
     cur.execute(sql)
     return cur.fetchone()
 
-def changeJob(did, jobId=None, jobName=None):
-    jobTable = {
-        '모험가' : 0,
-        '귀검사' : 100,
-        '격투가' : 200,
-        '거너'   : 300,
-        '마법사' : 400
-    }
-
-    if jobId is not None and jobName is None:
-        job = jobId
-    if jobId is None and jobName is not None:
-        job = jobTable[jobName]
-
-    adv = getAdventure(did)
-    if adv['job'] != 0:
-        iniAdventure(did)
-    adv['job'] = job
-
-    conn, cur = connection.getConnection()
-    sql = f'UPDATE adventure SET job=%s WHERE did={did}'
-    cur.execute(sql, job)
-    conn.commit()
-
-def getInventory(did):
-    adv = getAdventure(did)
-    try:
-        inv = json.loads(adv['inventory'])
-        return inv['inventory']
-    except:
-        return None
-
-def gainItem(did, *items):
-    inv = getInventory(did)
-    for i in items:
-        inv.append(i)
-
-    conn, cur = connection.getConnection()
-    sql = f'UPDATE adventure SET inventory=%s WHERE did={did}'
-    cur.execute(sql, json.dumps({'inventory' : inv}, ensure_ascii=False))
-    conn.commit()
-
-def removeItem(did, index, inv=None):
-    if inv is None:
-        inv = getInventory(did)
-    del inv[index]
-
-    conn, cur = connection.getConnection()
-    sql = f'UPDATE adventure SET inventory=%s WHERE did={did}'
-    cur.execute(sql, (json.dumps({'inventory' : inv}, ensure_ascii=False)))
-    conn.commit()
-
-def getEquipment(did, _type=None):
-    adv = getAdventure(did)
-    equipment = json.loads(adv['equipment'])
-    if _type in ['weapon', 'accessory', 'additional']:
-        return equipment[_type]
+def isValidReinforce(did):
+    reinforce = getReinforce(did)
+    if reinforce is None:
+        return False
     else:
-        return equipment
+        return True
 
-def setEquipment(did, item):
-    equipment = getEquipment(did)
-    if item['id'] // 10000 == 1:
-        equipment['weapon'] = item
-    elif item['id'] // 10000 == 2:
-        equipment['accessory'] = item
-
+def setReinforceValue(did, value):
     conn, cur = connection.getConnection()
-    sql = f'UPDATE adventure SET equipment=%s WHERE did={did}'
-    cur.execute(sql, json.dumps(equipment, ensure_ascii=False))
+    sql = f"UPDATE reinforce SET value={value} WHERE did={did}"
+    cur.execute(sql)
     conn.commit()
+
+def getReinforceMax(did):
+    try:
+        conn, cur = connection.getConnection()
+        sql = f"SELECT max FROM reinforce WHERE did={did}"
+        cur.execute(sql)
+        rs = cur.fetchone()
+        return json.loads(rs['max'])
+    except: return None
+
+def setReinforceMax(did, _max):
+    conn, cur = connection.getConnection()
+    sql = f"UPDATE reinforce SET max=%s WHERE did={did}"
+    cur.execute(sql, json.dumps(_max, ensure_ascii=False))
+    conn.commit()
+
+def getReinforceTry(did):
+    try:
+        conn, cur = connection.getConnection()
+        sql = f"SELECT try FROM reinforce WHERE did={did}"
+        cur.execute(sql)
+        rs = cur.fetchone()
+        return json.loads(rs['try'])
+    except: return None
+
+def setReinforceTry(did, _try):
+    conn, cur = connection.getConnection()
+    sql = f"UPDATE reinforce SET try=%s WHERE did={did}"
+    cur.execute(sql, json.dumps(_try, ensure_ascii=False))
+    conn.commit()
+
+def incReinforceTry(did, result):
+    _try = getReinforceTry(did)
+    if _try is not None:
+        _try[result] += 1
+        setReinforceTry(did, _try)
