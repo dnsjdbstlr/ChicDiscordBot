@@ -5,8 +5,8 @@ from database import connection
 # # # 기 린 # # #
 def getEpic(server, name):
     conn, cur = connection.getConnection()
-    sql = f'SELECT * FROM epic WHERE server={server} and name={name}'
-    cur.execute(sql)
+    sql = f'SELECT * FROM epic WHERE server=%s and name=%s'
+    cur.execute(sql, (server, name))
     return cur.fetchone()
 
 # # # 주 식 # # #
