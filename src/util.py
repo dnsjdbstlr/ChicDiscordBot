@@ -2,8 +2,7 @@ import discord
 import asyncio
 import re
 from src import dnfAPI
-from datetime import datetime
-from database import connection
+from database import tool
 
 # # # 선 택 # # #
 async def getSelectionFromChrIdList(bot, ctx, chrIdList):
@@ -191,10 +190,10 @@ def getSirocoItemInfo(chrEquipItemInfo, isBuff=False):
         except: pass
 
     sirocoInfo['세트'] = setCount
-    if len(reverberation)   != 0: sirocoInfo['잔향'] = reverberation
-    if len(intangible)      != 0: sirocoInfo[intangibleType] = intangible
-    if len(unconscious)     != 0: sirocoInfo[unconsciousType] = unconscious
-    if len(illusion)        != 0: sirocoInfo[illusionType] = illusion
+    if len(reverberation) != 0: sirocoInfo['잔향'] = reverberation
+    if len(intangible)    != 0: sirocoInfo[intangibleType] = intangible
+    if len(unconscious)   != 0: sirocoInfo[unconsciousType] = unconscious
+    if len(illusion)      != 0: sirocoInfo[illusionType] = illusion
 
     if len(reverberation) == 0 and len(intangible) == 0 and len(unconscious) == 0 and len(illusion) == 0:
         return None
@@ -332,44 +331,18 @@ def getApplyStatFromBuffEquip(chrBuffEquip):
 
 def updateAuctionData(name, auction, upgrade=-1):
     if upgrade != -1:
-        temp = []
-        for i in auction:
-            if i['upgrade'] == upgrade:
-                temp.append(i)
-        auction = temp
-        name += ' +' + str(upgrade)
+        name += f' +{upgrade}'
+        auction = [i if i['upgrade'] == upgrade else None for i in auction]
+        auction = list(filter(None, auction))
 
     p, c = 0, 0
     for i in auction:
         p += i['price']
         c += i['count']
-    price = {'평균가': p // c,
-             '판매량': c,
-             '최근가': -1}
-    try:
-        conn, cur = connection.getConnection()
+    price = {'평균가': p // c, '판매량': c}
 
-        # 데이터 저장
-        sql = 'INSERT INTO auction (date, name, price) values (%s, %s, %s)'
-        date = datetime.now().strftime('%Y-%m-%d')
-        cur.execute(sql, (date, name, price['평균가']))
-        conn.commit()
-    except Exception as e:
-        # 데이터 최신화
-        sql = 'UPDATE auction SET price=%s WHERE date=%s and name=%s'
-        cur.execute(sql, (price['평균가'], date, name))
-        conn.commit()
-
-    try:
-        # 최근 가격 불러오기
-        sql = 'SELECT * FROM auction WHERE name=%s'
-        cur.execute(sql, name)
-        rs = cur.fetchall()
-        prev = {'price': rs[-2]['price'],
-                'date': rs[-2]['date']}
-    except:
-        prev = {'price': -1,
-                'date': -1}
+    tool.updateAuctionPrice(name, price['평균가'])
+    prev = tool.getRecentPrice(name)
     return prev, price
 
 # # # 편 리 # # #
@@ -460,9 +433,9 @@ def getDailyReward():
     elif 98 <= seed < 99:   return 1000000
     else:                   return 2000000
 
-def getChicBotChannel(msg):
+def getChicBotChannel(guild):
     result = []
-    for ch in msg.guild.text_channels:
+    for ch in guild.text_channels:
         try:
             if '#시크봇' in ch.topic:
                 result.append(ch)
@@ -470,7 +443,7 @@ def getChicBotChannel(msg):
     return result
 
 def getVolatility(prev, now):
-    if prev['price'] == -1:
+    if prev is None:
         return '데이터 없음'
     volatility = ((now / prev['price']) - 1) * 100
     if volatility > 0:

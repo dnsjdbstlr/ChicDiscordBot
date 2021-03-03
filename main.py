@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from database import tool
 from src import search, stock, reinfoce, admin, etc, util
 
 # # # 설 정 # # #
@@ -16,8 +17,8 @@ async def on_ready():
 @bot.event
 async def on_message(msg):
     if msg.author.bot: return None
-    admin.log(msg)
-    chicBotChannel = util.getChicBotChannel(msg)
+    tool.log(msg)
+    chicBotChannel = util.getChicBotChannel(msg.guild)
     if not chicBotChannel or msg.channel in chicBotChannel:
         await bot.process_commands(msg)
 

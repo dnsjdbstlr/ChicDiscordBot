@@ -254,8 +254,7 @@ async def 획득에픽(bot, ctx, *input):
     except: return False
 
     waiting = await ctx.channel.send(f'> {name}님이 획득한 에픽을 확인 중이예요...')
-    timeline = dnfAPI.getChrTimeLine(server, chrId, '505')
-    today = datetime.now().strftime('%Y-%m-%d')
+    timeline = dnfAPI.getChrTimeLine(server, chrId, 505, 513)
 
     # 획득한 에픽 갯수
     gainEpicCount = len(timeline)
@@ -265,36 +264,30 @@ async def 획득에픽(bot, ctx, *input):
         return
 
     # 에픽을 가장 많이 획득한 채널
-    count = {}
-    chs = ['ch' + str(i['data']['channelNo']) + '.' + i['data']['channelName'] for i in timeline]
-    for i in chs:
-        try:    count[i] += 1
-        except: count[i] = 1
-    bestCH = sorted(count.items(), key=lambda item: item[1], reverse=True)[0]
+    channels = {}
+    for i in timeline:
+        if i['code'] == 505:
+            try:    channels[f"ch{i['data']['channelNo']}.{i['data']['channelName']}"] += 1
+            except: channels[f"ch{i['data']['channelNo']}.{i['data']['channelName']}"] = 1
 
-    epic = tool.getEpic(server, name)
-    conn, cur = connection.getConnection()
-    if epic is None:
-        sql = 'INSERT INTO epic (date, server, name, count, channel) values (%s, %s, %s, %s, %s)'
-        cur.execute(sql, (today, server, name, gainEpicCount, bestCH[0]))
-        conn.commit()
+    if channels == {}:
+        luckyChannel = '없음'
     else:
-        sql = 'UPDATE epic SET count=%s, channel=%s, date=%s WHERE server=%s and name=%s'
-        cur.execute(sql, (gainEpicCount, bestCH[0], today, server, name))
-        conn.commit()
+        luckyChannel = sorted(channels.items(), key=lambda x: x[1], reverse=True)[0][0]
+    tool.updateEpicRank(server, name, gainEpicCount, luckyChannel)
+    await waiting.delete()
 
     page = 0
-    embed = getGainEpicEmbed(name, bestCH[0], timeline, page)
+    embed = getGainEpicEmbed(timeline, name, luckyChannel, page)
     embed.set_footer(text=f'{(gainEpicCount - 1) // 15 + 1}쪽 중 1쪽')
-    await waiting.delete()
     msg = await ctx.channel.send(embed=embed)
+
     if gainEpicCount > 15:
         await msg.add_reaction('▶️')
     while gainEpicCount > 15:
         try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
+            def check(_reaction, _user):
+                return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == msg.id
             reaction, user = await bot.wait_for('reaction_add', check=check)
 
             if str(reaction) == '◀️' and page > 0:
@@ -302,7 +295,7 @@ async def 획득에픽(bot, ctx, *input):
             if str(reaction) == '▶️' and page < (gainEpicCount - 1) // 15:
                 page += 1
 
-            embed = getGainEpicEmbed(name, bestCH[0], timeline, page)
+            embed = getGainEpicEmbed(timeline, name, luckyChannel, page)
             embed.set_footer(text=f'{(gainEpicCount - 1) // 15 + 1}쪽 중 {page + 1}쪽')
             await msg.edit(embed=embed)
             await msg.clear_reactions()
@@ -311,44 +304,38 @@ async def 획득에픽(bot, ctx, *input):
                 await msg.add_reaction('◀️')
             if page < (gainEpicCount - 1) // 15:
                 await msg.add_reaction('▶️')
-        except: pass
+        except:
+            await msg.delete()
+            await ctx.channel.send('> 오류가 발생했습니다.')
+            return
 
 async def 기린랭킹(bot, ctx):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 기린 랭킹을 불러오는 중이예요...')
 
-    try:
-        conn, cur = connection.getConnection()
-        sql = 'SELECT * FROM epic WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
-        cur.execute(sql)
-        rank = cur.fetchall()
-    except Exception as e:
-        print(e)
-
+    rank = tool.getMonthlyEpicRank()
     rank = list(sorted(rank, key=lambda x: x['count'], reverse=True))
+    await waiting.delete()
 
     if not rank:
         today = datetime.today()
         embed = discord.Embed(title=f'{today.year}년 {today.month}월 기린 랭킹을 알려드릴게요!',
                               description='> 랭킹 데이터가 없어요.\r\n'
-                                          '> !획득에픽으로 랭킹에 등록해보세요!')
-        await waiting.delete()
+                                          '> `!획득에픽` 명령어를 사용해서 랭킹에 등록해보세요!')
         await ctx.channel.send(embed=embed)
         return
 
     page = 0
     embed = getEpicRankEmbed(rank, page)
     embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 {page + 1}쪽')
-    await waiting.delete()
     msg = await ctx.channel.send(embed=embed)
+
     if len(rank) > 15:
         await msg.add_reaction('▶️')
-
     while len(rank) > 15:
         try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
+            def check(_reaction, _user):
+                return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == msg.id
             reaction, user = await bot.wait_for('reaction_add', check=check)
 
             if str(reaction) == '◀️' and page > 0:
@@ -365,7 +352,10 @@ async def 기린랭킹(bot, ctx):
                 await msg.add_reaction('◀️')
             if page < (len(rank) - 1) // 15:
                 await msg.add_reaction('▶️')
-        except: pass
+        except:
+            await msg.delete()
+            await ctx.channel.send('> 오류가 발생했습니다.')
+            return
 
 def getChrInfoEmbed(name, chrEquipSetInfo, chrEquipItemInfo):
     embed = discord.Embed(title=name + '님의 캐릭터 정보를 알려드릴게요.')
@@ -527,13 +517,20 @@ def getSetItemBuffOptionEmbed(setItemInfo):
     embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     return embed
 
-def getGainEpicEmbed(name, bestCH, timeline, page):
-    embed = discord.Embed(title=f'{name} 님은 이번 달에 {len(timeline)}개의 에픽을 획득했어요.',
-                          description=f'`{bestCH}`에서 에픽을 가장 많이 획득했어요!')
+def getGainEpicEmbed(timeline, name, luckyChannel, page):
+    if luckyChannel == '없음':
+        embed = discord.Embed(title=f'{name} 님은 이번 달에 {len(timeline)}개의 에픽을 획득했어요.')
+    else:
+        embed = discord.Embed(title=f'{name} 님은 이번 달에 {len(timeline)}개의 에픽을 획득했어요.',
+                              description=f'`{luckyChannel}`에서 에픽을 가장 많이 획득했어요!')
     _timeline = timeline[page * 15:page * 15 + 15]
     for i in _timeline:
-        embed.add_field(name=f"> {i['date'][:10]}\r\nch{i['data']['channelNo']}.{i['data']['channelName']}",
-                        value=i['data']['itemName'])
+        if i['code'] == 505:
+            embed.add_field(name=f"> {i['date'][:10]}\r\nch{i['data']['channelNo']}.{i['data']['channelName']}",
+                            value=i['data']['itemName'])
+        elif i['code'] == 513:
+            embed.add_field(name=f"> {i['date'][:10]}\r\n{i['data']['dungeonName']}",
+                            value=i['data']['itemName'])
     return embed
 
 def getEpicRankEmbed(rank, page):

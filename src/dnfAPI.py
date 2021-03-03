@@ -211,12 +211,18 @@ def getChrStatInfo(server, chrId):
     data = json.loads(response.text)
     return data
 
-def getChrTimeLine(server, chrId, code):
+def getChrTimeLine(server, chrId, *code):
     today = datetime.today()
     startDate = str(today.year) + '-' + str(today.month) + '-01 00:00'
     endDate   = str(today.year) + '-' + str(today.month) + '-' + str(today.day) + ' ' + str(today.hour) + ':' + str(today.minute)
 
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/timeline?limit=100&code=' + code + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + apikey
+    codes = ''
+    for i in code:
+        codes += str(i)
+        if i!= code[-1]:
+            codes += ','
+
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/timeline?limit=100&code=' + codes + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['timeline']['rows']

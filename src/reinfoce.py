@@ -193,6 +193,9 @@ async def 공개강화(bot, ctx):
                                        description=f"`!주식` 명령어를 사용한 후에 다시 시도해주세요.")
                 await ctx.channel.send(embed=embed2)
             else:
+                embed.set_footer(text=f"{user.display_name}님이 기부를 진행 중입니다...")
+                await msg.edit(embed=embed)
+
                 gold = await getPublicReinforceDonation(bot, ctx, user)
                 if gold > 0:
                     try:    donationLog[user.display_name] += gold
