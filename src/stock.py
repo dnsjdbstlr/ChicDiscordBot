@@ -22,7 +22,7 @@ async def 출석(ctx):
     # 출석 체크 확인
     dailyCheck = tool.getDailyCheck(did)
     today = datetime.now().strftime('%Y-%m-%d')
-    if str(dailyCheck.get('date')) == today:
+    if dailyCheck is not None and str(dailyCheck.get('date')) == today:
         embed = discord.Embed(title=f'{name}님의 출석체크')
         embed.add_field(name='> 출석 날짜', value=today)
         embed.add_field(name='> 출석 일수', value=f"{dailyCheck['count']}일")

@@ -51,7 +51,7 @@ async def 획득에픽(ctx, *input):
 async def 기린랭킹(ctx):
     await search.기린랭킹(bot, ctx)
 
-# # # 출 석 # # #
+# # # 광 부 # # #
 @bot.command()
 async def 출석(ctx):
     await stock.출석(ctx)
@@ -59,6 +59,26 @@ async def 출석(ctx):
 @bot.command()
 async def 출석체크(ctx):
     await stock.출석(ctx)
+
+@bot.command()
+async def 광부(ctx):
+    name, did = ctx.message.author.display_name, ctx.message.author.id
+    
+    await ctx.message.delete()
+    embed = discord.Embed(title=f"{name}님의 광부", description=f"원하시는 구역을 선택해주세요. 끝나면 DM으로 알려드릴게요!")
+    embed.add_field(name='> 재난구역',      value='소요시간 : 30분\r\n보상 : 300,000 ~ 500,000골드')
+    embed.add_field(name='> 마계대전',      value='소요시간 : 1시간\r\n보상 : 500,000 ~ 750,000골드')
+    embed.add_field(name='> 폭풍의 항로',   value='소요시간 : 3시간\r\n보상 : 750,000 ~ 1,000,000골드')
+    embed.add_field(name='> 더 오큘러스',   value='소요시간 : 6시간\r\n보상 : 1,000,000 ~ 1,500,000골드')
+    embed.add_field(name='> 추방자의 산맥', value='소요시간 : 12시간\r\n보상 : 1,500,000 ~ 2,000,000골드')
+    embed.add_field(name='> 검은연옥',      value='소요시간 : 24시간\r\n보상 : 3,000,000 ~ 5,000,000골드')
+    message = await ctx.channel.send(embed=embed)
+    await message.add_reaction('1️⃣')
+    await message.add_reaction('2️⃣')
+    await message.add_reaction('3️⃣')
+    await message.add_reaction('4️⃣')
+    await message.add_reaction('5️⃣')
+    await message.add_reaction('6️⃣')
 
 # # # 주 식 # # #
 @bot.command()
