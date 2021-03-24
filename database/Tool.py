@@ -54,9 +54,18 @@ def getTodayPrice(name):
     conn, cur = Connection.getConnection()
     sql = f"SELECT * FROM auction WHERE date=%s and name=%s"
     cur.execute(sql, (date, name))
-    return cur.fetchone()
+    return cur.fetchone()['price']
 
-def getRecentPrice(name):
+def getLatestPrice(name):
+    try:
+        conn, cur = Connection.getConnection()
+        sql = 'SELECT * FROM auction WHERE name=%s'
+        cur.execute(sql, name)
+        rs = cur.fetchall()
+        return rs[-1]
+    except: return None
+
+def getPrevPrice(name):
     try:
         conn, cur = Connection.getConnection()
         sql = 'SELECT * FROM auction WHERE name=%s'
@@ -65,19 +74,36 @@ def getRecentPrice(name):
         return rs[-2]
     except: return None
 
-def updateAuctionPrice(name, avgPrice):
+def updateAuctionPrice(name, upgrade=-1):
+    from src import DNFAPI
+    auction = DNFAPI.getItemAuctionPrice(name)
+    if auction is None: return False
+
+    if upgrade != -1:
+        name += f' +{upgrade}'
+        auction = [i if i['upgrade'] == upgrade else None for i in auction]
+        auction = list(filter(None, auction))
+
+    p, c = 0, 0
+    for i in auction:
+        p += i['price']
+        c += i['count']
+    price = p // c
+
+    # 데이터 저장
     date = datetime.now().strftime('%Y-%m-%d')
     todayPrice = getTodayPrice(name)
 
     conn, cur = Connection.getConnection()
     if todayPrice is None:
         sql = 'INSERT INTO auction (date, name, price) values (%s, %s, %s)'
-        cur.execute(sql, (date, name, avgPrice))
+        cur.execute(sql, (date, name, price))
         conn.commit()
     else:
         sql = 'UPDATE auction SET price=%s WHERE date=%s and name=%s'
-        cur.execute(sql, (avgPrice, date, name))
+        cur.execute(sql, (price, date, name))
         conn.commit()
+    return auction
 
 # # # 계 정 # # #
 def iniAccount(did):

@@ -329,22 +329,6 @@ def getApplyStatFromBuffEquip(chrBuffEquip):
 
     return result
 
-def updateAuctionData(name, auction, upgrade=-1):
-    if upgrade != -1:
-        name += f' +{upgrade}'
-        auction = [i if i['upgrade'] == upgrade else None for i in auction]
-        auction = list(filter(None, auction))
-
-    p, c = 0, 0
-    for i in auction:
-        p += i['price']
-        c += i['count']
-    price = {'평균가': p // c, '판매량': c}
-
-    Tool.updateAuctionPrice(name, price['평균가'])
-    prev = Tool.getRecentPrice(name)
-    return prev, price
-
 # # # 편 리 # # #
 def mergeString(*input):
     result= ''
@@ -445,7 +429,7 @@ def getChicBotChannel(guild):
 def getVolatility(prev, now):
     if prev is None:
         return '데이터 없음'
-    volatility = ((now / prev['price']) - 1) * 100
+    volatility = ((now / prev) - 1) * 100
     if volatility > 0:
         volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
     elif volatility == 0:

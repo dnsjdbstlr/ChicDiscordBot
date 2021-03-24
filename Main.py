@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from database import Tool
-from src import Search, Stock, Reinfoce, Admin, Etc, Util
+from src import Account, Admin, Etc, Reinfoce, Search, Stock, Util
 
 # # # 설 정 # # #
 bot = commands.Bot(command_prefix='!')
@@ -54,11 +54,15 @@ async def 기린랭킹(ctx):
 # # # 계 정 # # #
 @bot.command()
 async def 출석(ctx):
-    await Stock.출석(ctx)
+    await Account.출석(ctx)
+
+@bot.command()
+async def 출첵(ctx):
+    await Account.출석(ctx)
 
 @bot.command()
 async def 출석체크(ctx):
-    await Stock.출석(ctx)
+    await Account.출석(ctx)
 
 # # # 주 식 # # #
 @bot.command()

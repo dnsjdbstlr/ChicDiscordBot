@@ -121,7 +121,7 @@ async def 시세(ctx, *input):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
 
-    name = DNFAPI.getMostSimilarItemName(Util.mergeString(*input))
+    name = DNFAPI.getMostSimilarItem(Util.mergeString(*input))['itemName']
     auction = DNFAPI.getItemAuctionPrice(name)
     if not auction:
         await waiting.delete()
@@ -138,12 +138,12 @@ async def 시세(ctx, *input):
             prev, price = Util.updateAuctionData(name, auction, upgrade=i)
             embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(price['평균가'], ',') + '골드')
             embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
-            embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev, price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
+            embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
     else:
         prev, price = Util.updateAuctionData(name, auction)
         embed.add_field(name='> 평균 가격', value=format(price['평균가'], ',') + '골드')
         embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
-        embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev, price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
+        embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
 
     embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
     embed.set_thumbnail(url=DNFAPI.getItemImageUrl(auction[0]['itemId']))

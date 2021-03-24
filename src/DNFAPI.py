@@ -57,7 +57,6 @@ def getItem(name, exactly=False, _type=None):
                     itemIdList.append(i)
                 elif _type is None:
                     itemIdList.append(i)
-
     return itemIdList
 
 def getItemImageUrl(itemId):
@@ -66,16 +65,16 @@ def getItemImageUrl(itemId):
 def getChrImageUrl(server, chrId):
     return 'https://img-api.neople.co.kr/df/servers/' + SERVER_ID.get(server) + '/characters/' + chrId
 
-def getMostSimilarItemName(name):
+def getMostSimilarItem(name):
     name = parse.quote(name)
     url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&q=trade:true&limit=1&wordType=front&apikey=' + apikey
     response = requests.get(url=url)
     data = json.loads(response.text)
 
     try:
-        return data['rows'][0]['itemName']
+        return data['rows'][0]
     except:
-        return 'None'
+        return None
 
 def getItemDetail(itemId):
     url = 'https://api.neople.co.kr/df/items/' + itemId + '?apikey=' + apikey
