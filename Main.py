@@ -1,12 +1,12 @@
 import discord
 from discord.ext import commands
-from database import Connection, Tool
+from database import Tool
 from src import Search, Stock, Reinfoce, Admin, Etc, Util
 
 # # # 설 정 # # #
 bot = commands.Bot(command_prefix='!')
-#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
 # # # 이 벤 트 # # #
 @bot.event
@@ -123,38 +123,6 @@ async def 통계(ctx):
 @bot.command()
 async def 출석확인(ctx):
     await Admin.출석확인(ctx)
-
-# @bot.command()
-# async def 디버그(ctx):
-#     import json
-#
-#     await ctx.message.delete()
-#     conn, cur = Connection.getConnection()
-#
-#     progress = 0
-#     message = await ctx.channel.send('> 진행중 ... 0.00%')
-#
-#     sql = f"SELECT * FROM stock"
-#     cur.execute(sql)
-#     stocks = cur.fetchall()
-#     for s in stocks:
-#         if s['holding'] is not None:
-#             continue
-#
-#         temp = {
-#             1 : json.loads(s['holding1']) if s['holding1'] is not None else None,
-#             2 : json.loads(s['holding2']) if s['holding2'] is not None else None,
-#             3 : json.loads(s['holding3']) if s['holding3'] is not None else None
-#         }
-#
-#         sql = f"UPDATE stock SET holding=%s WHERE did=%s"
-#         cur.execute(sql, (json.dumps(temp, ensure_ascii=False), s['did']))
-#         conn.commit()
-#
-#         progress += 1
-#         await message.edit(content=format(progress / len(stocks) * 100, '.2f') + "%")
-#
-#     await message.edit(content='> 완료!')
 
 bot.remove_command('help')
 bot.run(token)
