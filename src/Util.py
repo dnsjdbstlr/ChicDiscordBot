@@ -1,8 +1,8 @@
 import discord
 import asyncio
 import re
-from src import dnfAPI
-from database import tool
+from src import DNFAPI
+from database import Tool
 
 # # # 선 택 # # #
 async def getSelectionFromChrIdList(bot, ctx, chrIdList):
@@ -218,12 +218,12 @@ def getChrAllItemOptions(chrEquipData, chrAvatarData):
     # 장착한 장비 옵션
     chrEquipItem = chrEquipData[0]
     chrEquipItemIdList = [i['itemId'] for i in chrEquipItem]
-    chrEquipItemInfoList = dnfAPI.getItemsDetail(chrEquipItemIdList)
+    chrEquipItemInfoList = DNFAPI.getItemsDetail(chrEquipItemIdList)
     
     # 장착한 세트 옵션
     chrEquipSetItem = chrEquipData[1]
     chrEquipSetItemIdList = [i['setItemId'] for i in chrEquipSetItem]
-    chrEquipSetItemInfoList = dnfAPI.getSetItemInfos(chrEquipSetItemIdList)
+    chrEquipSetItemInfoList = DNFAPI.getSetItemInfos(chrEquipSetItemIdList)
     chrEquipSetItemActiveSetNo = {}
     for i in chrEquipSetItem:
         chrEquipSetItemActiveSetNo.update( {i['setItemName'] : i['activeSetNo']} )
@@ -341,8 +341,8 @@ def updateAuctionData(name, auction, upgrade=-1):
         c += i['count']
     price = {'평균가': p // c, '판매량': c}
 
-    tool.updateAuctionPrice(name, price['평균가'])
-    prev = tool.getRecentPrice(name)
+    Tool.updateAuctionPrice(name, price['평균가'])
+    prev = Tool.getRecentPrice(name)
     return prev, price
 
 # # # 편 리 # # #
@@ -452,17 +452,4 @@ def getVolatility(prev, now):
         volatility = '- 0.00%'
     else:
         volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
-    return volatility + ' (' + prev['date'].strftime('%Y-%m-%d') + ')'
-
-def getVolatility2(prev, now):
-    if prev == -1:
-        return '데이터 없음'
-    volatility = ((now / prev) - 1) * 100
-    if volatility > 0:
-        volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
-    elif volatility == 0:
-        volatility = '- 0.00%'
-    else:
-        volatility = '▼ ' + str(format(volatility, '.2f')) + '%'
     return volatility
-

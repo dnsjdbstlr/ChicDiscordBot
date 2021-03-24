@@ -1,12 +1,12 @@
 import discord
-from src import util
-from database import connection
+from src import Util
+from database import Connection
 
 ownerId = 247361856904232960
 
 async def 상태(bot, ctx, *state):
     if ctx.message.author.id == ownerId:
-        state = util.mergeString(*state)
+        state = Util.mergeString(*state)
         await bot.change_presence(status=discord.Status.online, activity=discord.Game(state))
         await ctx.message.delete()
         await ctx.channel.send("> '" + state + " 하는 중' 으로 상태를 바꿨습니다.")
@@ -21,12 +21,12 @@ async def 통계(ctx):
                    '!주식매도', '!주식랭킹', '!출석', '!강화설정', '!강화정보', '!강화', '!공개강화', '!청소']
     if ctx.message.author.id == ownerId:
         await ctx.message.delete()
-        conn, cur = connection.getConnection()
+        conn, cur = Connection.getConnection()
         sql = 'SELECT command FROM log WHERE time > CURDATE()'
         cur.execute(sql)
         rs = cur.fetchall()
 
-        statistics = [i['command'].split(' ')[0] for i in rs]
+        statistics = [i['command'].split()[0] for i in rs]
         embed = discord.Embed(title='오늘 명령어 사용 횟수 통계')
         for k in commandList:
             embed.add_field(name='> ' + k, value=str(statistics.count(k)) + '회')
@@ -36,7 +36,7 @@ async def 출석확인(ctx):
     if ctx.message.author.id == ownerId:
         await ctx.message.delete()
         try:
-            conn, cur = connection.getConnection()
+            conn, cur = Connection.getConnection()
             sql = f'SELECT * FROM dailyCheck WHERE date=CURDATE()'
             cur.execute(sql)
             rs = cur.fetchall()

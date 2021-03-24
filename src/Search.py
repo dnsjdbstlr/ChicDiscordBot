@@ -1,7 +1,7 @@
 import discord
-from src import util, dnfAPI
+from src import Util, DNFAPI
 from datetime import datetime
-from database import connection, tool
+from database import Connection, Tool
 
 async def 등급(ctx):
     await ctx.message.delete()
@@ -32,7 +32,7 @@ async def 등급(ctx):
         }
     }
 
-    shopItemInfo = [dnfAPI.getShopItemInfo(i) for i in itemIdList]
+    shopItemInfo = [DNFAPI.getShopItemInfo(i) for i in itemIdList]
 
     embed = discord.Embed(title='오늘의 아이템 등급을 알려드릴게요!')
     for i in shopItemInfo:
@@ -74,17 +74,17 @@ async def 캐릭터(bot, ctx, *input):
         name   = input[0]
 
     try:
-        chrIdList = dnfAPI.getChrIdList(server, name)
-        server, chrId, name = await util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+        chrIdList = DNFAPI.getChrIdList(server, name)
+        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except:
         return False
 
-    chrEquipItemInfo = dnfAPI.getChrEquipItemInfoList(server, chrId)
+    chrEquipItemInfo = DNFAPI.getChrEquipItemInfoList(server, chrId)
     chrEquipItemIds  = []
     for i in chrEquipItemInfo['equipment']:
         if i['slotName'] in ['칭호', '보조무기']: continue
         chrEquipItemIds.append(i['itemId'])
-    chrEquipSetInfo = dnfAPI.getChrEquipSetItemInfo(chrEquipItemIds)
+    chrEquipSetInfo = DNFAPI.getChrEquipSetItemInfo(chrEquipItemIds)
 
     infoSwitch = True
     embed = getChrInfoEmbed(name, chrEquipSetInfo, chrEquipItemInfo)
@@ -100,9 +100,9 @@ async def 캐릭터(bot, ctx, *input):
 
             # 아바타 정보
             if infoSwitch and str(reaction) == '▶️':
-                avatar = dnfAPI.getChrAvatarData(server, chrId)
+                avatar = DNFAPI.getChrAvatarData(server, chrId)
                 embed = getChrAvatarInfoEmbed(name, avatar)
-                embed.set_image(url=dnfAPI.getChrImageUrl(server, chrId))
+                embed.set_image(url=DNFAPI.getChrImageUrl(server, chrId))
                 await msg.edit(embed=embed)
                 await msg.clear_reactions()
                 await msg.add_reaction('◀️')
@@ -121,8 +121,8 @@ async def 시세(ctx, *input):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
 
-    name = dnfAPI.getMostSimilarItemName(util.mergeString(*input))
-    auction = dnfAPI.getItemAuctionPrice(name)
+    name = DNFAPI.getMostSimilarItemName(Util.mergeString(*input))
+    auction = DNFAPI.getItemAuctionPrice(name)
     if not auction:
         await waiting.delete()
         await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
@@ -135,34 +135,34 @@ async def 시세(ctx, *input):
         upgrades.sort()
 
         for i in upgrades:
-            prev, price = util.updateAuctionData(name, auction, upgrade=i)
+            prev, price = Util.updateAuctionData(name, auction, upgrade=i)
             embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(price['평균가'], ',') + '골드')
             embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
-            embed.add_field(name='> 가격 변동률', value=util.getVolatility(prev, price['평균가']))
+            embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev, price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
     else:
-        prev, price = util.updateAuctionData(name, auction)
+        prev, price = Util.updateAuctionData(name, auction)
         embed.add_field(name='> 평균 가격', value=format(price['평균가'], ',') + '골드')
         embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
-        embed.add_field(name='> 가격 변동률', value=util.getVolatility(prev, price['평균가']))
+        embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev, price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
 
     embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
-    embed.set_thumbnail(url=dnfAPI.getItemImageUrl(auction[0]['itemId']))
+    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(auction[0]['itemId']))
     await waiting.delete()
     await ctx.channel.send(embed=embed)
 
 async def 장비(bot, ctx, *input):
-    name = util.mergeString(*input)
+    name = Util.mergeString(*input)
     if len(name) < 1:
         await ctx.message.delete()
         await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해요!')
         return
 
     try:
-        itemIdList = dnfAPI.getItem(name)
-        itemId = await util.getSelectionFromItemIdList(bot, ctx, itemIdList)
+        itemIdList = DNFAPI.getItem(name)
+        itemId = await Util.getSelectionFromItemIdList(bot, ctx, itemIdList)
         if itemId is False: return
     except: return
-    itemDetailInfo = dnfAPI.getItemDetail(itemId)
+    itemDetailInfo = DNFAPI.getItemDetail(itemId)
 
     infoSwitch = True
     embed = getItemOptionEmbed(itemDetailInfo)
@@ -194,7 +194,7 @@ async def 장비(bot, ctx, *input):
             pass
 
 async def 세트(bot, ctx, *input):
-    name = util.mergeString(*input)
+    name = Util.mergeString(*input)
 
     if len(name) < 1:
         await ctx.message.delete()
@@ -202,11 +202,11 @@ async def 세트(bot, ctx, *input):
         return
 
     try:
-        setItemIdList = dnfAPI.getSetItemIdList(name)
-        setItemId, name = await util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
+        setItemIdList = DNFAPI.getSetItemIdList(name)
+        setItemId, name = await Util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
     except:
         return
-    setItemInfo = dnfAPI.getSetItemInfoList(setItemId)
+    setItemInfo = DNFAPI.getSetItemInfoList(setItemId)
 
     infoSwitch = True
     embed = getSetItemOptionEmbed(setItemInfo)
@@ -249,12 +249,12 @@ async def 획득에픽(bot, ctx, *input):
         name   = input[0]
 
     try:
-        chrIdList = dnfAPI.getChrIdList(server, name)
-        server, chrId, name = await util.getSelectionFromChrIdList(bot, ctx, chrIdList)
+        chrIdList = DNFAPI.getChrIdList(server, name)
+        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
     except: return False
 
     waiting = await ctx.channel.send(f'> {name}님이 획득한 에픽을 확인 중이예요...')
-    timeline = dnfAPI.getChrTimeLine(server, chrId, 505, 513)
+    timeline = DNFAPI.getChrTimeLine(server, chrId, 505, 513)
 
     # 획득한 에픽 갯수
     gainEpicCount = len(timeline)
@@ -274,7 +274,7 @@ async def 획득에픽(bot, ctx, *input):
         luckyChannel = '없음'
     else:
         luckyChannel = sorted(channels.items(), key=lambda x: x[1], reverse=True)[0][0]
-    tool.updateEpicRank(server, name, gainEpicCount, luckyChannel)
+    Tool.updateEpicRank(server, name, gainEpicCount, luckyChannel)
     await waiting.delete()
 
     page = 0
@@ -313,7 +313,7 @@ async def 기린랭킹(bot, ctx):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 기린 랭킹을 불러오는 중이예요...')
 
-    rank = tool.getMonthlyEpicRank()
+    rank = Tool.getMonthlyEpicRank()
     rank = list(sorted(rank, key=lambda x: x['count'], reverse=True))
     await waiting.delete()
 
@@ -407,12 +407,12 @@ def getItemOptionEmbed(itemDetailInfo):
     embed = discord.Embed(title=itemDetailInfo['itemName'],
                           description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
     # 스탯
-    itemStatInfo = dnfAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
+    itemStatInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
     embed.add_field(name='> 스탯', value=itemStatInfo, inline=False)
 
     # 스킬 레벨
     try:
-        itemSkillLvInfo = dnfAPI.getItemSkillLvInfo(itemDetailInfo['itemReinforceSkill'][0]['jobName'],
+        itemSkillLvInfo = DNFAPI.getItemSkillLvInfo(itemDetailInfo['itemReinforceSkill'][0]['jobName'],
                                                     itemDetailInfo['itemReinforceSkill'][0]['levelRange'])
         embed.add_field(name='> 스킬', value=itemSkillLvInfo)
     except: pass
@@ -428,7 +428,7 @@ def getItemOptionEmbed(itemDetailInfo):
 
     # 신화옵션
     try:
-        itemMythicInfo = dnfAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'])
+        itemMythicInfo = DNFAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'])
         embed.add_field(name='> 신화 전용 옵션', value=itemMythicInfo, inline=False)
     except: pass
 
@@ -437,7 +437,7 @@ def getItemOptionEmbed(itemDetailInfo):
     embed.set_footer(text=itemFlavorText)
 
     # 아이콘
-    icon = dnfAPI.getItemImageUrl(itemDetailInfo['itemId'])
+    icon = DNFAPI.getItemImageUrl(itemDetailInfo['itemId'])
     embed.set_thumbnail(url=icon)
 
     return embed
@@ -447,11 +447,11 @@ def getItemBuffOptionEmbed(itemDetailInfo):
                           description=str(itemDetailInfo['itemAvailableLevel']) + 'Lv ' + itemDetailInfo['itemRarity'] + ' ' + itemDetailInfo['itemTypeDetail'])
 
     # 스탯
-    statInfo = dnfAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
+    statInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
     embed.add_field(name='> 스탯', value=statInfo, inline=False)
 
     # 버프 스킬 레벨 옵션
-    buffLvInfo = util.getSkillLevelingInfo(itemDetailInfo['itemBuff']['reinforceSkill'])
+    buffLvInfo = Util.getSkillLevelingInfo(itemDetailInfo['itemBuff']['reinforceSkill'])
     buffLvInfoValue = ''
     for key in buffLvInfo.keys():
         if key != '모든 직업':
@@ -468,7 +468,7 @@ def getItemBuffOptionEmbed(itemDetailInfo):
 
     # 신화 옵션
     try:
-        mythicInfo = dnfAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'], buff=True)
+        mythicInfo = DNFAPI.getItemMythicInfo(itemDetailInfo['mythologyInfo']['options'], buff=True)
         embed.add_field(name='> 신화 전용 옵션', value=mythicInfo)
     except: pass
 
@@ -476,7 +476,7 @@ def getItemBuffOptionEmbed(itemDetailInfo):
     embed.set_footer(text=itemDetailInfo['itemFlavorText'])
 
     # 아이콘
-    icon = dnfAPI.getItemImageUrl(itemDetailInfo['itemId'])
+    icon = DNFAPI.getItemImageUrl(itemDetailInfo['itemId'])
     embed.set_thumbnail(url=icon)
 
     return embed
@@ -492,7 +492,7 @@ def getSetItemOptionEmbed(setItemInfo):
                 value += status['name'] + ' ' + status['value'] + '\r\n'
         except: pass
         embed.add_field(name='> ' + str(option['optionNo']) + '세트 옵션', value=value + option['explain'])
-    embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
+    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     return embed
 
 def getSetItemBuffOptionEmbed(setItemInfo):
@@ -502,7 +502,7 @@ def getSetItemBuffOptionEmbed(setItemInfo):
     for option in setItemInfo['setItemOption']:
         value = ''
         try:
-            skill = util.getSkillLevelingInfo(option['itemBuff']['reinforceSkill'])
+            skill = Util.getSkillLevelingInfo(option['itemBuff']['reinforceSkill'])
             for key in skill.keys():
                 if key != '모든 직업':
                     value += key + '\r\n'
@@ -514,7 +514,7 @@ def getSetItemBuffOptionEmbed(setItemInfo):
         except: pass
         value += option['itemBuff']['explain']
         embed.add_field(name='> ' + str(option['optionNo']) + '세트 옵션', value=value)
-    embed.set_thumbnail(url=dnfAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
+    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(setItemInfo['setItems'][0]['itemId']))
     return embed
 
 def getGainEpicEmbed(timeline, name, luckyChannel, page):

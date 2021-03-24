@@ -9,9 +9,8 @@ async def 도움말(bot, ctx):
 
     while True:
         try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
+            def check(_reaction, _user):
+                return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == msg.id
             reaction, user = await bot.wait_for('reaction_add', check=check)
 
             if str(reaction) == '◀️' and page > 1:
@@ -27,6 +26,11 @@ async def 도움말(bot, ctx):
             if page < 4:
                 await msg.add_reaction('▶️')
         except: pass
+
+async def 청소(bot, ctx):
+    def check(m): return m.author == bot.user
+    await ctx.channel.purge(check=check)
+    await ctx.message.delete()
 
 def getChicBotDesc(page):
     if page == 1:
@@ -49,10 +53,10 @@ def getChicBotDesc(page):
         embed.add_field(name="> !획득에픽 '닉네임'",     value='해당 캐릭터가 이번 달에 획득한 에픽을 알려드릴게요.')
         embed.add_field(name='> !기린랭킹',              value='이번 달에 에픽을 많이 획득한 기린들을 박제해놨어요!')
     elif page == 2:
-        embed.add_field(name='> !주식',                  value='자신이 보유하고 있는 골드와 주식을 알려드려요. 주식 관련 명령어를 사용하기 위해서 적어도 한 번은 사용해야해요.')
-        embed.add_field(name="> !주식매수 '아이템이름'", value='해당 아이템을 매수할 수 있어요.')
-        embed.add_field(name="> !주식매도",              value='보유하고 있는 주식을 매도할 수 있어요.')
-        embed.add_field(name="> !주식랭킹",              value='보유금과 평가금을 합친 것을 기준으로한 랭킹을 보여드려요.')
+        embed.add_field(name='> !주식',              value='자신이 보유하고 있는 골드와 주식을 알려드려요. 주식 관련 명령어를 사용하기 위해서 적어도 한 번은 사용해야해요.')
+        embed.add_field(name="> !매수 '아이템이름'", value='해당하는 던파 아이템을 매수할 수 있어요.')
+        embed.add_field(name="> !매도",              value='보유하고 있는 주식을 매도할 수 있어요.')
+        embed.add_field(name="> !주식랭킹",          value='보유금과 평가금을 합친 것을 기준으로한 랭킹을 보여드려요.')
     elif page == 3:
         embed.add_field(name="> !강화설정 '무기아이템이름'", value='강화할 아이템을 설정합니다. 강화 관련 명령어를 사용하기 위해서 적어도 한 번은 사용해야해요.')
         embed.add_field(name="> !강화정보",                  value='현재 무기, 여태 최고 강화 수치 그리고 강화 시도 횟수를 알려드려요.')
@@ -66,8 +70,3 @@ def getChicBotDesc(page):
         embed.add_field(name='> 1윤시크 :: 커뮤니티', value='[누르면 초대받을 수 있어요.](https://discord.gg/ZUbjgY4jg2)')
     embed.set_footer(text=f'4쪽 중 {page}쪽')
     return embed
-
-async def 청소(bot, ctx):
-    def check(m): return m.author == bot.user
-    await ctx.channel.purge(check=check)
-    await ctx.message.delete()
