@@ -112,7 +112,7 @@ async def 매수(bot, ctx, *input):
                           description='매수하려면 O, 취소하려면 X 이모지를 입력해주세요.')
     embed.add_field(name='> 단가',        value=format(price['평균가'], ',') + '골드')
     embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
-    embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev, price['평균가'])) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')'
+    embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev, price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
     embed.set_footer(text='30초 안에 결정해야합니다.')
     embed.set_thumbnail(url=DNFAPI.getItemImageUrl(auction[0]['itemId']))
     await waiting.delete()
