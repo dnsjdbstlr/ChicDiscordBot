@@ -54,7 +54,8 @@ def getTodayPrice(name):
     conn, cur = Connection.getConnection()
     sql = f"SELECT * FROM auction WHERE date=%s and name=%s"
     cur.execute(sql, (date, name))
-    return cur.fetchone()['price']
+    rs = cur.fetchone()
+    return rs['price'] if rs is not None else None
 
 def getLatestPrice(name):
     try:
@@ -77,7 +78,7 @@ def getPrevPrice(name):
 def updateAuctionPrice(name, upgrade=-1):
     from src import DNFAPI
     auction = DNFAPI.getItemAuctionPrice(name)
-    if auction is None: return False
+    if not auction: return False
 
     if upgrade != -1:
         name += f' +{upgrade}'

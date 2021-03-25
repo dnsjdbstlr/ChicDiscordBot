@@ -53,7 +53,7 @@ async def 매수(bot, ctx, *input):
         return
 
     waiting = await ctx.channel.send('> 해당 주식의 정보를 불러오는 중입니다...')
-    name = DNFAPI.getMostSimilarItem(Util.mergeString(*input))['itemId']
+    name = DNFAPI.getMostSimilarItem(Util.mergeString(*input))['itemName']
 
     if '카드' in name:
         text = '> 현재 카드는 매수할 수 없어요.\r\n'

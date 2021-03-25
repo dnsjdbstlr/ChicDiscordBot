@@ -135,15 +135,15 @@ async def 시세(ctx, *input):
         upgrades.sort()
 
         for i in upgrades:
-            prev, price = Util.updateAuctionData(name, auction, upgrade=i)
-            embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(price['평균가'], ',') + '골드')
-            embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
-            embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
+            prev, latest = Tool.getPrevPrice(name), Tool.getLatestPrice(name)
+            embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(latest['price'], ',') + '골드')
+            embed.add_field(name='> 최근 판매량', value=format(latest['price'], ',') + '개')
+            embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], latest['price']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
     else:
-        prev, price = Util.updateAuctionData(name, auction)
-        embed.add_field(name='> 평균 가격', value=format(price['평균가'], ',') + '골드')
-        embed.add_field(name='> 최근 판매량', value=format(price['판매량'], ',') + '개')
-        embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], price['평균가']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
+        prev, latest = Tool.getPrevPrice(name), Tool.getLatestPrice(name)
+        embed.add_field(name='> 평균 가격', value=format(latest['price'], ',') + '골드')
+        embed.add_field(name='> 최근 판매량', value=format(latest['price'], ',') + '개')
+        embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], latest['price']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
 
     embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
     embed.set_thumbnail(url=DNFAPI.getItemImageUrl(auction[0]['itemId']))
