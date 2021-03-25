@@ -1,7 +1,7 @@
 import json
 import discord
-from src import DNFAPI, Util
-from database import Tool
+from Src import DNFAPI, Util
+from Database import Tool
 
 async def 강화설정(bot, ctx, *input):
     did, name = ctx.message.author.id, ctx.message.author.display_name

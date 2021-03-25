@@ -1,11 +1,13 @@
+import os
 import discord
 from discord.ext import commands
-from database import Tool
-from src import Account, Admin, Etc, Reinfoce, Search, Stock, Util
+from Database import Tool
+from Src import Account, Admin, Etc, Reinfoce, Search, Stock, Util
 
 # # # 설 정 # # #
 bot = commands.Bot(command_prefix='!')
-token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
+token = os.environ['bot_token']
+#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
 #token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
 # # # 이 벤 트 # # #

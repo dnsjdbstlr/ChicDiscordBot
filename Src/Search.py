@@ -1,7 +1,7 @@
 import discord
-from src import Util, DNFAPI
+from Src import Util, DNFAPI
 from datetime import datetime
-from database import Connection, Tool
+from Database import Connection, Tool
 
 async def 등급(ctx):
     await ctx.message.delete()

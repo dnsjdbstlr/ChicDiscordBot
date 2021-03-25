@@ -1,8 +1,8 @@
 import json
 import discord
 import asyncio
-from src import DNFAPI, Util
-from database import Connection, Tool
+from Src import DNFAPI, Util
+from Database import Connection, Tool
 
 async def 주식(ctx):
     await ctx.message.delete()

@@ -1,7 +1,7 @@
 import discord
 import asyncio
 import re
-from src import DNFAPI
+from Src import DNFAPI
 
 # # # 선 택 # # #
 async def getSelectionFromChrIdList(bot, ctx, chrIdList):

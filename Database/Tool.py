@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from database import Connection
+from Database import Connection
 
 # # # 로 그 # # #
 def log(message):
@@ -76,7 +76,7 @@ def getPrevPrice(name):
     except: return None
 
 def updateAuctionPrice(name, upgrade=-1):
-    from src import DNFAPI
+    from Src import DNFAPI
     auction = DNFAPI.getItemAuctionPrice(name)
     if not auction: return False
 

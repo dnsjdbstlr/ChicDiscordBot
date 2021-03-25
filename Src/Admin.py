@@ -1,6 +1,6 @@
 import discord
-from src import Util
-from database import Connection
+from Src import Util
+from Database import Connection
 
 ownerId = 247361856904232960
 

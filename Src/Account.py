@@ -1,7 +1,7 @@
 import discord
 from datetime import datetime
-from database import Tool
-from src import Util
+from Database import Tool
+from Src import Util
 
 async def 출석(ctx):
     await ctx.message.delete()
