@@ -6,9 +6,7 @@ from Src import Account, Admin, Etc, Reinfoce, Search, Stock, Util
 
 # # # 설 정 # # #
 bot = commands.Bot(command_prefix='!')
-token = os.environ['bot_token']
-#token = 'NzgxNzgyNzQ5NDc5Njk4NDQy.X8Cp7A.wJ69VOJUvfEMnv6-F63QG8KNans'
-#token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
+bot_token = os.environ['bot_token']
 
 # # # 이 벤 트 # # #
 @bot.event
@@ -131,4 +129,4 @@ async def 출석확인(ctx):
     await Admin.출석확인(ctx)
 
 bot.remove_command('help')
-bot.run(token)
+bot.run(bot_token)

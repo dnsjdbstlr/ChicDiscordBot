@@ -1,10 +1,11 @@
+import os
 import json
 import requests
 from urllib import parse
 from datetime import datetime
 
 # API키
-apikey = 'GsjfwTqfwvgwdYj2nLNxo1wP0RVnkdLn'
+dnf_token = os.environ['dnf_token']
 
 # 서버 아이디
 SERVER_ID = {
@@ -34,7 +35,7 @@ def getItem(name, exactly=False, _type=None):
     name = parse.quote(name)
     wordType = 'full' if exactly is False else 'match'
 
-    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&limit=30&wordType=' + wordType + '&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&limit=30&wordType=' + wordType + '&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
 
@@ -67,7 +68,7 @@ def getChrImageUrl(server, chrId):
 
 def getMostSimilarItem(name):
     name = parse.quote(name)
-    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&q=trade:true&limit=1&wordType=front&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&q=trade:true&limit=1&wordType=front&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
 
@@ -77,7 +78,7 @@ def getMostSimilarItem(name):
         return None
 
 def getItemDetail(itemId):
-    url = 'https://api.neople.co.kr/df/items/' + itemId + '?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/items/' + itemId + '?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return dict(data)
@@ -87,7 +88,7 @@ def getItemsDetail(itemIds):
     for i in itemIds:
         items += i
         if i != itemIds[-1]: items += ','
-    url = 'https://api.neople.co.kr/df/multi/items?itemIds=' + items + '&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/multi/items?itemIds=' + items + '&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['rows']
@@ -123,25 +124,25 @@ def getItemMythicInfo(options, buff=False):
     return itemMythicInfo
 
 def getItemAuctionPrice(itemName):
-    url = 'https://api.neople.co.kr/df/auction-sold?itemName=' + itemName + '&limit=100&wordType=match&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/auction-sold?itemName=' + itemName + '&limit=100&wordType=match&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['rows']
 
 def getShopItemInfo(itemId):
-    url = 'https://api.neople.co.kr/df/items/' + itemId + '/shop?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/items/' + itemId + '/shop?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
 
 def getSetItemIdList(setItemName):
-    url = 'https://api.neople.co.kr/df/setitems?setItemName=' + setItemName + '&limit=30&wordType=full&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/setitems?setItemName=' + setItemName + '&limit=30&wordType=full&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['rows']
 
 def getSetItemInfoList(setItemId):
-    url = 'https://api.neople.co.kr/df/setitems/' + setItemId + '?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/setitems/' + setItemId + '?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
@@ -152,7 +153,7 @@ def getSetItemInfos(setItemIds):
         setItems += i
         if i != setItemIds[-1]: setItems += ','
 
-    url = 'https://api.neople.co.kr/df/multi/setitems?setItemIds=' + setItems + '&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/multi/setitems?setItemIds=' + setItems + '&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['rows']
@@ -166,7 +167,7 @@ def getChrIdList(server, name):
         wordType = 'full'
 
     name = parse.quote(name)
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters?characterName=' + name + '&wordType=' + wordType + '&limit=15&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters?characterName=' + name + '&wordType=' + wordType + '&limit=15&apikey=' + dnf_token
     response = requests.get(url=url)
     temp = json.loads(response.text)
     data = temp['rows']
@@ -182,7 +183,7 @@ def getChrIdList(server, name):
     return chrIdList
 
 def getChrEquipItemInfoList(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/equipment?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/equipment?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
@@ -193,19 +194,19 @@ def getChrEquipSetItemInfo(chrEquipItemList):
         itemIds += i
         if i != chrEquipItemList[-1]: itemIds += ','
 
-    url = 'https://api.neople.co.kr/df/custom/equipment/setitems?itemIds=' + itemIds + '&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/custom/equipment/setitems?itemIds=' + itemIds + '&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
 
 def getChrEquipCreatureId(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/creature?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/creature?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['creature']['itemId']
 
 def getChrStatInfo(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] +'/characters/' + chrId +'/status?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] +'/characters/' + chrId +'/status?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
@@ -221,37 +222,37 @@ def getChrTimeLine(server, chrId, *code):
         if i!= code[-1]:
             codes += ','
 
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/timeline?limit=100&code=' + codes + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/timeline?limit=100&code=' + codes + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['timeline']['rows']
 
 def getChrSkillStyle(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/skill/style?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/skill/style?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
 
 def getChrBuffEquip(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/skill/buff/equip/equipment?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/skill/buff/equip/equipment?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
 
 def getChrAvatarData(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/avatar?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/avatar?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
 
 def getSkillDetailInfo(jobId, skillId):
-    url = 'https://api.neople.co.kr/df/skills/' + jobId + '/' + skillId + '?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/skills/' + jobId + '/' + skillId + '?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
 
 def getSkillInfo(jobId, skillId):
-    url = 'https://api.neople.co.kr/df/skills/' + jobId + '/' + skillId + '?apikey=' + apikey
+    url = 'https://api.neople.co.kr/df/skills/' + jobId + '/' + skillId + '?apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data
