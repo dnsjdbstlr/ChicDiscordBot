@@ -169,13 +169,15 @@ async def 공개강화(bot, ctx):
             await msg.edit(embed=embed)
             return
 
-        elif str(reaction) == '❤️' and user.id != did:
+        elif str(reaction) == '❤️':
             await msg.clear_reactions()
-            if Tool.getStock(user.id) is None:
-                embed2 = discord.Embed(title=f"{user.display_name}님의 공개 강화 기부",
-                                       description=f"`!주식` 명령어를 사용한 후에 다시 시도해주세요.")
-                await ctx.channel.send(embed=embed2)
+            if user.id == did:
+                embed.set_footer(text='본인의 공개 강화에는 기부할 수 없습니다.')
+                await msg.edit(embed=embed)
             else:
+                if Tool.getAccount(user.id) is None:
+                    Tool.iniAccount(user.id)
+
                 embed.set_footer(text=f"{user.display_name}님이 기부를 진행 중입니다...")
                 await msg.edit(embed=embed)
 
@@ -234,7 +236,7 @@ async def getPublicReinforceDonation(bot, ctx, user):
 
     embed = discord.Embed(title=f"{user.display_name}님의 공개 강화 기부",
                           description=f"{ctx.message.author.display_name}님에게 기부할 골드를 입력해주세요.\r\n"
-                                      f"한번 기부한 골드는 다시 회수할 수 없습니다. 신중히 입력해주세요.")
+                                      f"한번 기부한 골드는 회수할 수 없습니다. 신중히 입력해주세요.")
     embed.add_field(name='> 보유 골드', value=f"{format(gold, ',')}골드")
     embed.set_footer(text='20초 안에 입력해야해요.')
     message = await ctx.channel.send(embed=embed)
