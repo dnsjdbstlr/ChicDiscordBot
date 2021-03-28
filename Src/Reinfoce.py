@@ -194,6 +194,40 @@ async def 공개강화(bot, ctx):
             await msg.add_reaction('❌')
             await msg.add_reaction('❤️')
 
+async def 강화랭킹(bot, ctx):
+    await ctx.message.delete()
+    waiting = await ctx.channel.send('> 강화 랭킹을 불러오는 중이예요...')
+
+    page = 0
+    rank = Tool.getReinforce()
+
+    embed = getReinforceRankEmbed(rank=rank, page=page, user=ctx.message.author)
+    embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 1쪽')
+    await waiting.delete()
+    msg = await ctx.channel.send(embed=embed)
+
+    if len(rank) > 15:
+        await msg.add_reaction('▶️')
+    while len(rank) > 15:
+        def check(_reaction, _user):
+            return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == msg.id
+        reaction, user = await bot.wait_for('reaction_add', check=check)
+
+        if str(reaction) == '◀️' and page > 0:
+            page -= 1
+        if str(reaction) == '▶️' and page < (len(rank) - 1) // 15:
+            page += 1
+
+        embed = getReinforceRankEmbed(rank=rank, page=page, user=ctx.message.author)
+        embed.set_footer(text=f'{(len(rank) - 1) // 15 + 1}쪽 중 {page + 1}쪽')
+        await msg.edit(embed=embed)
+        await msg.clear_reactions()
+
+        if page > 0:
+            await msg.add_reaction('◀️')
+        if page < (len(rank) - 1) // 15:
+            await msg.add_reaction('▶️')
+
 async def reinforceItem(bot, ctx, msg, reinforce):
     did, name = ctx.message.author.id, ctx.message.author.display_name
     prob, cost = getReinforceInfo(reinforce['value'] + 1)
@@ -364,3 +398,23 @@ def doReinforce(did, reinforce):
         success = False
     Tool.gainGold(did, -cost)
     return success
+
+def getReinforceRankEmbed(rank, page, user):
+    reinforces = rank[page * 15:page * 15 + 15]
+
+    def key(x): return json.loads(x['max'])['value']
+    reinforces = sorted(reinforces, key=lambda x : key(x), reverse=True)
+
+    embed = discord.Embed(title='강화 랭킹을 알려드릴게요!', description='랭킹은 최대 강화 수치를 기준으로 해요. 강화 시도 횟수도 같이 알려드릴게요.')
+    for idx, r in enumerate(reinforces):
+        _max   = json.loads(r['max'])
+        _try   = json.loads(r['try'])
+        name   = f"> {page * 15 + idx + 1}등"
+        if str(user.id) == r['did']:
+            name += f"({user.display_name}님)"
+        value  = f"+{_max['value']} {_max['name']}\r\n"
+        value += f"성공 : {_try['success']}회\r\n"
+        value += f"실패 : {_try['fail']}회\r\n"
+        value += f"파괴 : {_try['destroy']}회"
+        embed.add_field(name=name, value=value)
+    return embed

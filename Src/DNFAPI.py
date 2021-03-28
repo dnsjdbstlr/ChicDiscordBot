@@ -5,8 +5,8 @@ from urllib import parse
 from datetime import datetime
 
 # API키
-dnf_token = os.environ['dnf_token']
-
+#dnf_token = os.environ['dnf_token']
+dnf_token = 'GsjfwTqfwvgwdYj2nLNxo1wP0RVnkdLn'
 # 서버 아이디
 SERVER_ID = {
     '안톤'    : 'anton',

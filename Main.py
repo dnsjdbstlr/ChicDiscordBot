@@ -7,6 +7,7 @@ from Src import Account, Admin, Etc, Reinfoce, Search, Stock, Util
 # # # 설 정 # # #
 bot = commands.Bot(command_prefix='!')
 bot_token = os.environ['bot_token']
+#bot_token = 'NzgyMTc4NTQ4MTg1NTYzMTQ3.X8Iaig.0o0wUqoz8j_iub3SC7A5SFY83U4'
 
 # # # 이 벤 트 # # #
 @bot.event
@@ -97,6 +98,10 @@ async def 강화(ctx):
 @bot.command()
 async def 공개강화(ctx):
     await Reinfoce.공개강화(bot, ctx)
+
+@bot.command()
+async def 강화랭킹(ctx):
+    await Reinfoce.강화랭킹(bot, ctx)
 
 # # # 기 타 # # #
 @bot.command()

@@ -201,11 +201,16 @@ def delReinforce(did):
     cur.execute(sql, did)
     conn.commit()
 
-def getReinforce(did):
+def getReinforce(did=None):
     conn, cur = Connection.getConnection()
-    sql = f"SELECT * FROM reinforce WHERE did=%s"
-    cur.execute(sql, did)
-    return cur.fetchone()
+    if did is None:
+        sql = f"SELECT * FROM reinforce"
+        cur.execute(sql)
+        return cur.fetchall()
+    else:
+        sql = f"SELECT * FROM reinforce WHERE did=%s"
+        cur.execute(sql, did)
+        return cur.fetchone()
 
 def isValidReinforce(did):
     reinforce = getReinforce(did)
