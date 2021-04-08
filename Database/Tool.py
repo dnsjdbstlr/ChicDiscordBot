@@ -75,9 +75,11 @@ def getPrevPrice(name):
         return rs[-2]
     except: return None
 
-def updateAuctionPrice(name, upgrade=-1):
+def updateAuctionPrice(name, upgrade=-1, auction=None):
     from Src import DNFAPI
-    auction = DNFAPI.getItemAuctionPrice(name)
+
+    if auction is None:
+        auction = DNFAPI.getItemAuctionPrice(name)
     if not auction: return False
 
     if upgrade != -1:

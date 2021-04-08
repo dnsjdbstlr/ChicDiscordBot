@@ -17,7 +17,7 @@ async def 연결(bot, ctx):
         await ctx.channel.send('> 시크봇은 ' + str(len(bot.guilds)) + '개의 서버에 연결되어있어요!')
 
 async def 통계(ctx):
-    commandList = ['!등급', '!캐릭터', '!장비', '!세트', '!시세', '!획득에픽', '!기린랭킹', '!주식', '!주식매수',
+    commandList = ['!등급', '!캐릭터', '!장비', '!세트', '!시세', '!획득에픽', '!기린랭킹', '!강화랭킹', '!주식', '!주식매수',
                    '!주식매도', '!주식랭킹', '!출석', '!강화설정', '!강화정보', '!강화', '!공개강화', '!청소']
     if ctx.message.author.id == ownerId:
         await ctx.message.delete()

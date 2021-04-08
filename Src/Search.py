@@ -121,28 +121,40 @@ async def 시세(ctx, *input):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
 
-    name = DNFAPI.getMostSimilarItem(Util.mergeString(*input))['itemName']
-    auction = DNFAPI.getItemAuctionPrice(name)
-    if not auction:
+    item = DNFAPI.getMostSimilarItem(Util.mergeString(*input))
+    if item is None:
         await waiting.delete()
         await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
         return
+    name = item['itemName']
+
 
     embed = discord.Embed(title=f"'{name}' 시세를 알려드릴게요")
     if '카드' in name:
+        auction = DNFAPI.getItemAuctionPrice(name)
         upgrades = [i['upgrade'] for i in auction]
         upgrades = list(set(upgrades))
         upgrades.sort()
 
         for i in upgrades:
-            prev, latest = Tool.getPrevPrice(name), Tool.getLatestPrice(name)
+            tAuction = Tool.updateAuctionPrice(name, int(i), auction)
+
+            count = 0
+            for j in tAuction: count += j['count']
+
+            prev, latest = Tool.getPrevPrice(f"{name} +{i}"), Tool.getLatestPrice(f"{name} +{i}")
             embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(latest['price'], ',') + '골드')
-            embed.add_field(name='> 최근 판매량', value=format(latest['price'], ',') + '개')
+            embed.add_field(name='> 최근 판매량', value=format(count, ',') + '개')
             embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], latest['price']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
     else:
+        auction = Tool.updateAuctionPrice(name)
+
+        count = 0
+        for i in auction: count += i['count']
+
         prev, latest = Tool.getPrevPrice(name), Tool.getLatestPrice(name)
         embed.add_field(name='> 평균 가격', value=format(latest['price'], ',') + '골드')
-        embed.add_field(name='> 최근 판매량', value=format(latest['price'], ',') + '개')
+        embed.add_field(name='> 최근 판매량', value=format(count, ',') + '개')
         embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], latest['price']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
 
     embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
@@ -171,10 +183,8 @@ async def 장비(bot, ctx, *input):
 
     while True:
         try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
-
+            def check(_reaction, _user):
+                return str(_reaction) == ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == msg.id
             reaction, user = await bot.wait_for('reaction_add', check=check)
 
             # 버퍼 옵션
@@ -215,9 +225,8 @@ async def 세트(bot, ctx, *input):
 
     while True:
         try:
-            def check(reaction, user):
-                return (str(reaction) == '◀️' or str(reaction) == '▶️') \
-                       and user == ctx.author and reaction.message.id == msg.id
+            def check(_reaction, _user):
+                return str(_reaction) == ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == msg.id
             reaction, user = await bot.wait_for('reaction_add', check=check)
 
             # 버퍼 옵션
@@ -267,8 +276,8 @@ async def 획득에픽(bot, ctx, *input):
     channels = {}
     for i in timeline:
         if i['code'] == 505:
-            try:    channels[f"ch{i['data']['channelNo']}.{i['data']['channelName']}"] += 1
-            except: channels[f"ch{i['data']['channelNo']}.{i['data']['channelName']}"] = 1
+            channels.setdefault(f"ch{i['data']['channelNo']}.{i['data']['channelName']}", 0)
+            channels[f"ch{i['data']['channelNo']}.{i['data']['channelName']}"] += 1
 
     if channels == {}:
         luckyChannel = '없음'
