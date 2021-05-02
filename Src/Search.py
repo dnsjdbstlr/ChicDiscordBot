@@ -1,7 +1,7 @@
 import discord
-from Src import Util, DNFAPI
+from Database import Tool
 from datetime import datetime
-from Database import Connection, Tool
+from Src import Util, DNFAPI
 
 async def 등급(ctx):
     await ctx.message.delete()
@@ -190,7 +190,7 @@ async def 장비(bot, ctx, *input):
     while True:
         try:
             def check(_reaction, _user):
-                return str(_reaction) == ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == msg.id
+                return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == msg.id
             reaction, user = await bot.wait_for('reaction_add', check=check)
 
             # 버퍼 옵션
@@ -206,8 +206,7 @@ async def 장비(bot, ctx, *input):
                 await msg.clear_reactions()
                 await msg.add_reaction('▶️')
                 infoSwitch = not infoSwitch
-        except:
-            pass
+        except: pass
 
 async def 세트(bot, ctx, *input):
     name = Util.mergeString(*input)
@@ -429,8 +428,9 @@ def getItemOptionEmbed(itemDetailInfo):
     try:
         sirocoInfo = ''
         for i in itemDetailInfo['sirocoInfo']['options']:
-            buffExplainDetail = i['buffExplainDetail'].replace('\n\n', '\n')
-            sirocoInfo += f"{i['explainDetail']}\n{buffExplainDetail}\n"
+            #buffExplainDetail = i['buffExplainDetail'].replace('\n\n', '\n')
+            #sirocoInfo += f"{i['explainDetail']}\n{buffExplainDetail}\n"
+            sirocoInfo += f"{i['explainDetail']}\n"
         embed.add_field(name='> 시로코 옵션', value=sirocoInfo, inline=False)
     except: pass
 
@@ -477,21 +477,32 @@ def getItemBuffOptionEmbed(itemDetailInfo):
     statInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
     embed.add_field(name='> 스탯', value=statInfo, inline=False)
 
-    # 버프 스킬 레벨 옵션
-    buffLvInfo = Util.getSkillLevelingInfo(itemDetailInfo['itemBuff']['reinforceSkill'])
-    buffLvInfoValue = ''
-    for key in buffLvInfo.keys():
-        if key != '모든 직업':
-            buffLvInfoValue += key + '\r\n'
-        for lv in buffLvInfo[key]:
-            if key == '모든 직업':
-                buffLvInfoValue += key + ' ' + lv + '\r\n'
-            else:
-                buffLvInfoValue += lv + '\r\n'
+    # 시로코 옵션
+    try:
+        sirocoInfo = ''
+        for i in itemDetailInfo['sirocoInfo']['options']:
+            buffExplainDetail = i['buffExplainDetail'].replace('\n\n', '\n')
+            sirocoInfo += f"{buffExplainDetail}\n"
+        embed.add_field(name='> 시로코 옵션', value=sirocoInfo, inline=False)
+    except: pass
 
-    # 버프 옵션
-    buffInfo = itemDetailInfo['itemBuff']['explain']
-    embed.add_field(name='> 버퍼 전용 옵션', value=buffLvInfoValue + buffInfo, inline=False)
+    # 버프 스킬 레벨 옵션
+    try:
+        buffLvInfo = Util.getSkillLevelingInfo(itemDetailInfo['itemBuff']['reinforceSkill'])
+        buffLvInfoValue = ''
+        for key in buffLvInfo.keys():
+            if key != '모든 직업':
+                buffLvInfoValue += key + '\r\n'
+            for lv in buffLvInfo[key]:
+                if key == '모든 직업':
+                    buffLvInfoValue += key + ' ' + lv + '\r\n'
+                else:
+                    buffLvInfoValue += lv + '\r\n'
+
+        # 버프 옵션
+        buffInfo = itemDetailInfo['itemBuff']['explain']
+        embed.add_field(name='> 버퍼 전용 옵션', value=buffLvInfoValue + buffInfo, inline=False)
+    except: pass
 
     # 신화 옵션
     try:

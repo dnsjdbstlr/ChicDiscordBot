@@ -4,10 +4,10 @@ from Database import Connection
 
 # # # 로 그 # # #
 def log(message):
-    commandList = ['!등급', '!캐릭터', '!장비', '!세트', '!시세', '!획득에픽', '!기린랭킹', '!주식', '!주식매수',
-                   '!주식매도', '!주식랭킹', '!출석', '!강화설정', '!강화정보', '!강화', '!공개강화', '!청소']
+    commandList = ['!등급', '!캐릭터', '!장비', '!세트', '!시세', '!획득에픽', '!기린랭킹', 
+                   '!주식', '!주식매수', '!주식매도', '!주식랭킹', '!출석', 
+                   '!강화설정', '!강화정보', '!강화', '!공개강화', '!강화랭킹', '!청소']
     conn, cur = Connection.getConnection()
-
     if message.content.split(' ')[0] in commandList:
         sql = 'INSERT INTO log (did, gid, command, time) values (%s, %s, %s, %s)'
         date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
