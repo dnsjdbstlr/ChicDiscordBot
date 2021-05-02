@@ -425,10 +425,10 @@ def getChicBotChannel(guild):
         except: pass
     return result
 
-def getVolatility(prev, now):
+def getVolatility(prev, latest):
     if prev is None:
         return '데이터 없음'
-    volatility = ((now / prev) - 1) * 100
+    volatility = ((latest / prev) - 1) * 100
     if volatility > 0:
         volatility = '▲ ' + str(format(volatility, '.2f')) + '%'
     elif volatility == 0:

@@ -145,7 +145,10 @@ async def 시세(ctx, *input):
             prev, latest = Tool.getPrevPrice(f"{name} +{i}"), Tool.getLatestPrice(f"{name} +{i}")
             embed.add_field(name='> +' + str(i) + ' 평균 가격', value=format(latest['price'], ',') + '골드')
             embed.add_field(name='> 최근 판매량', value=format(count, ',') + '개')
-            embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], latest['price']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
+            if prev is None:
+                embed.add_field(name='> 가격 변동률', value='데이터 없음')
+            else:
+                embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], latest['price']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
     else:
         auction = Tool.updateAuctionPrice(name)
 
@@ -155,7 +158,10 @@ async def 시세(ctx, *input):
         prev, latest = Tool.getPrevPrice(name), Tool.getLatestPrice(name)
         embed.add_field(name='> 평균 가격', value=format(latest['price'], ',') + '골드')
         embed.add_field(name='> 최근 판매량', value=format(count, ',') + '개')
-        embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], latest['price']) + ' (' + prev['date'].strftime('%Y-%m-%d') + ')')
+        if prev is None:
+            embed.add_field(name='> 가격 변동률', value='데이터 없음')
+        else:
+            embed.add_field(name='> 가격 변동률', value=Util.getVolatility(prev['price'], latest['price']) + '(' + prev['date'].strftime('%Y-%m-%d') + ')')
 
     embed.set_footer(text=auction[-1]['soldDate'] + ' 부터 ' + auction[0]['soldDate'] + ' 까지 집계된 자료예요.')
     embed.set_thumbnail(url=DNFAPI.getItemImageUrl(auction[0]['itemId']))
@@ -419,6 +425,15 @@ def getItemOptionEmbed(itemDetailInfo):
     itemStatInfo = DNFAPI.getItemStatInfo(itemDetailInfo['itemStatus'])
     embed.add_field(name='> 스탯', value=itemStatInfo, inline=False)
 
+    # 시로코 옵션
+    try:
+        sirocoInfo = ''
+        for i in itemDetailInfo['sirocoInfo']['options']:
+            buffExplainDetail = i['buffExplainDetail'].replace('\n\n', '\n')
+            sirocoInfo += f"{i['explainDetail']}\n{buffExplainDetail}\n"
+        embed.add_field(name='> 시로코 옵션', value=sirocoInfo, inline=False)
+    except: pass
+
     # 스킬 레벨
     try:
         itemSkillLvInfo = DNFAPI.getItemSkillLvInfo(itemDetailInfo['itemReinforceSkill'][0]['jobName'],
@@ -427,7 +442,8 @@ def getItemOptionEmbed(itemDetailInfo):
     except: pass
 
     # 기본 옵션
-    embed.add_field(name='> 옵션', value=itemDetailInfo['itemExplainDetail'], inline=False)
+    if itemDetailInfo['itemExplainDetail'] != '':
+        embed.add_field(name='> 옵션', value=itemDetailInfo['itemExplainDetail'], inline=False)
 
     # 변환 옵션
     try:
@@ -442,8 +458,10 @@ def getItemOptionEmbed(itemDetailInfo):
     except: pass
 
     # 플레이버 텍스트
-    itemFlavorText = itemDetailInfo['itemFlavorText']
-    embed.set_footer(text=itemFlavorText)
+    try:
+        itemFlavorText = itemDetailInfo['itemFlavorText']
+        embed.set_footer(text=itemFlavorText)
+    except: pass
 
     # 아이콘
     icon = DNFAPI.getItemImageUrl(itemDetailInfo['itemId'])

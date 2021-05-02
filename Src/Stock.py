@@ -9,6 +9,12 @@ async def 주식(ctx):
     did, name = ctx.message.author.id, ctx.message.author.display_name
     waiting = await ctx.channel.send(f'> {name}님의 주식 정보를 불러오고 있어요...')
 
+    # 계정 데이터가 없을 경우
+    account = Tool.getAccount(did)
+    if account is None:
+        Tool.iniAccount(did)
+
+    # 주식 데이터가 없을 경우
     stock = Tool.getStock(did)
     if stock is None:
         Tool.iniStock(did)
@@ -383,16 +389,17 @@ def getStockRankEmbed(ctx, rank, auction, page):
     embed = discord.Embed(title='주식 랭킹을 알려드릴게요!',
                           description='현재 어떤 주식을 보유중인지도 알려드려요.')
     for index, i in enumerate(rank):
+        # name 설정
         name = f'> {page * 15 + index + 1}등'
         if i['did'] == str(ctx.message.author.id):
             name += f'({ctx.message.author.display_name}님)'
 
-        # value 계산
+        # value 설정
         holdings = ''
         gold = Tool.getGold(i['did'])
-        for _index, j in enumerate(json.loads(i['holding']).values()):
+        for jndex, j in enumerate(json.loads(i['holding']).values()):
             try:
-                holdings += f"종목{_index + 1} : {j['name']}\r\n"
+                holdings += f"종목{jndex + 1} : {j['name']}\r\n"
                 gold += getRecentPrice(auction, j['name']) * j['count']
             except: pass
         value = f'{format(gold, ",")}골드\r\n{holdings}'

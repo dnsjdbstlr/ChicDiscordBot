@@ -62,6 +62,7 @@ def getChicBotDesc(page):
         embed.add_field(name="> !강화정보",                  value='현재 무기, 여태 최고 강화 수치 그리고 강화 시도 횟수를 알려드려요.')
         embed.add_field(name="> !강화",                      value='무기를 강화해요. 던전앤파이터 강화와 같은 시스템이예요.')
         embed.add_field(name="> !공개강화",                  value='다른 사람들에게 골드를 기부받을 수 있는 강화예요.')
+        embed.add_field(name="> !강화랭킹",                  value='현재 무기의 강화 수치를 기준으로한 랭킹을 보여드려요.')
     elif page == 4:
         embed.add_field(name="> !출석",               value='매일마다 골드를 얻을 수 있어요. 추후 더 많은 효과가 추가될거예요.')
         embed.add_field(name='> !청소',               value='시크봇이 말한 것들을 모두 삭제할게요.')

@@ -1,12 +1,11 @@
-import os
 import discord
-from discord.ext import commands
+import Ini
 from Database import Tool
+from discord.ext import commands
 from Src import Account, Admin, Etc, Reinfoce, Search, Stock, Util
 
 # # # 설 정 # # #
 bot = commands.Bot(command_prefix='!')
-bot_token = os.environ['bot_token']
 
 # # # 이 벤 트 # # #
 @bot.event
@@ -133,4 +132,4 @@ async def 출석확인(ctx):
     await Admin.출석확인(ctx)
 
 bot.remove_command('help')
-bot.run(bot_token)
+bot.run(Ini.bot_token)

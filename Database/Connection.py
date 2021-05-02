@@ -1,11 +1,12 @@
+import Ini
 import pymysql
 
 class Connection:
     def __init__(self):
-        self.host    = '127.0.0.1'
-        self.user    = 'chic'
-        self.pw      = '9892'
-        self.db      = 'chicBot'
+        self.host    = Ini.db_host
+        self.user    = Ini.db_user
+        self.pw      = Ini.db_pw
+        self.db      = Ini.db_name
         self.conn    = pymysql.connect(host=self.host, user=self.user, password=self.pw, database=self.db)
         self.cur     = self.conn.cursor(pymysql.cursors.DictCursor)
         print('[알림][DB에 성공적으로 연결되었습니다.]')

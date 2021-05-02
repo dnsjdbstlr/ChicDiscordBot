@@ -1,11 +1,11 @@
-import os
+import Ini
 import json
 import requests
 from urllib import parse
 from datetime import datetime
 
 # API키
-dnf_token = os.environ['dnf_token']
+dnf_token = Ini.dnf_token
 
 # 서버 아이디
 SERVER_ID = {
