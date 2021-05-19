@@ -56,8 +56,8 @@ async def 강화정보(ctx):
 
     await ctx.message.delete()
     embed = discord.Embed(title=f"{name}님의 강화 정보")
-    embed.add_field(name=f"> 현재 장비", value=f"+{reinforce['value']} {reinforce['name']}")
-    embed.add_field(name=f"> 최고 강화 수치", value=f"+{_max['value']} {_max['name']}")
+    embed.add_field(name=f"> 현재 장비", value=f"+{reinforce['value']} {reinforce['itemName']}")
+    embed.add_field(name=f"> 최고 강화 수치", value=f"+{_max['value']} {_max['itemName']}")
     embed.add_field(name=f"> 강화 시도", value=f"성공 : {format(_try['success'], ',')}회\r\n"
                                                f"실패 : {format(_try['fail'], ',')}회\r\n"
                                                f"파괴 : {format(_try['destroy'], ',')}회")
@@ -92,25 +92,29 @@ async def 강화(bot, ctx):
         def check(_reaction, _user):
             return str(_reaction) in ['⭕', '❌'] and _user == ctx.author and _reaction.message.id == msg.id
         reaction, user = await bot.wait_for('reaction_add', check=check)
+        
+        # 강화 시도
         if str(reaction) == '⭕':
             prob, cost = getReinforceInfo(reinforce['value'] + 1)
-            await msg.clear_reactions()
+            gold = Tool.getGold(did)
 
-            if Tool.getGold(did) < cost:
+            if gold < cost:
                 embed.set_footer(text='강화에 필요한 골드가 부족합니다.')
             else:
-                result = doReinforce(did, reinforce)
+                result = tryReinforce(did, reinforce)
                 reinforce = Tool.getReinforce(did)
                 embed = getReinforceEmbed(ctx, reinforce)
                 if result: embed.set_footer(text='강화에 성공했습니다.')
                 else:      embed.set_footer(text='강화에 실패했습니다.')
             await msg.edit(embed=embed)
+            await msg.clear_reactions()
             await msg.add_reaction('⭕')
             await msg.add_reaction('❌')
+            
+        # 강화 취소
         elif str(reaction) == '❌':
             await msg.clear_reactions()
-            embed = discord.Embed(title=f"{name}님의 강화",
-                                  description=f"강화가 취소되었습니다.")
+            embed.set_footer(text='강화가 취소되었습니다.')
             await msg.edit(embed=embed)
             return
 
@@ -151,7 +155,7 @@ async def 공개강화(bot, ctx):
             if Tool.getGold(did) + donation < cost:
                 embed.set_footer(text='강화에 필요한 골드가 부족합니다.')
             else:
-                result = doReinforce(did, reinforce)
+                result = tryReinforce(did, reinforce)
                 reinforce = Tool.getReinforce(did)
                 embed = getPublicReinforceEmbed(ctx, donationLog, donation, reinforce)
                 if result: embed.set_footer(text='강화에 성공했습니다.')
@@ -164,8 +168,7 @@ async def 공개강화(bot, ctx):
 
         elif str(reaction) == '❌' and user.id == did:
             await msg.clear_reactions()
-            embed = discord.Embed(title=f"{name}님의 공개 강화",
-                                  description=f"공개 강화가 취소되었습니다.")
+            embed.set_footer(text='공개 강화가 취소되었습니다.')
             await msg.edit(embed=embed)
             return
 
@@ -228,43 +231,6 @@ async def 강화랭킹(bot, ctx):
         if page < (len(rank) - 1) // 15:
             await msg.add_reaction('▶️')
 
-async def reinforceItem(bot, ctx, msg, reinforce):
-    did, name = ctx.message.author.id, ctx.message.author.display_name
-    prob, cost = getReinforceInfo(reinforce['value'] + 1)
-
-    if Tool.getGold(did) < cost:
-        embed = discord.Embed(title=f"{name}님의 강화", description=f"강화에 필요한 골드가 부족합니다.")
-        embed.add_field(name='> 장비', value=f"+{reinforce['value']} {reinforce['name']}")
-        embed.add_field(name=f"> 소모 골드", value=f"{format(getReinforceInfo(reinforce['value'] + 1)[1], ',')}골드")
-        embed.add_field(name=f"> 보유 골드", value=f"{format(Tool.getGold(did), ',')}골드")
-        embed.set_thumbnail(url=DNFAPI.getItemImageUrl(reinforce['id']))
-        await msg.edit(embed=embed)
-        return
-
-    import random
-    seed = random.randint(1, 100)
-    if seed <= prob:
-        Tool.setReinforceValue(did, reinforce['value'] + 1)
-        success = True
-    else:
-        success = False
-    Tool.gainGold(did, -cost)
-
-    embed = discord.Embed(title=f"{name}님의 강화 결과", description=f"강화를 재시도하려면 🔄 이모지를 추가해주세요.")
-    embed.add_field(name='> 결과', value=f"+{reinforce['value'] + success} {reinforce['name']}", inline=False)
-    embed.add_field(name=f"> 성공 확률", value=f"{getReinforceInfo(reinforce['value'] + success + 1)[0]}%")
-    embed.add_field(name=f"> 소모 골드", value=f"{format(getReinforceInfo(reinforce['value'] + success + 1)[1], ',')}골드")
-    embed.add_field(name=f"> 보유 골드", value=f"{format(Tool.getGold(did), ',')}골드")
-    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(reinforce['id']))
-    await msg.edit(embed=embed)
-    await msg.add_reaction('🔄')
-
-    def check(_reaction, _user):
-        return str(_reaction) == '🔄' and _user == ctx.author and _reaction.message.id == msg.id
-    reaction, user = await bot.wait_for('reaction_add', check=check)
-    await msg.clear_reactions()
-    await reinforceItem(bot, ctx, msg, Tool.getReinforce(did))
-
 async def getPublicReinforceDonation(bot, ctx, user):
     gold = Tool.getGold(user.id)
 
@@ -300,36 +266,6 @@ async def getPublicReinforceDonation(bot, ctx, user):
                               description=f"입력이 잘못되었어요. 다시 시도해주세요.")
         await message.edit(embed=embed)
         return -1
-
-def getReinforceEmbed(ctx, reinforce):
-    did, name = ctx.message.author.id, ctx.message.author.display_name
-    embed = discord.Embed(title=f"{name}님의 강화", description=f"강화를 시도하려면 ⭕, 취소하려면 ❌ 이모지를 추가해주세요.")
-    embed.add_field(name=f"> 장비", value=f"+{reinforce['value']} {reinforce['name']}", inline=False)
-    embed.add_field(name=f"> 성공 확률", value=f"{getReinforceInfo(reinforce['value'] + 1)[0]}%")
-    embed.add_field(name=f"> 소모 골드", value=f"{format(getReinforceInfo(reinforce['value'] + 1)[1], ',')}골드")
-    embed.add_field(name=f"> 보유 골드", value=f"{format(Tool.getGold(did), ',')}골드")
-    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(reinforce['id']))
-    return embed
-
-def getPublicReinforceEmbed(ctx, donationLog, donation, reinforce):
-    did, name = ctx.message.author.id, ctx.message.author.display_name
-    embed = discord.Embed(title=f"{name}님의 공개 강화",
-                          description=f"강화를 시도하려면 ⭕, 취소하려면 ❌, 기부하려면 ❤️이모지를 추가해주세요."
-                                      f"기부한 골드는 회수할 수 없고 강화를 취소하면 기부 골드는 모두 소멸됩니다.")
-    embed.add_field(name=f"> 장비", value=f"+{reinforce['value']} {reinforce['name']}")
-    embed.add_field(name=f"> 성공 확률", value=f"{getReinforceInfo(reinforce['value'] + 1)[0]}%")
-    embed.add_field(name=f"> 소모 골드", value=f"{format(getReinforceInfo(reinforce['value'] + 1)[1], ',')}골드")
-    embed.add_field(name=f"> 보유 골드", value=f"{format(Tool.getGold(did), ',')}골드")
-    embed.add_field(name=f"> 기부 골드", value=f"{format(donation, ',')}골드")
-    if donationLog == {}:
-        embed.add_field(name='> 기부 내역', value='없음')
-    else:
-        value = ''
-        for index, key in enumerate(donationLog):
-            value += f"{key}님 : {format(donationLog[key], ',')}골드\r\n"
-        embed.add_field(name='> 기부 내역', value=value)
-    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(reinforce['id']))
-    return embed
 
 def getReinforceInfo(value):
     prob = {
@@ -370,7 +306,7 @@ def getReinforceInfo(value):
 
     return prob[value], cost[value]
 
-def doReinforce(did, reinforce):
+def tryReinforce(did, reinforce):
     prob, cost = getReinforceInfo(reinforce['value'] + 1)
 
     import random
@@ -381,7 +317,7 @@ def doReinforce(did, reinforce):
 
         _max = Tool.getReinforceMax(did)
         if _max['value'] < reinforce['value'] + 1:
-            _max['name'] = reinforce['name']
+            _max['itemName'] = reinforce['itemName']
             _max['value'] = reinforce['value'] + 1
             Tool.setReinforceMax(did, _max)
         success = True
@@ -399,6 +335,40 @@ def doReinforce(did, reinforce):
     Tool.gainGold(did, -cost)
     return success
 
+def getReinforceEmbed(ctx, reinforce):
+    did, name = ctx.message.author.id, ctx.message.author.display_name
+    prob, cost = getReinforceInfo(reinforce['value'] + 1)
+
+    embed = discord.Embed(title=f"{name}님의 강화", description=f"강화를 시도하려면 ⭕, 취소하려면 ❌ 이모지를 추가해주세요.")
+    embed.add_field(name=f"> 장비", value=f"+{reinforce['value']} {reinforce['itemName']}", inline=False)
+    embed.add_field(name=f"> 성공 확률", value=f"{prob}%")
+    embed.add_field(name=f"> 소모 골드", value=f"{format(cost, ',')}골드")
+    embed.add_field(name=f"> 보유 골드", value=f"{format(Tool.getGold(did), ',')}골드")
+    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(reinforce['id']))
+    return embed
+
+def getPublicReinforceEmbed(ctx, donationLog, donation, reinforce):
+    did, name = ctx.message.author.id, ctx.message.author.display_name
+    prob, cost = getReinforceInfo(reinforce['value'] + 1)
+
+    embed = discord.Embed(title=f"{name}님의 공개 강화",
+                          description=f"강화를 시도하려면 ⭕, 취소하려면 ❌, 기부하려면 ❤️이모지를 추가해주세요."
+                                      f"기부한 골드는 회수할 수 없고 강화를 취소하면 기부 골드는 모두 소멸됩니다.")
+    embed.add_field(name=f"> 장비", value=f"+{reinforce['value']} {reinforce['itemName']}")
+    embed.add_field(name=f"> 성공 확률", value=f"{prob}%")
+    embed.add_field(name=f"> 소모 골드", value=f"{format(cost, ',')}골드")
+    embed.add_field(name=f"> 보유 골드", value=f"{format(Tool.getGold(did), ',')}골드")
+    embed.add_field(name=f"> 기부 골드", value=f"{format(donation, ',')}골드")
+    if donationLog == {}:
+        embed.add_field(name='> 기부 내역', value='없음')
+    else:
+        value = ''
+        for index, key in enumerate(donationLog):
+            value += f"{key}님 : {format(donationLog[key], ',')}골드\r\n"
+        embed.add_field(name='> 기부 내역', value=value)
+    embed.set_thumbnail(url=DNFAPI.getItemImageUrl(reinforce['id']))
+    return embed
+
 def getReinforceRankEmbed(rank, page, user):
     reinforces = rank[page * 15:page * 15 + 15]
 
@@ -412,7 +382,7 @@ def getReinforceRankEmbed(rank, page, user):
         name   = f"> {page * 15 + idx + 1}등"
         if str(user.id) == r['did']:
             name += f"({user.display_name}님)"
-        value  = f"+{_max['value']} {_max['name']}\r\n"
+        value  = f"+{_max['value']} {_max['itemName']}\r\n"
         value += f"성공 : {_try['success']}회\r\n"
         value += f"실패 : {_try['fail']}회\r\n"
         value += f"파괴 : {_try['destroy']}회"

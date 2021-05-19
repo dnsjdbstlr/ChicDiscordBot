@@ -1,11 +1,11 @@
 import discord
-import Ini
-from Database import Tool
-from discord.ext import commands
-from Src import Account, Admin, Etc, Reinfoce, Search, Stock, Util
+import os
+from discord.ext import commands, tasks
+from Src import Account, Admin, Etc, Measure, Reinfoce, Search, Trading, Util
 
 # # # 설 정 # # #
 bot = commands.Bot(command_prefix='!')
+bot_token = os.environ['bot_token']
 
 # # # 이 벤 트 # # #
 @bot.event
@@ -16,7 +16,6 @@ async def on_ready():
 @bot.event
 async def on_message(msg):
     if msg.author.bot: return None
-    Tool.log(msg)
     chicBotChannel = Util.getChicBotChannel(msg.guild)
     if not chicBotChannel or msg.channel in chicBotChannel:
         await bot.process_commands(msg)
@@ -43,12 +42,17 @@ async def 시세(ctx, *input):
     await Search.시세(ctx, *input)
 
 @bot.command()
-async def 획득에픽(ctx, *input):
-    await Search.획득에픽(bot, ctx, *input)
+async def 에픽(ctx, *input):
+    await Search.에픽(bot, ctx, *input)
 
 @bot.command()
-async def 기린랭킹(ctx):
-    await Search.기린랭킹(bot, ctx)
+async def 에픽랭킹(ctx):
+    await Search.에픽랭킹(bot, ctx)
+
+# # # 측 정 # # #
+@bot.command()
+async def 버프력(ctx, *input):
+    await Measure.버프력(bot, ctx, *input)
 
 # # # 계 정 # # #
 @bot.command()
@@ -63,24 +67,43 @@ async def 출첵(ctx):
 async def 출석체크(ctx):
     await Account.출석(ctx)
 
-# # # 주 식 # # #
-@bot.command()
-async def 주식(ctx):
-    await Stock.주식(ctx)
+# # # 거 래 # # #
+@tasks.loop(minutes=1)
+async def updateMarketPrice():
+    from Database import Tool
+    from Src import DNFAPI
+    for itemName in ['아이올라이트', '시간의 결정', '고대 지혜의 잔해',
+                     '힘의 정수 1개 상자', '무색 큐브 조각', '모순의 결정체']:
+        auction = DNFAPI.getItemAuction(itemName)
+        p, c = 0, 0
+        for i in auction:
+            p += i['price']
+            c += i['count']
+        price = p // c
+        Tool.updateAuctionPrice(itemName, price)
+    print('[알림][선물거래 종목들의 시세를 업데이트 했습니다.]')
+updateMarketPrice.start()
 
 @bot.command()
-async def 매수(ctx, *input):
-    await Stock.매수(bot, ctx, *input)
+async def 선물거래(ctx):
+    await Trading.선물거래(ctx)
 
 @bot.command()
-async def 매도(ctx):
-    await Stock.매도(bot, ctx)
+async def 주문(ctx, *input):
+    await Trading.주문(bot, ctx, *input)
 
 @bot.command()
-async def 주식랭킹(ctx):
-    await Stock.주식랭킹(bot, ctx)
+async def 포지션(ctx):
+    await Trading.포지션(bot, ctx)
 
-# # # 강 화 # # #
+@bot.command()
+async def 거래내역(ctx):
+    await Trading.거래내역(ctx)
+
+@bot.command()
+async def 파산(ctx):
+    await Trading.파산(bot, ctx)
+
 @bot.command()
 async def 강화설정(ctx, *input):
     await Reinfoce.강화설정(bot, ctx, *input)
@@ -119,17 +142,5 @@ async def 청소(ctx):
 async def 연결(ctx):
     await Admin.연결(bot, ctx)
 
-@bot.command()
-async def 상태(ctx, *state):
-    await Admin.상태(bot, ctx, *state)
-
-@bot.command()
-async def 통계(ctx):
-    await Admin.통계(ctx)
-
-@bot.command()
-async def 출석확인(ctx):
-    await Admin.출석확인(ctx)
-
 bot.remove_command('help')
-bot.run(Ini.bot_token)
+bot.run(bot_token)

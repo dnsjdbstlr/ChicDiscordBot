@@ -1,49 +1,63 @@
 import json
+import os
+import pymysql
 from datetime import datetime
-from Database import Connection
 
-# # # 로 그 # # #
-def log(message):
-    commandList = ['!등급', '!캐릭터', '!장비', '!세트', '!시세', '!획득에픽', '!기린랭킹', 
-                   '!주식', '!주식매수', '!주식매도', '!주식랭킹', '!출석', 
-                   '!강화설정', '!강화정보', '!강화', '!공개강화', '!강화랭킹', '!청소']
-    conn, cur = Connection.getConnection()
-    if message.content.split(' ')[0] in commandList:
-        sql = 'INSERT INTO log (did, gid, command, time) values (%s, %s, %s, %s)'
-        date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cur.execute(sql, (message.author.id, message.guild.id, message.content, date))
-        conn.commit()
+class Connection:
+    def __init__(self):
+        self.host    = '127.0.0.1'
+        self.user    = os.environ['db_user']
+        self.pw      = os.environ['db_pw']
+        self.db      = os.environ['db']
+        self.conn    = pymysql.connect(host=self.host, user=self.user, password=self.pw, database=self.db)
+        self.cur     = self.conn.cursor(pymysql.cursors.DictCursor)
+        print('[알림][DB에 성공적으로 연결되었습니다.]')
+
+    def __del__(self):
+        self.conn.close()
+        print('[알림][DB 연결을 끊었습니다.]')
+
+    def getConnection(self):
+        self.conn.ping()
+        return self.conn, self.cur
+
+c = Connection()
 
 # # # 기 린 # # #
-def getEpic(server, name):
-    conn, cur = Connection.getConnection()
-    sql = f'SELECT * FROM epic WHERE server=%s and name=%s'
+def getEpicRank(server, name):
+    conn, cur = c.getConnection()
+    sql = f'SELECT * FROM epicRank WHERE server=%s and itemName=%s'
     cur.execute(sql, (server, name))
     return cur.fetchone()
 
-def updateEpicRank(server, name, gainEpicCount, channel):
-    today = datetime.now().strftime('%Y-%m-%d')
-    epic = getEpic(server, name)
+def updateEpicRank(server, name, count, channel):
+    date = datetime.now().strftime('%Y-%m-%d')
+    epicRank = getEpicRank(server, name)
 
-    conn, cur = Connection.getConnection()
-    if epic is None:
-        sql = 'INSERT INTO epic (date, server, name, count, channel) values (%s, %s, %s, %s, %s)'
-        cur.execute(sql, (today, server, name, gainEpicCount, channel))
-        conn.commit()
+    conn, cur = c.getConnection()
+    if epicRank is None:
+        sql = 'INSERT INTO epicRank (date, server, itemName, count, channel) values (%s, %s, %s, %s, %s)'
+        cur.execute(sql, (date, server, name, count, channel))
     else:
-        sql = 'UPDATE epic SET count=%s, channel=%s, date=%s WHERE server=%s and name=%s'
-        cur.execute(sql, (gainEpicCount, channel, today, server, name))
-        conn.commit()
+        sql = 'UPDATE epicRank SET date=%s, count=%s, channel=%s WHERE server=%s and itemName=%s'
+        cur.execute(sql, (date, count, channel, server, name))
+    conn.commit()
 
 def getMonthlyEpicRank():
-    conn, cur = Connection.getConnection()
-    sql = 'SELECT * FROM epic WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
+    conn, cur = c.getConnection()
+
+    # 지난달 데이터 삭제
+    sql = 'DELETE FROM epicRank WHERE date <= LAST_DAY(NOW() - interval 1 month)'
+    cur.execute(sql)
+    conn.commit()
+
+    sql = 'SELECT * FROM epicRank WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
     cur.execute(sql)
     return cur.fetchall()
 
 # # # 시 세 # # #
 def getAuction():
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = 'SELECT * FROM auction'
     cur.execute(sql)
     return cur.fetchall()
@@ -51,7 +65,7 @@ def getAuction():
 def getTodayPrice(name):
     date = datetime.now().strftime('%Y-%m-%d')
 
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = f"SELECT * FROM auction WHERE date=%s and name=%s"
     cur.execute(sql, (date, name))
     rs = cur.fetchone()
@@ -59,7 +73,7 @@ def getTodayPrice(name):
 
 def getLatestPrice(name):
     try:
-        conn, cur = Connection.getConnection()
+        conn, cur = c.getConnection()
         sql = 'SELECT * FROM auction WHERE name=%s'
         cur.execute(sql, name)
         rs = cur.fetchall()
@@ -68,55 +82,36 @@ def getLatestPrice(name):
 
 def getPrevPrice(name):
     try:
-        conn, cur = Connection.getConnection()
+        conn, cur = c.getConnection()
         sql = 'SELECT * FROM auction WHERE name=%s'
         cur.execute(sql, name)
         rs = cur.fetchall()
         return rs[-2]
     except: return None
 
-def updateAuctionPrice(name, upgrade=-1, auction=None):
-    from Src import DNFAPI
-
-    if auction is None:
-        auction = DNFAPI.getItemAuctionPrice(name)
-    if not auction: return False
-
-    if upgrade != -1:
-        name += f' +{upgrade}'
-        auction = [i if i['upgrade'] == upgrade else None for i in auction]
-        auction = list(filter(None, auction))
-
-    p, c = 0, 0
-    for i in auction:
-        p += i['price']
-        c += i['count']
-    price = p // c
-
-    # 데이터 저장
+def updateAuctionPrice(itemName, price):
     date = datetime.now().strftime('%Y-%m-%d')
-    todayPrice = getTodayPrice(name)
+    todayPrice = getTodayPrice(itemName)
 
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     if todayPrice is None:
         sql = 'INSERT INTO auction (date, name, price) values (%s, %s, %s)'
-        cur.execute(sql, (date, name, price))
-        conn.commit()
+        cur.execute(sql, (date, itemName, price))
     else:
         sql = 'UPDATE auction SET price=%s WHERE date=%s and name=%s'
-        cur.execute(sql, (price, date, name))
-        conn.commit()
-    return auction
+        cur.execute(sql, (price, date, itemName))
+    conn.commit()
+    # return auction
 
 # # # 계 정 # # #
 def iniAccount(did):
-    conn, cur = Connection.getConnection()
-    sql = 'INSERT INTO account values (%s, %s)'
-    cur.execute(sql, (did, 10000000))
+    conn, cur = c.getConnection()
+    sql = 'INSERT INTO account values (%s, %s, %s, %s)'
+    cur.execute(sql, (did, 10000000, datetime(9999, 12, 31), 0))
     conn.commit()
 
 def getAccount(did):
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = f'SELECT * FROM account WHERE did=%s'
     cur.execute(sql, did)
     return cur.fetchone()
@@ -131,80 +126,45 @@ def gainGold(did, gold):
     old = getGold(did)
     new = max(old + gold, 0)
 
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = 'UPDATE account SET gold=%s WHERE did=%s'
     cur.execute(sql, (new, did))
     conn.commit()
 
-# # # 출 석 # # #
-def getDailyCheck(did):
-    conn, cur = Connection.getConnection()
-    sql = 'SELECT * FROM dailyCheck WHERE did=%s'
-    cur.execute(sql, did)
-    return cur.fetchone()
-
-def updateDailyCheck(did):
-    conn, cur = Connection.getConnection()
+def updateAccountCheck(did):
     today = datetime.now().strftime('%Y-%m-%d')
+    account = getAccount(did)
+    if account is None:
+        iniAccount(did)
 
-    dailyCheck = getDailyCheck(did)
-    if dailyCheck is None:
-        sql = 'INSERT INTO dailyCheck (did, count, date) values (%s, %s, %s)'
-        cur.execute(sql, (did, 1, today))
-        conn.commit()
-    else:
-        sql = 'UPDATE dailyCheck SET count=%s, date=%s WHERE did=%s'
-        cur.execute(sql, (dailyCheck['count'] + 1, today, did))
-        conn.commit()
-
-# # # 주 식 # # #
-def iniStock(did):
-    conn, cur = Connection.getConnection()
-    sql = 'INSERT INTO stock (did, holding) VALUES (%s, %s)'
-    cur.execute(sql, (did, json.dumps({'1' : None, '2' : None, '3' : None})))
+    conn, cur = c.getConnection()
+    sql = 'UPDATE account SET checkDate=%s, checkCount=%s WHERE did=%s'
+    cur.execute(sql, (today, account['checkCount'] + 1, did))
     conn.commit()
-
-def getStock(did=None):
-    conn, cur = Connection.getConnection()
-    if did is None:
-        sql = 'SELECT * FROM stock'
-        cur.execute(sql)
-        return cur.fetchall()
-    else:
-        sql = 'SELECT * FROM stock WHERE did=%s'
-        cur.execute(sql, did)
-        return cur.fetchone()
-
-def isValidStock(did):
-    stock = getStock(did)
-    if stock is not None:
-        return True
-    else:
-        return False
 
 # # # 강 화 # # #
 def iniReinforce(did, _id, name):
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = f"INSERT INTO reinforce values (%s, %s, %s, %s, %s, %s)"
-    _max = {'name' : name, 'value' : 0}
+    _max = {'itemName' : name, 'value' : 0}
     _try = {'success' : 0, 'fail' : 0, 'destroy' : 0}
     cur.execute(sql, (did, _id, name, 0, json.dumps(_max, ensure_ascii=False), json.dumps(_try, ensure_ascii=False)))
     conn.commit()
 
 def resetReinforce(did, _id, name):
-    conn, cur = Connection.getConnection()
-    sql = f"UPDATE reinforce SET id=%s, name=%s, value=%s WHERE did=%s"
+    conn, cur = c.getConnection()
+    sql = f"UPDATE reinforce SET id=%s, itemName=%s, value=%s WHERE did=%s"
     cur.execute(sql, (_id, name, 0, did))
     conn.commit()
 
 def delReinforce(did):
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = f"DELETE FROM reinforce WHERE did=%s"
     cur.execute(sql, did)
     conn.commit()
 
 def getReinforce(did=None):
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     if did is None:
         sql = f"SELECT * FROM reinforce"
         cur.execute(sql)
@@ -222,14 +182,14 @@ def isValidReinforce(did):
         return True
 
 def setReinforceValue(did, value):
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = f"UPDATE reinforce SET value=%s WHERE did=%s"
     cur.execute(sql, (value, did))
     conn.commit()
 
 def getReinforceMax(did):
     try:
-        conn, cur = Connection.getConnection()
+        conn, cur = c.getConnection()
         sql = f"SELECT max FROM reinforce WHERE did=%s"
         cur.execute(sql, did)
         rs = cur.fetchone()
@@ -237,14 +197,14 @@ def getReinforceMax(did):
     except: return None
 
 def setReinforceMax(did, _max):
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = f"UPDATE reinforce SET max=%s WHERE did=%s"
     cur.execute(sql, (json.dumps(_max, ensure_ascii=False), did))
     conn.commit()
 
 def getReinforceTry(did):
     try:
-        conn, cur = Connection.getConnection()
+        conn, cur = c.getConnection()
         sql = f"SELECT try FROM reinforce WHERE did=%s"
         cur.execute(sql, did)
         rs = cur.fetchone()
@@ -252,7 +212,7 @@ def getReinforceTry(did):
     except: return None
 
 def setReinforceTry(did, _try):
-    conn, cur = Connection.getConnection()
+    conn, cur = c.getConnection()
     sql = f"UPDATE reinforce SET try=%s WHERE did=%s"
     cur.execute(sql, (json.dumps(_try, ensure_ascii=False), did))
     conn.commit()
@@ -262,3 +222,100 @@ def incReinforceTry(did, result):
     if _try is not None:
         _try[result] += 1
         setReinforceTry(did, _try)
+
+# 거래
+def iniStock(did):
+    stock   = json.dumps({'wallet' : []})
+    history = json.dumps({'history': []})
+    date = datetime.now().strftime('%Y-%m-%d')
+
+    conn, cur = c.getConnection()
+    sql = 'INSERT INTO stock values (%s, %s, %s, %s, %s)'
+    cur.execute(sql, (did, stock, history, date, 0))
+    conn.commit()
+
+def getStock(did):
+    conn, cur = c.getConnection()
+    sql = 'SELECT * FROM stock WHERE did=%s'
+    cur.execute(sql, did)
+    return cur.fetchone()
+
+def addStock(did, data):
+    stock = getStock(did)
+    wallet = json.loads(stock['wallet'])
+    wallet['wallet'].append(data)
+
+    # 히스토리
+    history = json.loads(stock['history'])
+    if len(history['history']) >= 6:
+        for i in range(1, 6):
+            history['history'][i - 1] = history['history'][i]
+        del history['history'][4]
+
+    history['history'].append({
+        'date'      : datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'stock'     : data['stock'],
+        'leverage'  : data['leverage'],
+        'size'      : data['size'],
+        'bid'       : data['bid'],
+        'income'    : 0
+    })
+
+    conn, cur = c.getConnection()
+    sql = 'UPDATE stock SET wallet=%s, history=%s WHERE did=%s'
+    cur.execute(sql, (json.dumps(wallet, ensure_ascii=False), json.dumps(history, ensure_ascii=False), did))
+    conn.commit()
+
+def delStock(did, idx, income):
+    stock = getStock(did)
+    wallet = json.loads(stock['wallet'])
+
+    # 히스토리
+    history = json.loads(stock['history'])
+    if len(history['history']) >= 6:
+        for i in range(1, 6):
+            history['history'][i - 1] = history['history'][i]
+        del history['history'][4]
+
+    data = wallet['wallet'][idx]
+    history['history'].append({
+        'date'      : datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'stock'     : data['stock'],
+        'leverage'  : data['leverage'],
+        'size'      : data['size'],
+        'bid'       : data['bid'],
+        'income'    : income
+    })
+    del wallet['wallet'][idx]
+
+    conn, cur = c.getConnection()
+    sql = 'UPDATE stock SET wallet=%s, history=%s WHERE did=%s'
+    cur.execute(sql, (json.dumps(wallet, ensure_ascii=False), json.dumps(history, ensure_ascii=False), did))
+    conn.commit()
+
+def checkLiquidate():
+    conn, cur = c.getConnection()
+    sql = 'SELECT * FROM stock'
+    cur.execute(sql)
+    stocks = cur.fetchall()
+
+    for stock in stocks:
+        wallet = json.loads(stock['wallet'])
+        for idx, w in enumerate(wallet):
+            if w['leverage'] > 0 and getLatestPrice(w['stock'])['price'] <= w['margin']:
+                delStock(stock['did'], idx, -w['size'] * w['bid'])
+
+def setLiquidate(did, allowDate):
+    conn, cur = c.getConnection()
+    stock = getStock(did)
+
+    wallet  = json.dumps({'wallet' : []})
+    history = json.dumps({'history': []})
+
+    sql = 'UPDATE stock SET wallet=%s, history=%s, allowDate=%s, liquidate=%s WHERE did=%s'
+    cur.execute(sql, (wallet, history, allowDate, stock['liquidate'] + 1, did))
+    conn.commit()
+
+    sql = 'UPDATE account SET gold=%s WHERE did=%s'
+    cur.execute(sql, (10000000, did))
+    conn.commit()
