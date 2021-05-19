@@ -45,6 +45,10 @@ async def 주문(bot, ctx, *inputs):
     await ctx.message.delete()
     did, name = ctx.message.author.id, ctx.message.author.display_name
 
+    # account가 없을 경우
+    if Tool.getAccount(did):
+        Tool.iniAccount(did)
+
     # stock이 없을 경우
     stock = Tool.getStock(did)
     if stock is None: Tool.iniStock(did)
@@ -246,6 +250,11 @@ async def 거래내역(ctx):
 async def 파산(bot, ctx):
     await ctx.message.delete()
     did, name = ctx.message.author.id, ctx.message.author.display_name
+
+    account = Tool.getAccount(did)
+    if account is None:
+        await ctx.channel.send(f"> {name}님은 선물 거래를 한 번도 하지 않았어요.")
+        return
 
     embed = discord.Embed(title=f"{name}님의 파산 신청")
     embed.add_field(name='> 신중하게 생각해주세요.',

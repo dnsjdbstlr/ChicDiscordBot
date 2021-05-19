@@ -101,7 +101,6 @@ def updateAuctionPrice(itemName, price):
         sql = 'UPDATE auction SET price=%s WHERE date=%s and name=%s'
         cur.execute(sql, (price, date, itemName))
     conn.commit()
-    # return auction
 
 # # # 계 정 # # #
 def iniAccount(did):
