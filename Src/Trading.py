@@ -48,6 +48,7 @@ async def 주문(bot, ctx, *inputs):
     # stock이 없을 경우
     stock = Tool.getStock(did)
     if stock is None: Tool.iniStock(did)
+    stock = Tool.getStock(did)
 
     # 거래 금지인 경우
     today = datetime.today()
