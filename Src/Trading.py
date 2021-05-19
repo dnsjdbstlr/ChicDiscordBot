@@ -46,7 +46,7 @@ async def 주문(bot, ctx, *inputs):
     did, name = ctx.message.author.id, ctx.message.author.display_name
 
     # account가 없을 경우
-    if Tool.getAccount(did):
+    if Tool.getAccount(did) is None:
         Tool.iniAccount(did)
 
     # stock이 없을 경우
