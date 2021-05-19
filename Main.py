@@ -142,5 +142,9 @@ async def 청소(ctx):
 async def 연결(ctx):
     await Admin.연결(bot, ctx)
 
+@bot.command()
+async def 상태(ctx, *input):
+    await Admin.상태(bot, ctx, *input)
+
 bot.remove_command('help')
 bot.run(bot_token)
