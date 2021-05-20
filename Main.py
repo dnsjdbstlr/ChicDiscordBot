@@ -70,18 +70,7 @@ async def 출석체크(ctx):
 # # # 거 래 # # #
 @tasks.loop(minutes=1)
 async def updateMarketPrice():
-    from Database import Tool
-    from Src import DNFAPI
-    for itemName in ['아이올라이트', '시간의 결정', '고대 지혜의 잔해',
-                     '힘의 정수 1개 상자', '무색 큐브 조각', '모순의 결정체']:
-        auction = DNFAPI.getItemAuction(itemName)
-        p, c = 0, 0
-        for i in auction:
-            p += i['price']
-            c += i['count']
-        price = p // c
-        Tool.updateAuctionPrice(itemName, price)
-    print('[알림][선물거래 종목들의 시세를 업데이트 했습니다.]')
+    Trading.updateMarketPrices()
 updateMarketPrice.start()
 
 @bot.command()

@@ -26,7 +26,7 @@ c = Connection()
 # # # 기 린 # # #
 def getEpicRank(server, name):
     conn, cur = c.getConnection()
-    sql = f'SELECT * FROM epicRank WHERE server=%s and itemName=%s'
+    sql = f'SELECT * FROM epicRank WHERE server=%s and name=%s'
     cur.execute(sql, (server, name))
     return cur.fetchone()
 
@@ -36,10 +36,10 @@ def updateEpicRank(server, name, count, channel):
 
     conn, cur = c.getConnection()
     if epicRank is None:
-        sql = 'INSERT INTO epicRank (date, server, itemName, count, channel) values (%s, %s, %s, %s, %s)'
+        sql = 'INSERT INTO epicRank (date, server, name, count, channel) values (%s, %s, %s, %s, %s)'
         cur.execute(sql, (date, server, name, count, channel))
     else:
-        sql = 'UPDATE epicRank SET date=%s, count=%s, channel=%s WHERE server=%s and itemName=%s'
+        sql = 'UPDATE epicRank SET date=%s, count=%s, channel=%s WHERE server=%s and name=%s'
         cur.execute(sql, (date, count, channel, server, name))
     conn.commit()
 
@@ -145,14 +145,14 @@ def updateAccountCheck(did):
 def iniReinforce(did, _id, name):
     conn, cur = c.getConnection()
     sql = f"INSERT INTO reinforce values (%s, %s, %s, %s, %s, %s)"
-    _max = {'itemName' : name, 'value' : 0}
+    _max = {'name' : name, 'value' : 0}
     _try = {'success' : 0, 'fail' : 0, 'destroy' : 0}
     cur.execute(sql, (did, _id, name, 0, json.dumps(_max, ensure_ascii=False), json.dumps(_try, ensure_ascii=False)))
     conn.commit()
 
 def resetReinforce(did, _id, name):
     conn, cur = c.getConnection()
-    sql = f"UPDATE reinforce SET id=%s, itemName=%s, value=%s WHERE did=%s"
+    sql = f"UPDATE reinforce SET id=%s, name=%s, value=%s WHERE did=%s"
     cur.execute(sql, (_id, name, 0, did))
     conn.commit()
 
@@ -239,70 +239,69 @@ def getStock(did):
     cur.execute(sql, did)
     return cur.fetchone()
 
+def getStocks():
+    conn, cur = c.getConnection()
+    sql = 'SELECT * FROM stock'
+    cur.execute(sql)
+    return cur.fetchall()
+
 def addStock(did, data):
     stock = getStock(did)
     wallet = json.loads(stock['wallet'])
     wallet['wallet'].append(data)
 
-    # 히스토리
-    history = json.loads(stock['history'])
-    if len(history['history']) >= 6:
-        for i in range(1, 6):
-            history['history'][i - 1] = history['history'][i]
-        del history['history'][4]
-
-    history['history'].append({
+    history = {
         'date'      : datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'stock'     : data['stock'],
         'leverage'  : data['leverage'],
         'size'      : data['size'],
         'bid'       : data['bid'],
         'income'    : 0
-    })
+    }
+    addHistory(did, history)
 
     conn, cur = c.getConnection()
-    sql = 'UPDATE stock SET wallet=%s, history=%s WHERE did=%s'
-    cur.execute(sql, (json.dumps(wallet, ensure_ascii=False), json.dumps(history, ensure_ascii=False), did))
+    sql = 'UPDATE stock SET wallet=%s WHERE did=%s'
+    cur.execute(sql, (json.dumps(wallet, ensure_ascii=False), did))
     conn.commit()
 
-def delStock(did, idx, income):
+def delStock(did, idx, price):
     stock = getStock(did)
     wallet = json.loads(stock['wallet'])
 
-    # 히스토리
-    history = json.loads(stock['history'])
-    if len(history['history']) >= 6:
-        for i in range(1, 6):
-            history['history'][i - 1] = history['history'][i]
-        del history['history'][4]
-
     data = wallet['wallet'][idx]
-    history['history'].append({
+    income = (price - data['bid']) * data['size'] * data['leverage']
+
+    history = {
         'date'      : datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'stock'     : data['stock'],
         'leverage'  : data['leverage'],
         'size'      : data['size'],
-        'bid'       : data['bid'],
+        'bid'       : price,
         'income'    : income
-    })
+    }
+    addHistory(did, history)
     del wallet['wallet'][idx]
 
     conn, cur = c.getConnection()
-    sql = 'UPDATE stock SET wallet=%s, history=%s WHERE did=%s'
-    cur.execute(sql, (json.dumps(wallet, ensure_ascii=False), json.dumps(history, ensure_ascii=False), did))
+    sql = 'UPDATE stock SET wallet=%s WHERE did=%s'
+    cur.execute(sql, (json.dumps(wallet, ensure_ascii=False), did))
     conn.commit()
 
-def checkLiquidate():
-    conn, cur = c.getConnection()
-    sql = 'SELECT * FROM stock'
-    cur.execute(sql)
-    stocks = cur.fetchall()
+def addHistory(did, data):
+    stock = getStock(did)
+    history = json.loads(stock['history'])
+    if len(history['history']) >= 6:
+        for i in range(1, 6):
+            history['history'][i - 1] = history['history'][i]
+        del history['history'][5]
 
-    for stock in stocks:
-        wallet = json.loads(stock['wallet'])
-        for idx, w in enumerate(wallet):
-            if w['leverage'] > 0 and getLatestPrice(w['stock'])['price'] <= w['margin']:
-                delStock(stock['did'], idx, -w['size'] * w['bid'])
+    history['history'].append(data)
+
+    conn, cur = c.getConnection()
+    sql = 'UPDATE stock SET history=%s WHERE did=%s'
+    cur.execute(sql, (json.dumps(history, ensure_ascii=False), did))
+    conn.commit()
 
 def setLiquidate(did, allowDate):
     conn, cur = c.getConnection()

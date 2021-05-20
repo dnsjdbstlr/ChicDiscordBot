@@ -7,6 +7,17 @@ from Src import DNFAPI
 
 async def 선물거래(ctx):
     await ctx.message.delete()
+    did = ctx.author.id
+
+    # account가 없을 경우
+    if Tool.getAccount(did) is None:
+        Tool.iniAccount(did)
+
+    # stock이 없을 경우
+    stock = Tool.getStock(did)
+    if stock is None: Tool.iniStock(did)
+    stock = Tool.getStock(did)
+
     embed = discord.Embed(title='던파 경매장 선물 거래에 대해 설명해드릴게요!')
     embed.add_field(name='> 선물 거래가 뭔가요?', inline=False,
                     value='''미래에 해당 종목의 가격이 어떻게 될지 맞추는 거래예요.
@@ -165,8 +176,6 @@ async def 주문(bot, ctx, *inputs):
     except: return
 
 async def 포지션(bot, ctx):
-    await ctx.message.delete()
-
     def MAKE_EMBED(_wallet):
         _did, _name = ctx.message.author.id, ctx.message.author.display_name
         embed = discord.Embed(title=f"{_name}님의 포지션",
@@ -193,8 +202,18 @@ async def 포지션(bot, ctx):
         embed.set_footer(text=f"지갑 잔고 : {format(Tool.getGold(_did), ',')}골드")
         return embed
 
+    await ctx.message.delete()
     did = ctx.message.author.id
+
+    # account가 없을 경우
+    if Tool.getAccount(did) is None:
+        Tool.iniAccount(did)
+
+    # stock이 없을 경우
     stock = Tool.getStock(did)
+    if stock is None: Tool.iniStock(did)
+    stock = Tool.getStock(did)
+
     wallet = json.loads(stock['wallet'])
     question = await ctx.channel.send(embed=MAKE_EMBED(wallet))
     if len(wallet['wallet']) >= 1: await question.add_reaction('1️⃣')
@@ -216,8 +235,8 @@ async def 포지션(bot, ctx):
         Tool.gainGold(did, w['bid'] * w['size'])
         Tool.gainGold(did, (price - w['bid']) * w['size'] * w['leverage'])
 
-        income = (w['bid'] * w['size']) + ((price - w['bid']) * w['size'] * w['leverage'])
-        Tool.delStock(did, idx, income)
+        #income = (w['bid'] * w['size']) + ((price - w['bid']) * w['size'] * w['leverage'])
+        Tool.delStock(did, idx, price)
 
         # 지갑 업데이트
         stock = Tool.getStock(did)
@@ -232,15 +251,19 @@ async def 거래내역(ctx):
     await ctx.message.delete()
     did, name = ctx.message.author.id, ctx.message.author.display_name
 
+    account = Tool.getAccount(did)
+    if account is None:
+        await ctx.channel.send(f"> {name}님은 선물 거래를 한 번도 하지 않았어요.")
+        return
+
     stock = Tool.getStock(did)
     history = json.loads(stock['history'])
 
     embed = discord.Embed(title=f'{name}님의 선물 거래 내역을 보여드릴게요.')
-
     for h in history['history'][::-1]:
         name = f"> {h['date']}"
         value = f"종목 : {h['stock']}\n"
-        value += f"유형 : { '매도(숏)' if h['leverage'] > 0 else '매수(롱)' }\n"
+        value += f"유형 : { '매도' if h['leverage'] > 0 else '매수' }\n"
         value += f"주문가 : {format(h['bid'], ',')}골드\n"
         value += f"수량 : {format(h['size'] * abs(h['leverage']), ',')}개\n"
         value += f"실현 이익 : {format(h['income'], ',')}골드\n"
@@ -275,3 +298,31 @@ async def 파산(bot, ctx):
 
     await question.clear_reactions()
     await question.edit(context=f"> {name}님의 파산 신청이 완료되었어요.\n> {allowDate}부터 선물 거래를 다시 할 수 있어요.", embed=None)
+
+def updateMarketPrices():
+    import threading
+
+    def target():
+        # 시세 최신화
+        for itemName in ['아이올라이트', '시간의 결정', '고대 지혜의 잔해',
+                         '힘의 정수 1개 상자', '무색 큐브 조각', '모순의 결정체']:
+            auction = DNFAPI.getItemAuction(itemName)
+            p, c = 0, 0
+            for i in auction:
+                p += i['price']
+                c += i['count']
+            price = p // c
+            Tool.updateAuctionPrice(itemName, price)
+
+        # 청산 체크
+        stocks = Tool.getStocks()
+        for stock in stocks:
+            wallet = json.loads(stock['wallet'])
+            for idx, w in enumerate(wallet['wallet']):
+                price = Tool.getLatestPrice(w['stock'])['price']
+                if  (w['leverage'] > 0 and price <= w['margin']) or \
+                    (w['leverage'] < 0 and price >= w['margin']):
+                    Tool.delStock(stock['did'], idx, w['bid'])
+
+    t = threading.Thread(target=target)
+    t.start()
