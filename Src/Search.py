@@ -38,10 +38,10 @@ async def 등급(ctx):
     for i in shopItemInfo:
         value = i['itemGradeName'] + '(' + str(i['itemGradeValue']) + '%)\r\n'
         for j in i['itemStatus']:
-            if j['itemName'] in MAX_OPTION[i['itemId']].keys():
-                diff = j['value'] - MAX_OPTION[i['itemId']][j['itemName']]
-                value += j['itemName'] + ' : ' + str(j['value']) + '(' + str(diff) + ')\r\n'
-        embed.add_field(name='> ' + i['itemName'], value=value)
+            if j['name'] in MAX_OPTION[i['itemId']].keys():
+                diff = j['value'] - MAX_OPTION[i['itemId']][j['name']]
+                value += j['name'] + ' : ' + str(j['value']) + '(' + str(diff) + ')\r\n'
+        embed.add_field(name='> ' + i['name'], value=value)
 
     if shopItemInfo[0]['itemGradeName'] == '최하급':
         footer = '오늘 하루는 절대 정가 금지!'
