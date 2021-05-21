@@ -41,7 +41,7 @@ async def 등급(ctx):
             if j['name'] in MAX_OPTION[i['itemId']].keys():
                 diff = j['value'] - MAX_OPTION[i['itemId']][j['name']]
                 value += j['name'] + ' : ' + str(j['value']) + '(' + str(diff) + ')\r\n'
-        embed.add_field(name='> ' + i['name'], value=value)
+        embed.add_field(name='> ' + i['itemName'], value=value)
 
     if shopItemInfo[0]['itemGradeName'] == '최하급':
         footer = '오늘 하루는 절대 정가 금지!'
