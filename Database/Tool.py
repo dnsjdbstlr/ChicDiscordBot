@@ -24,6 +24,18 @@ class Connection:
 c = Connection()
 
 # # # 기 린 # # #
+def getEpicRanks():
+    conn, cur = c.getConnection()
+
+    # 지난달 데이터 삭제
+    sql = 'DELETE FROM epicRank WHERE date <= LAST_DAY(NOW() - interval 1 month)'
+    cur.execute(sql)
+    conn.commit()
+
+    sql = 'SELECT * FROM epicRank WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
+    cur.execute(sql)
+    return cur.fetchall()
+
 def getEpicRank(server, name):
     conn, cur = c.getConnection()
     sql = f'SELECT * FROM epicRank WHERE server=%s and name=%s'
@@ -42,18 +54,6 @@ def updateEpicRank(server, name, count, channel):
         sql = 'UPDATE epicRank SET date=%s, count=%s, channel=%s WHERE server=%s and name=%s'
         cur.execute(sql, (date, count, channel, server, name))
     conn.commit()
-
-def getMonthlyEpicRank():
-    conn, cur = c.getConnection()
-
-    # 지난달 데이터 삭제
-    sql = 'DELETE FROM epicRank WHERE date <= LAST_DAY(NOW() - interval 1 month)'
-    cur.execute(sql)
-    conn.commit()
-
-    sql = 'SELECT * FROM epicRank WHERE date > LAST_DAY(NOW() - interval 1 month) AND date <= LAST_DAY(NOW())'
-    cur.execute(sql)
-    return cur.fetchall()
 
 # # # 시 세 # # #
 def getAuction():
@@ -275,7 +275,7 @@ def delStock(did, idx, price):
     history = {
         'date'      : datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'stock'     : data['stock'],
-        'leverage'  : data['leverage'],
+        'leverage'  : -data['leverage'],
         'size'      : data['size'],
         'bid'       : price,
         'income'    : income

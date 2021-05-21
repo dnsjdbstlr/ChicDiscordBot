@@ -9,12 +9,15 @@ async def 출석(ctx):
     waiting = await ctx.channel.send(f'> {name}님의 출석을 확인하고있어요...')
 
     account = Tool.getAccount(did)
+    if account is None:
+        Tool.iniAccount(did)
+        account = Tool.getAccount(did)
     today = datetime.now().strftime('%Y-%m-%d')
     embed = discord.Embed(title=f'{name}님의 출석을 진행할게요!')
     embed.add_field(name='> 출석 날짜', value=today)
 
     # 이미 출석한 경우
-    if account is not None and str(account['checkDate']) == today:
+    if str(account['checkDate']) == today:
         embed.add_field(name='> 출석 보상', value='X')
         embed.set_footer(text='이미 출석체크를 했어요.')
         check = False

@@ -364,7 +364,7 @@ def getSkillLevelingInfo(reinforceSkill):
         skills = j.get('skills')
         if skills is not None:
             for k in skills:
-                text = k['itemName'] + ' 스킬Lv +' + str(k['value'])
+                text = k['name'] + ' 스킬Lv +' + str(k['value'])
 
                 if result.get(jobName) is None:
                     result[jobName] = [text]

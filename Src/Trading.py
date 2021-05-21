@@ -9,15 +9,6 @@ async def 선물거래(ctx):
     await ctx.message.delete()
     did = ctx.author.id
 
-    # account가 없을 경우
-    if Tool.getAccount(did) is None:
-        Tool.iniAccount(did)
-
-    # stock이 없을 경우
-    stock = Tool.getStock(did)
-    if stock is None: Tool.iniStock(did)
-    stock = Tool.getStock(did)
-
     embed = discord.Embed(title='던파 경매장 선물 거래에 대해 설명해드릴게요!')
     embed.add_field(name='> 선물 거래가 뭔가요?', inline=False,
                     value='''미래에 해당 종목의 가격이 어떻게 될지 맞추는 거래예요.
@@ -54,7 +45,8 @@ async def 선물거래(ctx):
 
 async def 주문(bot, ctx, *inputs):
     await ctx.message.delete()
-    did, name = ctx.message.author.id, ctx.message.author.display_name
+    did, name = ctx.author.id, ctx.author.display_name
+    message = await ctx.channel.send(f"> {name}님의 주문을 준비중이예요...")
 
     # account가 없을 경우
     if Tool.getAccount(did) is None:
@@ -65,145 +57,144 @@ async def 주문(bot, ctx, *inputs):
     if stock is None: Tool.iniStock(did)
     stock = Tool.getStock(did)
 
+    # 3개의 포지션을 보유하고 있을 경우
+    wallet = json.loads(stock['wallet'])
+    if len(wallet['wallet']) >= 3:
+        await message.edit(content=f"> {name}님은 이미 3개의 포지션을 보유하고 있어요.\n"
+                                    '> 보유한 포지션을 종료한 후 다시 시도해주세요.')
+        return
+
     # 거래 금지인 경우
     today = datetime.today()
     if date(today.year, today.month, today.day) < stock['allowDate']:
-        await ctx.channel.send(f"> {name}님은 {stock['allowDate']}부터 선물거래가 가능해요.")
+        await message.edit(f"> {name}님은 {stock['allowDate']}부터 선물거래가 가능해요.")
         return
 
     # 입력이 잘못됬을 경우
     if len(inputs) == 0:
-        await ctx.channel.send('> `!주문 <레버리지> <선물거래>` 의 형태로 다시 시도해주세요.')
+        await message.edit('> `!주문 <종목> <레버리지>` 의 형태로 다시 시도해주세요.')
         return
 
     # 레버리지, 종목명
     try:
-        leverage = int(inputs[-1])
         stockName = ' '.join(inputs[:-1])
+        leverage = int(inputs[-1])
     except ValueError:
-        leverage = 1
         stockName = ' '.join(inputs)
+        leverage = 1
 
-    if leverage == 0 or abs(leverage) > 50:
-        await ctx.channel.send('> 레버리지는 -50 ~ 50까지만 가능해요.\n> 레버리지를 다시 정해서 시도해주세요!')
-        return
-
-    orderType = '매수(롱)' if leverage > 0 else '매도(숏)'
-
+    # 종목이 잘못됬을 경우
     if stockName not in ['아이올라이트', '시간의 결정', '고대 지혜의 잔해',
                          '힘의 정수 1개 상자', '무색 큐브 조각', '모순의 결정체']:
-        await ctx.channel.send('> 다음 종목들에 대해서만 주문을 넣을 수 있어요.\n'
-                               '> `아이올라이트`, `시간의 결정`, `고대 지혜의 잔해`,\n'
-                               '> `힘의 정수 1개 상자`, `무색큐브조각`, `모순의 결정체`')
+        await message.edit('> 다음 종목들에 대해서만 주문을 넣을 수 있어요.\n'
+                           '> `아이올라이트`, `시간의 결정`, `고대 지혜의 잔해`,\n'
+                           '> `힘의 정수 1개 상자`, `무색큐브조각`, `모순의 결정체`')
         return
 
-    item        = DNFAPI.getMostSimilarItem(stockName)
-    latestBid   = Tool.getLatestPrice(stockName)
-    prevBid     = Tool.getPrevPrice(stockName)
-    gold        = Tool.getGold(did)
-    margin  = int(latestBid['price'] * (1 - (1 / leverage) ))
+    # 레버리지가 잘못됬을 경우
+    if leverage == 0 or abs(leverage) > 50:
+        await message.edit('> 레버리지는 -50 ~ 50까지만 가능해요.\n> 레버리지를 다시 정해서 시도해주세요!')
+        return
 
-    # 출력에 필요한 데이터 세팅
-    val_bid = f"{format(latestBid['price'], ',')}골드"
+    # 데이터 세팅
+    item   = DNFAPI.getMostSimilarItem(stockName)
+    lPrice = Tool.getLatestPrice(stockName)
+    pPrice = Tool.getPrevPrice(stockName)
+    gold   = Tool.getGold(did)
+    margin = int(lPrice['price'] * (1 - (1 / leverage) ))
 
-    if prevBid is None:
+    # 등락률
+    if pPrice is None:
         val_rate = '데이터 없음'
     else:
-        rate = (latestBid['price'] / prevBid['price'] - 1) * 100
+        rate = (lPrice['price'] / pPrice['price'] - 1) * 100
         val_rate = f"▼ {format(rate, '.2f')}%" if rate < 0 else f"▲ {format(rate, '.2f')}%"
 
-    val_leverage = f"x{abs(leverage)}"
-    val_margin = f"{format(margin, ',')}골드"
-    val_max = f"{format(gold // latestBid['price'], ',')}개"
-    val_wallet = f"{format(gold, ',')}골드"
-    
+    # 출력
+    orderType = '매수(롱)' if leverage > 0 else '매도(숏)'
     embed = discord.Embed(title=f"{name}님의 {orderType} 주문",
-                          description=f"아래의 내용을 확인하고 {'매수량' if orderType else '매도량'}을 적어주세요.\n"
+                          description=f"아래의 내용을 확인하고 {'매수량' if leverage > 0 else '매도량'}을 적어주세요.\n"
                                       '10초안에 입력하지 않으면 자동으로 주문이 취소되요.')
     embed.set_thumbnail(url=DNFAPI.getItemImageUrl(item['itemId']))
     embed.add_field(name='> 종목명', value=stockName)
-    embed.add_field(name='> 현재가', value=val_bid)
+    embed.add_field(name='> 현재가', value=f"{format(lPrice['price'], ',')}골드")
     embed.add_field(name='> 등락률', value=val_rate)
-    embed.add_field(name='> 레버리지', value=val_leverage)
-    embed.add_field(name='> 청산가', value=val_margin)
-    embed.add_field(name='> 최대 사이즈', value=val_max)
-    embed.set_footer(text=f"지갑 잔고 : {val_wallet}")
-    question = await ctx.channel.send(embed=embed)
+    embed.add_field(name='> 레버리지', value=f"x{abs(leverage)}")
+    embed.add_field(name='> 청산가', value=f"{format(margin, ',')}골드")
+    embed.add_field(name='> 최대 사이즈', value=f"{format(gold // lPrice['price'], ',')}개")
+    embed.set_footer(text=f"지갑 잔고 : {format(gold, ',')}골드")
+    await message.edit(content=None, embed=embed)
 
     try:
         def check(_message):
             return ctx.channel.id == _message.channel.id and ctx.message.author == _message.author
         answer = await bot.wait_for('message', check=check, timeout=10)
 
-        if not answer.content.isnumeric() or int(answer.content) <= 0 or int(answer.content) > gold // latestBid['price']:
+        if not answer.content.isnumeric() or int(answer.content) <= 0 or int(answer.content) > gold // lPrice['price']:
             await answer.delete()
-            await question.edit(content=f"> {name}님의 {orderType} 주문이 취소되었어요.\n"
-                                        f"> 입력이 잘못되었어요. 1 ~ {gold // latestBid['price']}의 숫자만 입력해야해요.", embed=None)
+            await message.edit(content=f"> {name}님의 {orderType} 주문이 취소되었어요.\n"
+                                        f"> 입력이 잘못되었어요. 1 ~ {format(gold // lPrice['price'], ',')}의 숫자만 입력해야해요.", embed=None)
             return
-
-        # 보유 가능 갯수 초과
-        stock = Tool.getStock(did)
-        wallet = json.loads(stock['wallet'])
-        if len(wallet['wallet']) >= 3:
-            await answer.delete()
-            await question.edit(content=f"> {name}님의 {orderType} 주문이 취소되었어요.\n"
-                                        '> 최대 3가지 종목까지 보유할 수 있어요. 보유한 포지션을 종료한 후 다시 시도해주세요.', embed=None)
-            return
-
-        await answer.delete()
-        embed = discord.Embed(title=f"{name}님의 {orderType} 주문",
-                              description='주문이 성공적으로 채결됬습니다. 아래 내용을 확인해주세요.\n'
-                                          '`!포지션` 명령어를 현재 자신의 포지션들을 확인할 수 있어요.')
-        embed.set_thumbnail(url=DNFAPI.getItemImageUrl(item['itemId']))
-        embed.add_field(name='> 종목명', value=stockName)
-        embed.add_field(name='> 사이즈', value=f"{answer.content}개")
-        embed.add_field(name='> 레버리지', value=val_leverage)
-        await question.edit(embed=embed)
-
-        data = {
+        
+        # 골드 차감
+        Tool.addStock(did, {
             'stock'     : stockName,
             'leverage'  : leverage,
             'size'      : int(answer.content),
-            'bid'       : latestBid['price'],
+            'bid'       : lPrice['price'],
             'margin'    : margin
-        }
-        Tool.addStock(did, data)
-        Tool.gainGold(did, -int(answer.content) * latestBid['price'])
+        })
+        Tool.gainGold(did, -int(answer.content) * lPrice['price'])
+        
+        # 출력
+        await answer.delete()
+        embed = discord.Embed(title=f"{name}님의 {orderType} 주문",
+                              description='주문이 성공적으로 체결됬습니다. 아래 내용을 확인해주세요.')
+        embed.add_field(name='> 종목명', value=stockName)
+        embed.add_field(name='> 사이즈', value=f"{answer.content}개")
+        embed.add_field(name='> 레버리지', value=f"x{abs(leverage)}")
+        embed.add_field(name='> 체결가격', value=f"{format(lPrice['price'], ',')}골드")
+        embed.add_field(name='> 청산가격', value=f"{format(margin, ',')}골드")
+        embed.set_thumbnail(url=DNFAPI.getItemImageUrl(item['itemId']))
+        await message.edit(embed=embed)
 
     except asyncio.TimeoutError:
-        await question.edit(content=f"> {name}님의 {orderType} 주문이 취소되었어요.\n"
-                                    f"> 10초안에 {'매수량' if orderType else '매도량'}을 입력하지 않아서 자동으로 취소되었어요.", embed=None)
-    except: return
+        await message.edit(content=f"> {name}님의 {orderType} 주문이 취소되었어요.\n"
+                                    f"> 10초안에 {'매수량' if leverage > 0 else '매도량'}을 입력하지 않아서 자동으로 취소되었어요.", embed=None)
+        return
+    except Exception as e:
+        await message.edit(content=f"> {name}님의 {orderType} 주문이 취소되었어요.\n > {e}")
+        return
 
 async def 포지션(bot, ctx):
-    def MAKE_EMBED(_wallet):
-        _did, _name = ctx.message.author.id, ctx.message.author.display_name
-        embed = discord.Embed(title=f"{_name}님의 포지션",
-                              description='종료하고 싶은 포지션이 있다면 해당 번호의 이모지를 눌러주세요.\n'
-                                          '이모지를 누르면 즉시 해당 포지션을 종료합니다.')
-        for _w in _wallet['wallet']:
-            _price = Tool.getLatestPrice(_w['stock'])['price']
-            rate = (_price / _w['bid'] - 1) * 100 * _w['leverage']
-            rate = format(rate, '.2f')
-            temp = format(float(rate), ',')
-            val_rate = f"▲ {temp}%" if float(rate) >= 0 else f"▼ {temp}%"
+    def MAKE_EMBED(eWallet):
+        eDid, eName = ctx.message.author.id, ctx.message.author.display_name
+        eEmbed = discord.Embed(title=f"{eName}님의 포지션",
+                               description='종료하고 싶은 포지션이 있다면 해당 번호의 이모지를 눌러주세요.\n'
+                                           '이모지를 누르면 즉시 해당 포지션을 종료합니다.')
+        for ew in eWallet['wallet']:
+            ePrice = Tool.getLatestPrice(ew['stock'])['price']
+            eRate = (ePrice / ew['bid'] - 1) * 100 * ew['leverage']
+            eRate = float(format(eRate, '.2f'))
+            eRate = format(eRate, ',')
 
-            _name = f"> {_w['stock']} x{abs(_w['leverage'])}{'롱' if _w['leverage'] > 0 else '숏'}"
-            value = f"사이즈       : {format(_w['size'], ',')}개\n"
-            value += f"진입 가격    : {format(_w['bid'], ',')}골드\n"
-            value += f"현재 가격    : {format(_price, ',')}골드\n"
-            value += f"청산 가격    : {format(_w['margin'], ',')}골드\n"
-            value += f"손익률       : {val_rate}"
-            embed.add_field(name=_name, value=value)
+            eName = f"> {ew['stock']} x{abs(ew['leverage'])}{'롱' if ew['leverage'] > 0 else '숏'}"
+            eValue = f"사이즈 : {format(ew['size'], ',')}개\n"
+            eValue += f"진입 가격 : {format(ew['bid'], ',')}골드\n"
+            eValue += f"현재 가격 : {format(ePrice, ',')}골드\n"
+            eValue += f"청산 가격 : {format(ew['margin'], ',')}골드\n"
+            eValue += f"손익률 : ▲ {eRate}%" if float(eRate) >= 0 else f"▼ {eRate}%"
+            eEmbed.add_field(name=eName, value=eValue)
 
-        for i in range( len(_wallet['wallet']), 3 ):
-            embed.add_field(name=f"> 포지션{i + 1}", value='없음')
+        for i in range(len(eWallet['wallet']), 3):
+            eEmbed.add_field(name=f"> 포지션{i + 1}", value='없음')
 
-        embed.set_footer(text=f"지갑 잔고 : {format(Tool.getGold(_did), ',')}골드")
-        return embed
+        eEmbed.set_footer(text=f"지갑 잔고 : {format(Tool.getGold(eDid), ',')}골드")
+        return eEmbed
 
     await ctx.message.delete()
-    did = ctx.message.author.id
+    did, name = ctx.author.id, ctx.author.display_name
+    message = await ctx.channel.send(f"> {name}님의 포지션 정보를 불러오고 있어요...")
 
     # account가 없을 경우
     if Tool.getAccount(did) is None:
@@ -215,60 +206,109 @@ async def 포지션(bot, ctx):
     stock = Tool.getStock(did)
 
     wallet = json.loads(stock['wallet'])
-    question = await ctx.channel.send(embed=MAKE_EMBED(wallet))
-    if len(wallet['wallet']) >= 1: await question.add_reaction('1️⃣')
-    if len(wallet['wallet']) >= 2: await question.add_reaction('2️⃣')
-    if len(wallet['wallet']) >= 3: await question.add_reaction('3️⃣')
+    embed = MAKE_EMBED(wallet)
+    await message.edit(content=None, embed=embed)
+    if len(wallet['wallet']) >= 1: await message.add_reaction('1️⃣')
+    if len(wallet['wallet']) >= 2: await message.add_reaction('2️⃣')
+    if len(wallet['wallet']) >= 3: await message.add_reaction('3️⃣')
+    await message.add_reaction('🔄')
 
     while True:
         def check(_reaction, _user):
-            return str(_reaction) in ['1️⃣', '2️⃣', '3️⃣'] and _reaction.message.id == question.id and _user == ctx.author
+            return str(_reaction) in ['1️⃣', '2️⃣', '3️⃣', '🔄'] and _reaction.message.id == message.id and _user == ctx.author
         reaction, user = await bot.wait_for('reaction_add', check=check)
 
         if str(reaction) == '1️⃣' and len(wallet['wallet']) >= 1: idx = 0
         if str(reaction) == '2️⃣' and len(wallet['wallet']) >= 2: idx = 1
         if str(reaction) == '3️⃣' and len(wallet['wallet']) >= 3: idx = 2
+        if str(reaction) == '🔄':
+            # 로딩
+            stock = Tool.getStock(did)
+            wallet = json.loads(stock['wallet'])
+            embed.set_footer(text='포지션 정보를 최신화 중이예요...')
+            await message.edit(embed=embed)
+            await message.clear_reactions()
+
+            # 최신화
+            embed = MAKE_EMBED(wallet)
+            await message.edit(embed=embed)
+            if len(wallet['wallet']) >= 1: await message.add_reaction('1️⃣')
+            if len(wallet['wallet']) >= 2: await message.add_reaction('2️⃣')
+            if len(wallet['wallet']) >= 3: await message.add_reaction('3️⃣')
+            await message.add_reaction('🔄')
+            continue
+
+        # 포지션 종료 로딩
+        w = wallet['wallet'][idx]
+        embed.set_footer(text=f"{w['stock']} x{abs(w['leverage'])}{'롱' if w['leverage'] > 0 else '숏'} 포지션을 종료하는 중이예요...")
+        await message.edit(embed=embed)
+        await message.clear_reactions()
 
         # 골드 차감
-        w = wallet['wallet'][idx]
         price = Tool.getLatestPrice(w['stock'])['price']
-        Tool.gainGold(did, w['bid'] * w['size'])
-        Tool.gainGold(did, (price - w['bid']) * w['size'] * w['leverage'])
-
-        #income = (w['bid'] * w['size']) + ((price - w['bid']) * w['size'] * w['leverage'])
+        Tool.gainGold(did, (w['bid'] * w['size']) + (price - w['bid']) * w['size'] * w['leverage'])
         Tool.delStock(did, idx, price)
 
-        # 지갑 업데이트
+        # 포지션 최신화 로딩
         stock = Tool.getStock(did)
         wallet = json.loads(stock['wallet'])
-        await question.edit(embed=MAKE_EMBED(wallet))
-        await question.clear_reactions()
-        if len(wallet['wallet']) >= 1: await question.add_reaction('1️⃣')
-        if len(wallet['wallet']) >= 2: await question.add_reaction('2️⃣')
-        if len(wallet['wallet']) >= 3: await question.add_reaction('3️⃣')
+        embed.set_footer(text='포지션 정보를 최신화 중이예요...')
+        await message.edit(embed=embed)
 
-async def 거래내역(ctx):
+        # 출력
+        embed = MAKE_EMBED(wallet)
+        await message.edit(embed=embed)
+        if len(wallet['wallet']) >= 1: await message.add_reaction('1️⃣')
+        if len(wallet['wallet']) >= 2: await message.add_reaction('2️⃣')
+        if len(wallet['wallet']) >= 3: await message.add_reaction('3️⃣')
+        await message.add_reaction('🔄')
+
+async def 거래내역(bot, ctx):
+    def MAKE_EMBED():
+        eName = ctx.author.display_name
+        eHistory = json.loads(stock['history'])
+        eProfit = 0
+
+        eEmbed = discord.Embed(title=f'{eName}님의 거래 내역을 보여드릴게요.')
+        for eh in eHistory['history'][::-1]:
+            eProfit += eh['income']
+
+            eName = f"> {eh['date']}"
+            eValue = f"종목 : {eh['stock']}\n"
+            eValue += f"유형 : {'매수' if eh['leverage'] > 0 else '매도'}\n"
+            eValue += f"주문가 : {format(eh['bid'], ',')}골드\n"
+            eValue += f"수량 : {format(eh['size'] * abs(eh['leverage']), ',')}개\n"
+            eValue += f"실현 이익 : {format(eh['income'], ',')}골드\n"
+            eEmbed.add_field(name=eName, value=eValue)
+        eEmbed.set_footer(text=f"총 손익 : {format(eProfit, ',')}골드")
+        return eEmbed
+
     await ctx.message.delete()
-    did, name = ctx.message.author.id, ctx.message.author.display_name
+    did, name = ctx.author.id, ctx.author.display_name
 
+    # account, stock이 없을 경우
     account = Tool.getAccount(did)
-    if account is None:
+    stock = Tool.getStock(did)
+    if account is None or stock is None:
         await ctx.channel.send(f"> {name}님은 선물 거래를 한 번도 하지 않았어요.")
         return
 
-    stock = Tool.getStock(did)
-    history = json.loads(stock['history'])
+    embed = MAKE_EMBED()
+    message = await ctx.channel.send(embed=embed)
+    await message.add_reaction('🔄')
 
-    embed = discord.Embed(title=f'{name}님의 선물 거래 내역을 보여드릴게요.')
-    for h in history['history'][::-1]:
-        name = f"> {h['date']}"
-        value = f"종목 : {h['stock']}\n"
-        value += f"유형 : { '매도' if h['leverage'] > 0 else '매수' }\n"
-        value += f"주문가 : {format(h['bid'], ',')}골드\n"
-        value += f"수량 : {format(h['size'] * abs(h['leverage']), ',')}개\n"
-        value += f"실현 이익 : {format(h['income'], ',')}골드\n"
-        embed.add_field(name=name, value=value)
-    await ctx.channel.send(embed=embed)
+    while True:
+        def check(_reaction, _user):
+            return str(_reaction) == '🔄' and _reaction.message.id == message.id and _user == ctx.author
+        reaction, user = await bot.wait_for('reaction_add', check=check)
+
+        embed.set_footer(text='거래 내역을 최신화 중이예요...')
+        await message.edit(embed=embed)
+        await message.clear_reactions()
+
+        embed = MAKE_EMBED()
+        await message.edit(embed=embed)
+        await message.add_reaction('🔄')
 
 async def 파산(bot, ctx):
     await ctx.message.delete()
@@ -298,6 +338,15 @@ async def 파산(bot, ctx):
 
     await question.clear_reactions()
     await question.edit(context=f"> {name}님의 파산 신청이 완료되었어요.\n> {allowDate}부터 선물 거래를 다시 할 수 있어요.", embed=None)
+
+async def 골드랭킹(bot, ctx):
+    def MAKE_EMBED():
+        pass
+
+    await ctx.message.delete()
+    message = await ctx.channel.send('> 골드 랭킹 데이터를 불러오고 있어요...')
+
+    did, name = ctx.author.id, ctx.author.display_name
 
 def updateMarketPrices():
     import threading
