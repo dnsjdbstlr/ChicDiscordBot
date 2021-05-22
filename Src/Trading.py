@@ -381,8 +381,8 @@ async def 골드랭킹(bot, ctx):
             eName = f"> {idx + 1}등"
             if i['did'] == str(ctx.author.id):
                 eName += f"({ctx.author.display_name}님)"
-            eValue = f"{format(i['sum'], ',')}골드\n" \
-                     f"보유금 : {format(i['gold'], ',')}골드\n" \
+            eName += f"> {format(i['sum'], ',')}골드"
+            eValue = f"보유금 : {format(i['gold'], ',')}골드\n" \
                      f"평가금 : {format(i['evaluation'], ',')}골드\n" \
                      f"보유 종목 : {', '.join(i['stocks']) if i['stocks'] else '없음'}\n" \
                      f"파산 횟수 : {format(i['liquidate'], ',')}회"
