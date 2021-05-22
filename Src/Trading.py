@@ -340,13 +340,76 @@ async def 파산(bot, ctx):
     await question.edit(context=f"> {name}님의 파산 신청이 완료되었어요.\n> {allowDate}부터 선물 거래를 다시 할 수 있어요.", embed=None)
 
 async def 골드랭킹(bot, ctx):
-    def MAKE_EMBED():
-        pass
+    def MAKE_EMBED(eStocks, ePage):
+        eData = []      
+
+        # 데이터 세팅
+        for eStock in eStocks:
+            eEvaluation = 0
+            eWallet = json.loads(eStock['wallet'])
+            for idx, w in enumerate(eWallet['wallet']):
+                ePrice = Tool.getLatestPrice(w['stock'])['price']
+                eEvaluation += (w['bid'] * w['size']) + ((ePrice - w['bid']) * w['size'] * w['leverage'])
+
+            eGold = Tool.getGold(ctx.author.id)
+            eData.append({
+                'did' : eStock['did'],
+                'sum' : eGold + eEvaluation,
+                'gold' : eGold,
+                'evaluation' : eEvaluation,
+                'stocks' : [ew['stock'] for ew in eWallet['wallet']],
+                'liquidate' : eStock['liquidate']
+            })
+        eData.sort(key=lambda x: x['sum'], reverse=True)
+        #eData = sorted(eData, key=lambda x: x['sum'], reverse=False)
+        eData = eData[ePage * 15:ePage * 15 + 15]
+        
+        # 출력
+        eEmbed = discord.Embed(title='보유금과 평가금의 합을 기준으로한 랭킹을 보여드릴게요.')
+        for idx, i in enumerate(eData):
+            eName = f"{idx + 1}등"
+            if i['did'] == str(ctx.author.id):
+                eName += f"({ctx.author.display_name}님)"
+            eValue = f"{format(i['sum'], ',')}골드\n" \
+                     f"보유금 : {format(i['gold'], ',')}골드\n" \
+                     f"평가금 : {format(i['evaluation'], ',')}골드\n" \
+                     f"보유 종목 : {', '.join(i['stocks']) if i['stocks'] else '없음'}\n" \
+                     f"파산 횟수 : {format(i['liquidate'], ',')}회"
+            eEmbed.add_field(name=eName, value=eValue)
+        eEmbed.set_footer(text=f"{ePage + 1}페이지 / {(len(eStocks) - 1) // 15 + 1}페이지")
+        return eEmbed
 
     await ctx.message.delete()
     message = await ctx.channel.send('> 골드 랭킹 데이터를 불러오고 있어요...')
 
-    did, name = ctx.author.id, ctx.author.display_name
+    stocks = Tool.getStocks()
+    embed = MAKE_EMBED(stocks, 0)
+    await message.edit(embed=embed, content=None)
+    if len(stocks) > 15: await message.add_reaction('▶️')
+
+    page = 0
+    while len(stocks) > 15:
+        try:
+            def check(_reaction, _user):
+                return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == message.id
+            reaction, user = await bot.wait_for('reaction_add', check=check)
+
+            if str(reaction) == '◀️' and page > 0:
+                page -= 1
+            if str(reaction) == '▶️' and page < (len(stocks) - 1) // 15:
+                page += 1
+
+            embed = MAKE_EMBED(stocks, page)
+            await message.edit(embed=embed)
+            await message.clear_reactions()
+            if page > 0:
+                await message.add_reaction('◀️')
+            if page < (len(stocks) - 1) // 15:
+                await message.add_reaction('▶️')
+
+        except Exception as e:
+            await message.edit(content=f"> 오류가 발생했습니다.\n> {e}", embed=None)
+            return
 
 def updateMarketPrices():
     import threading
@@ -371,7 +434,7 @@ def updateMarketPrices():
                 price = Tool.getLatestPrice(w['stock'])['price']
                 if  (w['leverage'] > 0 and price <= w['margin']) or \
                     (w['leverage'] < 0 and price >= w['margin']):
-                    Tool.delStock(stock['did'], idx, w['bid'])
+                    Tool.delStock(stock['did'], idx, w['margin'])
 
     t = threading.Thread(target=target)
     t.start()
