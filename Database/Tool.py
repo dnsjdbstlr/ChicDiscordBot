@@ -115,6 +115,12 @@ def getAccount(did):
     cur.execute(sql, did)
     return cur.fetchone()
 
+def getAccounts():
+    conn, cur = c.getConnection()
+    sql = f'SELECT * FROM account'
+    cur.execute(sql)
+    return cur.fetchall()
+
 def getGold(did):
     try:
         return getAccount(did)['gold']
