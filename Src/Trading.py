@@ -67,12 +67,12 @@ async def 주문(bot, ctx, *inputs):
     # 거래 금지인 경우
     today = datetime.today()
     if date(today.year, today.month, today.day) < stock['allowDate']:
-        await message.edit(f"> {name}님은 {stock['allowDate']}부터 선물거래가 가능해요.")
+        await message.edit(content=f"> {name}님은 {stock['allowDate']}부터 선물거래가 가능해요.")
         return
 
     # 입력이 잘못됬을 경우
     if len(inputs) == 0:
-        await message.edit('> `!주문 <종목> <레버리지>` 의 형태로 다시 시도해주세요.')
+        await message.edit(content='> `!주문 <종목> <레버리지>` 의 형태로 다시 시도해주세요.')
         return
 
     # 레버리지, 종목명
@@ -86,14 +86,15 @@ async def 주문(bot, ctx, *inputs):
     # 종목이 잘못됬을 경우
     if stockName not in ['아이올라이트', '시간의 결정', '고대 지혜의 잔해',
                          '힘의 정수 1개 상자', '무색 큐브 조각', '모순의 결정체']:
-        await message.edit('> 다음 종목들에 대해서만 주문을 넣을 수 있어요.\n'
-                           '> `아이올라이트`, `시간의 결정`, `고대 지혜의 잔해`,\n'
-                           '> `힘의 정수 1개 상자`, `무색큐브조각`, `모순의 결정체`')
+        await message.edit(content='> 다음 종목들에 대해서만 주문을 넣을 수 있어요.\n'
+                                   '> `아이올라이트`, `시간의 결정`, `고대 지혜의 잔해`,\n'
+                                   '> `힘의 정수 1개 상자`, `무색큐브조각`, `모순의 결정체`')
         return
 
     # 레버리지가 잘못됬을 경우
     if leverage == 0 or abs(leverage) > 50:
-        await message.edit('> 레버리지는 -50 ~ 50까지만 가능해요.\n> 레버리지를 다시 정해서 시도해주세요!')
+        await message.edit(content='> 레버리지는 -50 ~ 50까지만 가능해요.\n'
+                                   '> 레버리지를 다시 정해서 시도해주세요.')
         return
 
     # 데이터 세팅
