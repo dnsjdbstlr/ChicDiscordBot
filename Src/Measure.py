@@ -337,7 +337,7 @@ def getStatusFromEquipAndAvatar(equip, avatar, creatureItemId):
                 incStatus['지능'] += 15
 
     # 크리쳐
-    for i in DNFAPI.getItemDetail(creatureItemId)['itemStatus']:
+    for i in DNFAPI.getItemDetailInfo(creatureItemId)['itemStatus']:
         if i['itemName'] in ['힘', '지능', '체력', '정신력']:
             incStatus[i['itemName']] += int(i['value'])
 

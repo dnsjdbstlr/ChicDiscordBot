@@ -29,8 +29,6 @@ async def 출석(ctx):
 
         embed.add_field(name='> 출석 보상', value=format(reward, ',') + '골드')
         embed.set_footer(text='출석체크 완료!')
-
     embed.add_field(name='> 출석 일수', value=f"{account['checkCount'] + check}일")
 
-    await waiting.delete()
-    await ctx.channel.send(embed=embed)
+    await waiting.edit(embed=embed, content=None)

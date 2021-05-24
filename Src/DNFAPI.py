@@ -8,7 +8,7 @@ from urllib import parse
 dnf_token = os.environ['dnf_token']
 
 # 서버 아이디
-SERVER_ID = {
+SERVER_NAME_TO_ID = {
     '안톤'    : 'anton',
     '바칼'    : 'bakal',
     '카인'    : 'cain',
@@ -20,7 +20,7 @@ SERVER_ID = {
     '전체'    : 'all'
 }
 
-SERVERID_TO_NAME = {
+SERVER_ID_TO_NAME = {
     'anton'   : '안톤',
     'bakal'   : '바칼',
     'cain'    : '카인',
@@ -31,56 +31,66 @@ SERVERID_TO_NAME = {
     'siroco'  : '시로코'
 }
 
-def getItem(name, exactly=False, _type=None):
-    name = parse.quote(name)
-    wordType = 'full' if exactly is False else 'match'
+def getItemsInfo(itemName, wordType='full', itemType=None):
+    url = 'https://api.neople.co.kr/df/items'
+    params = {
+        'limit' : 30,
+        'itemName' : itemName,
+        'wordType' : wordType,
+        'apikey' : dnf_token
+    }
+    response = requests.get(url=url, params=params)
+    itemsInfo = response.json()
 
-    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&limit=30&wordType=' + wordType + '&apikey=' + dnf_token
-    response = requests.get(url=url)
-    data = json.loads(response.text)
+    # 결과
+    resultItemsInfo = []
 
-    itemIdList = []
-    for i in data['rows']:
-        if '[영혼]' in i['itemName']  : continue
-        if '[결투장]' in i['itemName']: continue
-        if i['itemType'] in ['무기', '방어구', '액세서리', '추가장비'] and \
-           i['itemRarity'] in ['레전더리', '에픽', '신화']:
+    for info in itemsInfo['rows']:
+        if '[영혼]' in info['itemName']: continue
+        if '[결투장]' in info['itemName']: continue
+        if info['itemType'] in ['무기', '방어구', '액세서리', '추가장비'] and \
+           info['itemRarity'] in ['레전더리', '에픽', '신화']:
 
-            # 이름이 중복된 아이템은 리스트에 추가하지않음
-            isOverride = False
-            for j in itemIdList:
-                if i['itemName'] == j['itemName']:
-                    isOverride = True
+            # 이름이 중복될 경우
+            for item in resultItemsInfo:
+                if info['itemName'] == item['itemName']:
+                    continue
 
-            if not isOverride:
-                # 특정 타입만 추가할 경우
-                if _type is not None and _type == i['itemType']:
-                    itemIdList.append(i)
-                elif _type is None:
-                    itemIdList.append(i)
-    return itemIdList
+            # 특정 타입만 필요한 경우
+            if itemType == info['itemType']:
+                resultItemsInfo.append(info)
+            else:
+                resultItemsInfo.append(info)
+
+    return resultItemsInfo
 
 def getItemImageUrl(itemId):
-    return 'https://img-api.neople.co.kr/df/items/' + itemId
+    return f"https://img-api.neople.co.kr/df/items/{itemId}"
 
 def getChrImageUrl(server, chrId):
-    return 'https://img-api.neople.co.kr/df/servers/' + SERVER_ID.get(server) + '/characters/' + chrId
+    return f"https://img-api.neople.co.kr/df/servers/{SERVER_NAME_TO_ID[server]}/characters/{chrId}"
 
-def getMostSimilarItem(name):
-    name = parse.quote(name)
-    url = 'https://api.neople.co.kr/df/items?itemName=' + name + '&q=trade:true&limit=1&wordType=front&apikey=' + dnf_token
-    response = requests.get(url=url)
-    data = json.loads(response.text)
+def getSimilarItemInfo(itemName):
+    url = 'https://api.neople.co.kr/df/items'
+    params = {
+        'limit' : 1,
+        'itemName' : itemName,
+        'wordType' : 'front',
+        'apikey' : dnf_token
+    }
+    response = requests.get(url=url, params=params)
+    result = response.json()
 
-    try:
-        return data['rows'][0]
-    except:
-        return None
+    if not result['rows']: return None
+    else: return result['rows'][0]
 
-def getItemDetail(itemId):
-    url = 'https://api.neople.co.kr/df/items/' + itemId + '?apikey=' + dnf_token
-    response = requests.get(url=url)
-    return json.loads(response.text)
+def getItemDetailInfo(itemId):
+    url = f"https://api.neople.co.kr/df/items/{itemId}"
+    params = {
+        'apikey' : dnf_token
+    }
+    response = requests.get(url=url, params=params)
+    return response.json()
 
 def getItemsDetail(itemIds):
     url = 'https://api.neople.co.kr/df/multi/items?itemIds=' + itemIds + '&apikey=' + dnf_token
@@ -155,13 +165,13 @@ def getChrIdList(server, name):
         wordType = 'full'
 
     name = parse.quote(name)
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters?characterName=' + name + '&wordType=' + wordType + '&limit=15&apikey=' + dnf_token
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters?characterName=' + name + '&wordType=' + wordType + '&limit=15&apikey=' + dnf_token
     response = requests.get(url=url)
     temp = json.loads(response.text)
     data = temp['rows']
 
     for i in data:
-        chrIdList.append( {'server'         : SERVERID_TO_NAME[i['serverId']],
+        chrIdList.append( {'server'         : SERVER_ID_TO_NAME[i['serverId']],
                            'characterId'    : i['characterId'],
                            'characterName'  : i['characterName'],
                            'level'          : str(i['level']),
@@ -171,7 +181,7 @@ def getChrIdList(server, name):
     return chrIdList
 
 def getChrEquipItems(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/equipment?apikey=' + dnf_token
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/equip/equipment?apikey=' + dnf_token
     response = requests.get(url=url)
     return json.loads(response.text)
 
@@ -181,22 +191,22 @@ def getEquipActiveSet(itemIds):
     return json.loads(response.text)
 
 def getChrEquipCreature(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/creature?apikey=' + dnf_token
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/equip/creature?apikey=' + dnf_token
     response = requests.get(url=url)
     return json.loads(response.text)
 
 def getChrBuffCreature(server, chrId):
-    url = f'https://api.neople.co.kr/df/servers/{SERVER_ID[server]}/characters/{chrId}/skill/buff/equip/creature?apikey={dnf_token}'
+    url = f'https://api.neople.co.kr/df/servers/{SERVER_NAME_TO_ID[server]}/characters/{chrId}/skill/buff/equip/creature?apikey={dnf_token}'
     res = requests.get(url=url)
     return json.loads(res.text)
 
 def getChrBuffEquip(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/skill/buff/equip/equipment?apikey=' + dnf_token
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/skill/buff/equip/equipment?apikey=' + dnf_token
     response = requests.get(url=url)
     return json.loads(response.text)
 
 def getChrStatInfo(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] +'/characters/' + chrId +'/status?apikey=' + dnf_token
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/status?apikey=' + dnf_token
     response = requests.get(url=url)
     return json.loads(response.text)
 
@@ -211,23 +221,23 @@ def getChrTimeLine(server, chrId, *code):
         if i!= code[-1]:
             codes += ','
 
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/timeline?limit=100&code=' + codes + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + dnf_token
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/timeline?limit=100&code=' + codes + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + dnf_token
     response = requests.get(url=url)
     data = json.loads(response.text)
     return data['timeline']['rows']
 
 def getChrSkillStyle(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/skill/style?apikey=' + dnf_token
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/skill/style?apikey=' + dnf_token
     response = requests.get(url=url)
     return json.loads(response.text)
 
 def getChrEquipAvatar(server, chrId):
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_ID[server] + '/characters/' + chrId + '/equip/avatar?apikey=' + dnf_token
+    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/equip/avatar?apikey=' + dnf_token
     response = requests.get(url=url)
     return json.loads(response.text)
 
 def getChrBuffAvatar(server, chrId):
-    url = f'https://api.neople.co.kr/df/servers/{SERVER_ID[server]}/characters/{chrId}/skill/buff/equip/avatar?apikey={dnf_token}'
+    url = f'https://api.neople.co.kr/df/servers/{SERVER_NAME_TO_ID[server]}/characters/{chrId}/skill/buff/equip/avatar?apikey={dnf_token}'
     response = requests.get(url=url)
     return json.loads(response.text)
 

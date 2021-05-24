@@ -98,7 +98,7 @@ async def 주문(bot, ctx, *inputs):
         return
 
     # 데이터 세팅
-    item   = DNFAPI.getMostSimilarItem(stockName)
+    item   = DNFAPI.getSimilarItemInfo(stockName)
     lPrice = Tool.getLatestPrice(stockName)
     pPrice = Tool.getPrevPrice(stockName)
     gold   = Tool.getGold(did)

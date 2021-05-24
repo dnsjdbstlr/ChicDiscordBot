@@ -213,7 +213,7 @@ async def 시세(bot, ctx, *input):
     await ctx.message.delete()
     message = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
 
-    item = DNFAPI.getMostSimilarItem(' '.join(input))
+    item = DNFAPI.getSimilarItemInfo(' '.join(input))
     if item is None:
         await message.delete()
         await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
@@ -343,18 +343,17 @@ async def 장비(bot, ctx, *itemName):
             return eEmbed
 
     itemName = ' '.join(itemName)
-    if len(itemName) < 1:
+    if len(itemName) == 0:
         await ctx.message.delete()
-        await ctx.channel.send('> !장비 <장비템이름> 의 형태로 적어야해요!')
+        await ctx.channel.send('> `!장비 <장비아이템이름>` 의 형태로 적어야해요.\n'
+                               '> ex) `!장비 세계수의 요정`')
         return
 
-    try:
-        itemIdList = DNFAPI.getItem(itemName)
-        itemId = await Util.getSelectionFromItemIdList(bot, ctx, itemIdList)
-        if itemId is False: return
-    except: return
+    itemsInfo = DNFAPI.getItemsInfo(itemName)
+    itemId = await Util.getItemIdFromItemsInfo(bot, ctx, itemsInfo)
+    if itemId is None: return
 
-    itemInfo = DNFAPI.getItemDetail(itemId)
+    itemInfo = DNFAPI.getItemDetailInfo(itemId)
     message = await ctx.channel.send(f"> {itemInfo['itemName']}의 정보를 불러오고 있어요...")
 
     isBuff = False
@@ -429,7 +428,7 @@ async def 세트(bot, ctx, *setName):
 
     try:
         setItemIdList = DNFAPI.getSetItemIdList(name)
-        setItemId, setItemName = await Util.getSelectionFromSetItemIdList(bot, ctx, setItemIdList)
+        setItemId, setItemName = await Util.getSetItemIdFromSetsInfo(bot, ctx, setItemIdList)
     except: return
 
     message = await ctx.channel.send(f"> {setItemName}의 정보를 불러오고 있어요...")

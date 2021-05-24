@@ -148,12 +148,30 @@ def updateAccountCheck(did):
     conn.commit()
 
 # # # 강 화 # # #
-def iniReinforce(did, _id, name):
+def setReinforce(did, itemId=None, itemName=None, value=None, _max=None, _try=None):
     conn, cur = c.getConnection()
-    sql = f"INSERT INTO reinforce values (%s, %s, %s, %s, %s, %s)"
-    _max = {'name' : name, 'value' : 0}
-    _try = {'success' : 0, 'fail' : 0, 'destroy' : 0}
-    cur.execute(sql, (did, _id, name, 0, json.dumps(_max, ensure_ascii=False), json.dumps(_try, ensure_ascii=False)))
+
+    reinforce = getReinforce(did)
+    if reinforce is None:
+        sql = 'INSERT INTO reinforce values (%s, %s, %s, %s, %s, %s)'
+        _max = {
+            'itemName' : itemName,
+            'value' : 0
+        }
+        _try = {
+            'success' : 0,
+            'fail' : 0,
+            'destroy' : 0
+        }
+        cur.execute(sql, (did, itemId, itemName, value, json.dumps(_max, ensure_ascii=False), json.dumps(_try, ensure_ascii=False)))
+    else:
+        sql = 'UPDATE reinforce SET itemId=%s, itemName=%s, value=%s, max=%s, try=%s WHERE did=%s'
+        itemId = reinforce['itemId'] if itemId is None else itemId
+        itemName = reinforce['itemName'] if itemName is None else itemName
+        value = reinforce['value'] if value is None else value
+        _max = reinforce['max'] if _max is None else json.dumps(_max, ensure_ascii=False)
+        _try = reinforce['try'] if _try is None else json.dumps(_try, ensure_ascii=False)
+        cur.execute(sql, (itemId, itemName, value, _max, _try, did))
     conn.commit()
 
 def resetReinforce(did, _id, name):
@@ -170,14 +188,15 @@ def delReinforce(did):
 
 def getReinforce(did=None):
     conn, cur = c.getConnection()
-    if did is None:
-        sql = f"SELECT * FROM reinforce"
-        cur.execute(sql)
-        return cur.fetchall()
-    else:
-        sql = f"SELECT * FROM reinforce WHERE did=%s"
-        cur.execute(sql, did)
-        return cur.fetchone()
+    sql = f"SELECT * FROM reinforce WHERE did=%s"
+    cur.execute(sql, did)
+    return cur.fetchone()
+
+def getReinforces():
+    conn, cur = c.getConnection()
+    sql = f"SELECT * FROM reinforce"
+    cur.execute(sql)
+    return cur.fetchall()
 
 def isValidReinforce(did):
     reinforce = getReinforce(did)

@@ -1,127 +1,140 @@
-import discord
 import asyncio
+import discord
 import re
-from Src import DNFAPI
 
 # # # 선 택 # # #
-async def getSelectionFromChrIdList(bot, ctx, chrIdList):
+async def getSelectionFromChrIdList(bot, ctx, chrsInfo):
     await ctx.message.delete()
 
-    # 여러개가 검색됬을 경우
-    if len(chrIdList) >= 2:
-        embed = discord.Embed(title='알고싶은 캐릭터의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
-        for i in range(len(chrIdList)):
-            value = 'Lv. ' + chrIdList[i]['level'] + ' ' + chrIdList[i]['characterName'] + '\r\n' + \
-                    chrIdList[i]['server'] + ' | ' + chrIdList[i]['jobGrowName']
-            embed.add_field(name='> ' + str(i + 1), value=value)
-        embed.set_footer(text='가장 뒤에 서버 이름을 적으면 해당 서버만 검색해요!')
-        selection = await ctx.channel.send(embed=embed)
+    if len(chrsInfo) == 0:
+        await ctx.channel.send('> 해당 캐릭터를 찾을 수 없어요. 다시 한번 확인해주세요.')
+        return None
 
-        ### 반응을 대기함 ###
-        try:
-            def check(m):
-                return ctx.channel.id == m.channel.id and ctx.message.author == m.author
-            result = await bot.wait_for('message', check=check, timeout=15)
+    if len(chrsInfo) == 1:
+        return chrsInfo[0]['server'], chrsInfo[0]['characterId'], chrsInfo[0]['characterName']
 
-        ### 시간 종료 ###
-        except asyncio.TimeoutError:
-            await selection.delete()
-            await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-            return False
+    # embed 생성
+    embed = discord.Embed(title='원하는 캐릭터의 번호를 입력해주세요.',
+                          description='15초 안에 입력하지 않으면 자동으로 취소되요.')
+    for idx, chrInfo in enumerate(chrsInfo):
+        embed.add_field(name=f"> {idx + 1}",
+                        value=f"Lv.{chrInfo['level']} {chrInfo['characterName']}\n"
+                              f"서버 : {chrInfo['server']}\n"
+                              f"직업 : {chrInfo['jobGrowName']}")
+    selection = await ctx.channel.send(embed=embed)
 
-        ### 입력했을 경우 ###
-        else:
-            await selection.delete()
-            await result.delete()
-            try:
-                index = int(result.content) - 1
-                server, chrId, name = chrIdList[index]['server'], chrIdList[index]['characterId'], chrIdList[index]['characterName']
-            except:
-                await ctx.channel.send('> 제대로 입력해주셔야해요! 다시 시도해주세요!')
-                return False
+    try:
+        def check(message):
+            return ctx.channel.id == message.channel.id and ctx.message.author.id == message.author.id
+        answer = await bot.wait_for('message', check=check, timeout=15)
+        idx = int(answer.content) - 1
+        result = chrsInfo[idx]['server'], chrsInfo[idx]['characterId'], chrsInfo[idx]['characterName']
+        await answer.delete()
+        await selection.delete()
+        return result
 
-    # 한 개가 검색됬을 경우
-    else:
-        try:
-            server, chrId, name = chrIdList[0]['server'], chrIdList[0]['characterId'], chrIdList[0]['characterName']
-        except:
-            await ctx.channel.send('> 해당 캐릭터를 찾을 수 없어요. 다시 한번 확인해주세요!')
-            return False
-
-    return server, chrId, name
-
-async def getSelectionFromItemIdList(bot, ctx, itemList, title=None, description=None):
-    await ctx.message.delete()
-
-    if not len(itemList):
-        await ctx.channel.send('> 해당 장비를 찾을 수 없어요.\r\n> 장비 이름을 확인하고 다시 불러주세요!')
+    except asyncio.TimeoutError:
+        await selection.edit(content='> 시간 끝! 더 고민해보고 다시 불러주세요.', embed=None)
         return False
 
-    if len(itemList) >= 2:
-        if title is None or description is None:
-            embed = discord.Embed(title='알고싶은 장비 아이템의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
-        else:
-            embed = discord.Embed(title=title, description=description)
-        for i in range(len(itemList)):
-            embed.add_field(name='> ' + str(i + 1), value=itemList[i]['itemName'])
-        selection = await ctx.channel.send(embed=embed)
+    except:
+        await answer.delete()
+        await selection.edit(content='> 입력이 잘못됬어요. 다시 시도해주세요.', embed=None)
+        return False
 
-        try:
-            def check(m):
-                return ctx.channel.id == m.channel.id and ctx.message.author == m.author
-            result = await bot.wait_for('message', check=check, timeout=15)
-        except asyncio.TimeoutError:
-            await selection.delete()
-            await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-            return False
-        except:
-            await selection.delete()
-            await result.delete()
-            await ctx.channel.send('> 제대로 입력해주셔야해요! 다시 시도해주세요!')
-            return False
-        await selection.delete()
-        await result.delete()
-        itemId = itemList[int(result.content) - 1]['itemId']
-    else:
-        itemId = itemList[0]['itemId']
-    return itemId
-
-async def getSelectionFromSetItemIdList(bot, ctx, setItemIdList):
+async def getItemIdFromItemsInfo(bot, ctx, itemsInfo,
+                                 title=None, description=None, footer=None, skip=True):
     await ctx.message.delete()
 
-    if not len(setItemIdList):
-        await ctx.channel.send('> 해당 세트를 찾을 수 없어요...\r\n> 세트 이름을 확인하고 다시 불러주세요!')
-        return
+    if len(itemsInfo) == 0:
+        await ctx.channel.send('> 해당 장비를 찾을 수 없어요.\n'
+                               '> 장비 이름을 확인하고 다시 불러주세요!')
+        return None
 
-    if len(setItemIdList) >= 2:
-        embed = discord.Embed(title='알고싶은 세트옵션의 번호를 입력해주세요!', description='15초만 기다려드릴거에요. 빠르게 골라주세요!')
-        for i in range(len(setItemIdList)):
-            embed.add_field(name='> ' + str(i + 1), value=setItemIdList[i]['setItemName'])
-        selection = await ctx.channel.send(embed=embed)
+    if len(itemsInfo) == 1 and skip:
+        return itemsInfo[0]['itemId']
 
-        try:
-            def check(m):
-                return ctx.channel.id == m.channel.id and ctx.message.author == m.author
-            result = await bot.wait_for('message', check=check, timeout=15)
-        except asyncio.TimeoutError:
-            await selection.delete()
-            await ctx.channel.send('> 시간 끝! 더 고민해보고 다시 불러주세요.')
-            return False
-        else:
-            await selection.delete()
-            await result.delete()
-            await ctx.channel.purge(limit=2)
-            try:
-                setItemId, setItemName = setItemIdList[int(result.content) - 1]['setItemId'], setItemIdList[int(result.content) - 1]['setItemName']
-            except:
-                await ctx.channel.send('> 제대로 입력해주셔야해요! 다시 시도해주세요!')
-                return False
+    # embed 생성
+    if title is None or description is None:
+        embed = discord.Embed(title='원하는 장비 아이템의 번호를 입력해주세요.',
+                              description='15초 안에 입력하지 않으면 자동으로 취소되요.')
     else:
-        setItemId, setItemName = setItemIdList[0]['setItemId'], setItemIdList[0]['setItemName']
-    return setItemId, setItemName
+        embed = discord.Embed(title=title, description=description)
+    
+    # footer 설정
+    if footer is not None: embed.set_footer(text=footer)
+
+    # 선택지 설정
+    for idx, itemInfo in enumerate(itemsInfo):
+        embed.add_field(name=f"> {idx + 1}", value=itemInfo['itemName'])
+    selection = await ctx.channel.send(embed=embed)
+
+    try:
+        def check(message):
+            return ctx.channel.id == message.channel.id and ctx.author.id == message.author.id
+        answer = await bot.wait_for('message', check=check, timeout=15)
+        result = itemsInfo[int(answer.content) - 1]['itemId']
+        await answer.delete()
+        await selection.delete()
+        return result
+
+    except asyncio.TimeoutError:
+        await selection.edit(content='> 시간 종료. 더 고민해보고 다시 불러주세요.', embed=None)
+        return None
+
+    except:
+        await answer.delete()
+        await selection.edit(content='> 입력이 잘못됬어요. 다시 시도해주세요.', embed=None)
+        return None
+
+async def getSetItemIdFromSetsInfo(bot, ctx, setsInfo,
+                                   title=None, description=None, footer=None, skip=True):
+    await ctx.message.delete()
+
+    if len(setsInfo) == 0:
+        await ctx.channel.send('> 해당 세트를 찾을 수 없어요...\n'
+                               '> 세트 이름을 확인하고 다시 불러주세요!')
+        return None
+
+    if len(setsInfo == 1) and skip:
+        return setsInfo[0]['setItemId'], setsInfo[0]['setItemName']
+
+    # embed 생성
+    if title is None or description is None:
+        embed = discord.Embed(title='원하는 세트옵션의 번호를 입력해주세요.',
+                              description='15초 안에 입력하지 않으면 자동으로 취소되요.')
+    else:
+        embed = discord.Embed(title=title, description=description)
+        
+    # footer 설정
+    if footer is not None: embed.set_footer(text=footer)
+
+    # 선택지 설정
+    for idx, setInfo in enumerate(setsInfo):
+        embed.add_field(name=f"> {idx + 1}", value=setsInfo['setItemName'])
+    selection = await ctx.channel.send(embed=embed)
+
+    try:
+        def check(message):
+            return ctx.channel.id == message.channel.id and ctx.author.id == message.author.id
+        answer = await bot.wait_for('message', check=check, timeout=15)
+        result = setsInfo[int(answer.content) - 1]['setItemId'], setsInfo[int(answer.content) - 1]['setItemName']
+        await answer.delete()
+        await selection.delete()
+        return result
+
+    except asyncio.TimeoutError:
+        await selection.edit(content='> 시간 끝! 더 고민해보고 다시 불러주세요.', embed=None)
+        return None
+
+    except:
+        await answer.delete()
+        await selection.edit(content='> 입력이 잘못됬어요. 다시 시도해주세요.', embed=None)
+        return None
 
 # # # 계 산 # # #
-def getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmg, eleAddDmg, allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg):
+def getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmg, eleAddDmg,
+                   allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg):
     damage = 1
     damage *= 1 + ((dmgInc + addDmgInc) / 100)          # 데미지 증가
     damage *= 1 + ((criDmgInc + addCriDmgInc) / 100)    # 크리티컬 데미지 증가
@@ -148,11 +161,13 @@ def getApplyStatFromBuffEquip(chrBuffEquip):
     return result
 
 # # # 편 리 # # #
-def mergeString(*input):
-    result= ''
-    for i in input:
-        result += i + ' '
-    result = result.rstrip()
+def getChicBotChannel(guild):
+    result = []
+    for ch in guild.text_channels:
+        try:
+            if '#시크봇' in ch.topic:
+                result.append(ch)
+        except: continue
     return result
 
 def getChrSkillLv(chrSkillStyle, skillId, isActive=True):
@@ -160,13 +175,13 @@ def getChrSkillLv(chrSkillStyle, skillId, isActive=True):
     for i in chrSkillStyle['skill']['style'][skillType]:
         if i['skillId'] == skillId:
             return i['level']
-    return 0
+    return None
 
 def getChrSpecificStat(chrStatInfo, statName):
     for i in chrStatInfo['status']:
         if i['itemName'] == statName:
             return i['value']
-    return 0
+    return None
 
 def getSkillValue(skillInfo, level):
     for i in skillInfo['levelInfo']['rows']:
@@ -205,15 +220,6 @@ def getDailyReward():
     elif 94 <= seed < 98:   return 900000
     elif 98 <= seed < 99:   return 1000000
     else:                   return 2000000
-
-def getChicBotChannel(guild):
-    result = []
-    for ch in guild.text_channels:
-        try:
-            if '#시크봇' in ch.topic:
-                result.append(ch)
-        except: pass
-    return result
 
 def getVolatility(prev, latest):
     if prev is None:

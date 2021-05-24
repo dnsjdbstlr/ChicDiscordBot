@@ -99,20 +99,16 @@ async def 골드랭킹(ctx):
 
 ### 강화 ###
 @bot.command()
-async def 강화설정(ctx, *input):
-    await Reinfoce.강화설정(bot, ctx, *input)
-
-@bot.command()
-async def 강화정보(ctx):
-    await Reinfoce.강화정보(ctx)
-
-@bot.command()
-async def 강화(ctx):
-    await Reinfoce.강화(bot, ctx)
+async def 강화(ctx, *inputs):
+    await Reinfoce.강화(bot, ctx, *inputs)
 
 @bot.command()
 async def 공개강화(ctx):
     await Reinfoce.공개강화(bot, ctx)
+
+@bot.command()
+async def 강화내역(ctx):
+    await Reinfoce.강화내역(ctx)
 
 @bot.command()
 async def 강화랭킹(ctx):
