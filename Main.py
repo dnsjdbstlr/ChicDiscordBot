@@ -68,7 +68,7 @@ async def 출석체크(ctx):
     await Account.출석(ctx)
 
 ### 거래 ###
-@tasks.loop(minutes=1)
+@tasks.loop(minutes=2)
 async def updateMarketPrice():
     Trading.updateMarketPrices()
 updateMarketPrice.start()

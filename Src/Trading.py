@@ -49,13 +49,13 @@ async def 주문(bot, ctx, *inputs):
     message = await ctx.channel.send(f"> {name}님의 주문을 준비중이예요...")
 
     # account가 없을 경우
-    if Tool.getAccount(did) is None:
-        Tool.iniAccount(did)
+    if Tool.c.getAccount(did) is None:
+        Tool.c.iniAccount(did)
 
     # stock이 없을 경우
-    stock = Tool.getStock(did)
-    if stock is None: Tool.iniStock(did)
-    stock = Tool.getStock(did)
+    stock = Tool.c.getStock(did)
+    if stock is None: Tool.c.iniStock(did)
+    stock = Tool.c.getStock(did)
 
     # 3개의 포지션을 보유하고 있을 경우
     wallet = json.loads(stock['wallet'])
@@ -99,9 +99,9 @@ async def 주문(bot, ctx, *inputs):
 
     # 데이터 세팅
     item   = DNFAPI.getSimilarItemInfo(stockName)
-    lPrice = Tool.getLatestPrice(stockName)
-    pPrice = Tool.getPrevPrice(stockName)
-    gold   = Tool.getGold(did)
+    lPrice = Tool.c.getLatestPrice(stockName)
+    pPrice = Tool.c.getPrevPrice(stockName)
+    gold   = Tool.c.getGold(did)
     margin = int(lPrice['price'] * (1 - (1 / leverage) ))
 
     # 등락률
@@ -138,14 +138,14 @@ async def 주문(bot, ctx, *inputs):
             return
         
         # 골드 차감
-        Tool.addStock(did, {
+        Tool.c.addStock(did, {
             'stock'     : stockName,
             'leverage'  : leverage,
             'size'      : int(answer.content),
             'bid'       : lPrice['price'],
             'margin'    : margin
         })
-        Tool.gainGold(did, -int(answer.content) * lPrice['price'])
+        Tool.c.gainGold(did, -int(answer.content) * lPrice['price'])
         
         # 출력
         await answer.delete()
@@ -174,7 +174,7 @@ async def 포지션(bot, ctx):
                                description='종료하고 싶은 포지션이 있다면 해당 번호의 이모지를 눌러주세요.\n'
                                            '이모지를 누르면 즉시 해당 포지션을 종료합니다.')
         for ew in eWallet['wallet']:
-            ePrice = Tool.getLatestPrice(ew['stock'])['price']
+            ePrice = Tool.c.getLatestPrice(ew['stock'])['price']
             eRate = (ePrice / ew['bid'] - 1) * 100 * ew['leverage']
             eRate = float(format(eRate, '.2f'))
             eRate = format(eRate, ',')
@@ -190,7 +190,7 @@ async def 포지션(bot, ctx):
         for i in range(len(eWallet['wallet']), 3):
             eEmbed.add_field(name=f"> 포지션{i + 1}", value='없음')
 
-        eEmbed.set_footer(text=f"지갑 잔고 : {format(Tool.getGold(eDid), ',')}골드")
+        eEmbed.set_footer(text=f"지갑 잔고 : {format(Tool.c.getGold(eDid), ',')}골드")
         return eEmbed
 
     await ctx.message.delete()
@@ -198,13 +198,13 @@ async def 포지션(bot, ctx):
     message = await ctx.channel.send(f"> {name}님의 포지션 정보를 불러오고 있어요...")
 
     # account가 없을 경우
-    if Tool.getAccount(did) is None:
-        Tool.iniAccount(did)
+    if Tool.c.getAccount(did) is None:
+        Tool.c.iniAccount(did)
 
     # stock이 없을 경우
-    stock = Tool.getStock(did)
-    if stock is None: Tool.iniStock(did)
-    stock = Tool.getStock(did)
+    stock = Tool.c.getStock(did)
+    if stock is None: Tool.c.iniStock(did)
+    stock = Tool.c.getStock(did)
 
     wallet = json.loads(stock['wallet'])
     embed = MAKE_EMBED(wallet)
@@ -224,7 +224,7 @@ async def 포지션(bot, ctx):
         if str(reaction) == '3️⃣' and len(wallet['wallet']) >= 3: idx = 2
         if str(reaction) == '🔄':
             # 로딩
-            stock = Tool.getStock(did)
+            stock = Tool.c.getStock(did)
             wallet = json.loads(stock['wallet'])
             embed.set_footer(text='포지션 정보를 최신화 중이예요...')
             await message.edit(embed=embed)
@@ -246,12 +246,12 @@ async def 포지션(bot, ctx):
         await message.clear_reactions()
 
         # 골드 차감
-        price = Tool.getLatestPrice(w['stock'])['price']
-        Tool.gainGold(did, (w['bid'] * w['size']) + (price - w['bid']) * w['size'] * w['leverage'])
-        Tool.delStock(did, idx, price)
+        price = Tool.c.getLatestPrice(w['stock'])['price']
+        Tool.c.gainGold(did, (w['bid'] * w['size']) + (price - w['bid']) * w['size'] * w['leverage'])
+        Tool.c.delStock(did, idx, price)
 
         # 포지션 최신화 로딩
-        stock = Tool.getStock(did)
+        stock = Tool.c.getStock(did)
         wallet = json.loads(stock['wallet'])
         embed.set_footer(text='포지션 정보를 최신화 중이예요...')
         await message.edit(embed=embed)
@@ -288,8 +288,8 @@ async def 거래내역(bot, ctx):
     did, name = ctx.author.id, ctx.author.display_name
 
     # account, stock이 없을 경우
-    account = Tool.getAccount(did)
-    stock = Tool.getStock(did)
+    account = Tool.c.getAccount(did)
+    stock = Tool.c.getStock(did)
     if account is None or stock is None:
         await ctx.channel.send(f"> {name}님은 선물 거래를 한 번도 하지 않았어요.")
         return
@@ -315,7 +315,7 @@ async def 파산(bot, ctx):
     await ctx.message.delete()
     did, name = ctx.message.author.id, ctx.message.author.display_name
 
-    account = Tool.getAccount(did)
+    account = Tool.c.getAccount(did)
     if account is None:
         await ctx.channel.send(f"> {name}님은 선물 거래를 한 번도 하지 않았어요.")
         return
@@ -335,7 +335,7 @@ async def 파산(bot, ctx):
 
     allowDate = datetime.now() + timedelta(days=3)
     allowDate = allowDate.strftime('%Y-%m-%d')
-    Tool.setLiquidate(did, allowDate)
+    Tool.c.setLiquidate(did, allowDate)
 
     await question.clear_reactions()
     await question.edit(context=f"> {name}님의 파산 신청이 완료되었어요.\n> {allowDate}부터 선물 거래를 다시 할 수 있어요.", embed=None)
@@ -345,8 +345,8 @@ async def 골드랭킹(bot, ctx):
         eData = []      
 
         for eAccount in eAccounts:
-            eStock = Tool.getStock(eAccount['did'])
-            eGold = Tool.getGold(eAccount['did'])
+            eStock = Tool.c.getStock(eAccount['did'])
+            eGold = Tool.c.getGold(eAccount['did'])
             if eStock is None:
                 eData.append({
                     'did' : eAccount['did'],
@@ -360,7 +360,7 @@ async def 골드랭킹(bot, ctx):
                 eEvaluation = 0
                 eWallet = json.loads(eStock['wallet'])
                 for idx, w in enumerate(eWallet['wallet']):
-                    ePrice = Tool.getLatestPrice(w['stock'])['price']
+                    ePrice = Tool.c.getLatestPrice(w['stock'])['price']
                     eEvaluation += (w['bid'] * w['size']) + ((ePrice - w['bid']) * w['size'] * w['leverage'])
 
                 eData.append({
@@ -395,7 +395,7 @@ async def 골드랭킹(bot, ctx):
     await ctx.message.delete()
     message = await ctx.channel.send('> 골드 랭킹 데이터를 불러오고 있어요...')
 
-    accounts = Tool.getAccounts()
+    accounts = Tool.c.getAccounts()
     embed = MAKE_EMBED(accounts, 0)
     await message.edit(embed=embed, content=None)
     if len(accounts) > 15: await message.add_reaction('▶️')
@@ -437,17 +437,16 @@ def updateMarketPrices():
                 p += i['price']
                 c += i['count']
             price = p // c
-            Tool.updateAuctionPrice(itemName, price)
+            Tool.tc.updateAuctionPrice(itemName, price)
 
         # 청산 체크
-        stocks = Tool.getStocks()
+        stocks = Tool.tc.getStocks()
         for stock in stocks:
             wallet = json.loads(stock['wallet'])
             for idx, w in enumerate(wallet['wallet']):
-                price = Tool.getLatestPrice(w['stock'])['price']
+                price = Tool.tc.getLatestPrice(w['stock'])['price']
                 if  (w['leverage'] > 0 and price <= w['margin']) or \
                     (w['leverage'] < 0 and price >= w['margin']):
-                    Tool.delStock(stock['did'], idx, w['margin'])
+                    Tool.tc.delStock(stock['did'], idx, w['margin'])
 
-    t = threading.Thread(target=target)
-    t.start()
+    threading.Thread(target=target).start()

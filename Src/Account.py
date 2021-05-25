@@ -8,10 +8,10 @@ async def 출석(ctx):
     did, name = str(ctx.message.author.id), ctx.message.author.display_name
     waiting = await ctx.channel.send(f'> {name}님의 출석을 확인하고있어요...')
 
-    account = Tool.getAccount(did)
+    account = Tool.c.getAccount(did)
     if account is None:
-        Tool.iniAccount(did)
-        account = Tool.getAccount(did)
+        Tool.c.iniAccount(did)
+        account = Tool.c.getAccount(did)
     today = datetime.now().strftime('%Y-%m-%d')
     embed = discord.Embed(title=f'{name}님의 출석을 진행할게요!')
     embed.add_field(name='> 출석 날짜', value=today)
@@ -22,9 +22,9 @@ async def 출석(ctx):
         embed.set_footer(text='이미 출석체크를 했어요.')
         check = False
     else:
-        Tool.updateAccountCheck(did)
+        Tool.c.updateDailyCheck(did)
         reward = Util.getDailyReward()
-        Tool.gainGold(did, reward)
+        Tool.c.gainGold(did, reward)
         check = True
 
         embed.add_field(name='> 출석 보상', value=format(reward, ',') + '골드')

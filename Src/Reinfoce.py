@@ -12,7 +12,7 @@ async def 강화(bot, ctx, *inputs):
         eEmbed.add_field(name=f"> 장비", value=f"+{eReinforce['value']} {eReinforce['itemName']}", inline=False)
         eEmbed.add_field(name=f"> 성공 확률", value=f"{eProb}%")
         eEmbed.add_field(name=f"> 소모 골드", value=f"{format(eCost, ',')}골드")
-        eEmbed.add_field(name=f"> 보유 골드", value=f"{format(Tool.getGold(eDid), ',')}골드")
+        eEmbed.add_field(name=f"> 보유 골드", value=f"{format(Tool.c.getGold(eDid), ',')}골드")
         eEmbed.set_thumbnail(url=DNFAPI.getItemImageUrl(eReinforce['itemId']))
         return eEmbed
 
@@ -37,7 +37,7 @@ async def 강화(bot, ctx, *inputs):
                 'value': eReinforce['value'] + 1
             } if oldMax['value'] < eReinforce['value'] + 1 else oldMax
 
-            Tool.setReinforce(did, value=newValue, _max=newMax, _try=newTry)
+            Tool.c.setReinforce(did, value=newValue, _max=newMax, _try=newTry)
             success = True
 
         # 실패했을 경우
@@ -55,14 +55,14 @@ async def 강화(bot, ctx, *inputs):
                 'destroy': oldTry['destroy'] + 1 if eReinforce['value'] >= 12 else oldTry['destroy']
             }
 
-            Tool.setReinforce(did, value=newValue, _try=newTry)
+            Tool.c.setReinforce(did, value=newValue, _try=newTry)
             success = False
 
-        Tool.gainGold(did, -eCost)
+        Tool.c.gainGold(did, -eCost)
         return success
 
     did, name = ctx.author.id, ctx.author.display_name
-    reinforce = Tool.getReinforce(did)
+    reinforce = Tool.c.getReinforce(did)
 
     # 강화 재설정
     if inputs:
@@ -76,8 +76,8 @@ async def 강화(bot, ctx, *inputs):
         if itemId is None: return
 
         itemDetailInfo = DNFAPI.getItemDetailInfo(itemId)
-        Tool.setReinforce(did, itemId=itemDetailInfo['itemId'], itemName=itemDetailInfo['itemName'], value=0)
-        reinforce = Tool.getReinforce(did)
+        Tool.c.setReinforce(did, itemId=itemDetailInfo['itemId'], itemName=itemDetailInfo['itemName'], value=0)
+        reinforce = Tool.c.getReinforce(did)
 
     # 강화설정이 안되어있는 경우
     if reinforce is None:
@@ -88,8 +88,8 @@ async def 강화(bot, ctx, *inputs):
         return
 
     # 계정 생성이 안되어있는 경우
-    if Tool.getAccount(did) is None:
-        Tool.iniAccount(did)
+    if Tool.c.getAccount(did) is None:
+        Tool.c.iniAccount(did)
 
     embed = MAKE_EMBED(reinforce)
     message = await ctx.channel.send(embed=embed)
@@ -105,11 +105,11 @@ async def 강화(bot, ctx, *inputs):
         if str(reaction) == '⭕':
             prob, cost = getReinforceInfo(reinforce['value'] + 1)
 
-            if Tool.getGold(did) < cost:
+            if Tool.c.getGold(did) < cost:
                 embed.set_footer(text='강화에 필요한 골드가 부족해요.')
             else:
                 result = DO_REINFORCE(reinforce)
-                reinforce = Tool.getReinforce(did)
+                reinforce = Tool.c.getReinforce(did)
                 embed = MAKE_EMBED(reinforce)
                 if result:
                     embed.set_footer(text='강화에 성공했어요.')
@@ -138,7 +138,7 @@ async def 공개강화(bot, ctx):
         eEmbed.add_field(name=f"> 장비", value=f"+{eReinforce['value']} {eReinforce['itemName']}")
         eEmbed.add_field(name=f"> 성공 확률", value=f"{eProb}%")
         eEmbed.add_field(name=f"> 소모 골드", value=f"{format(eCost, ',')}골드")
-        eEmbed.add_field(name=f"> 보유 골드", value=f"{format(Tool.getGold(did), ',')}골드")
+        eEmbed.add_field(name=f"> 보유 골드", value=f"{format(Tool.c.getGold(did), ',')}골드")
         eEmbed.add_field(name=f"> 기부 골드", value=f"{format(eDonationSum, ',')}골드")
         if eDonationLog == {}:
             eEmbed.add_field(name='> 기부 내역', value='없음')
@@ -173,7 +173,7 @@ async def 공개강화(bot, ctx):
                 'value': eReinforce['value'] + 1
             } if oldMax['value'] < eReinforce['value'] + 1 else oldMax
 
-            Tool.setReinforce(eDid, value=newValue, _max=newMax, _try=newTry)
+            Tool.c.setReinforce(eDid, value=newValue, _max=newMax, _try=newTry)
             success = True
 
         # 실패했을 경우
@@ -191,20 +191,20 @@ async def 공개강화(bot, ctx):
                 'destroy': oldTry['destroy'] + 1 if eReinforce['value'] >= 12 else oldTry['destroy']
             }
 
-            Tool.setReinforce(eDid, value=newValue, _try=newTry)
+            Tool.c.setReinforce(eDid, value=newValue, _try=newTry)
             success = False
 
         # 기부금이 부족한 경우
         if eDonationSum < eCost:
             eDonationSum = 0
-            Tool.gainGold(eDid, eDonationSum - eCost)
+            Tool.c.gainGold(eDid, eDonationSum - eCost)
         else:
             eDonationSum -= eCost
 
         return success, eDonationSum
 
     async def DO_DONATION(eUser):
-        eGold = Tool.getGold(eUser.id)
+        eGold = Tool.c.getGold(eUser.id)
         eEmbed = discord.Embed(title=f"{eUser.display_name}님의 공개 강화 기부",
                                description=f"{ctx.author.display_name}님에게 기부할 골드를 입력해주세요.\n"
                                            f"한번 기부한 골드는 회수할 수 없어요. 신중히 입력해주세요.")
@@ -232,7 +232,7 @@ async def 공개강화(bot, ctx):
 
             else:
                 await eMessage.delete()
-                Tool.gainGold(eUser.id, -int(eAnswer.content))
+                Tool.c.gainGold(eUser.id, -int(eAnswer.content))
                 return int(eAnswer.content)
 
         except:
@@ -245,7 +245,7 @@ async def 공개강화(bot, ctx):
     did, name = ctx.author.id, ctx.author.display_name
 
     # 강화설정이 안되어있는 경우
-    reinforce = Tool.getReinforce(did)
+    reinforce = Tool.c.getReinforce(did)
     if reinforce is None:
         await ctx.message.delete()
         embed = discord.Embed(title=f"{name}님의 공개 강화",
@@ -255,8 +255,8 @@ async def 공개강화(bot, ctx):
         return
 
     # 계정 생성이 안되어있는 경우
-    if Tool.getAccount(did) is None:
-        Tool.iniAccount(did)
+    if Tool.c.getAccount(did) is None:
+        Tool.c.iniAccount(did)
 
     # 기부금, 기부 로그
     donationSum, donationLog = 0, {}
@@ -277,11 +277,11 @@ async def 공개강화(bot, ctx):
             await message.clear_reactions()
             prob, cost = getReinforceInfo(reinforce['value'] + 1)
 
-            if Tool.getGold(did) + donationSum < cost:
+            if Tool.c.getGold(did) + donationSum < cost:
                 embed.set_footer(text='강화에 필요한 골드가 부족합니다.')
             else:
                 result, donationSum = DO_REINFORCE(reinforce, donationSum)
-                reinforce = Tool.getReinforce(did)
+                reinforce = Tool.c.getReinforce(did)
                 embed = MAKE_EMBED(reinforce, donationSum, donationLog)
                 if result:
                     embed.set_footer(text='강화에 성공했어요.')
@@ -307,8 +307,8 @@ async def 공개강화(bot, ctx):
                 embed.set_footer(text='본인의 공개 강화에는 기부할 수 없어요.')
                 await message.edit(embed=embed)
             else:
-                if Tool.getAccount(user.id) is None:
-                    Tool.iniAccount(user.id)
+                if Tool.c.getAccount(user.id) is None:
+                    Tool.c.iniAccount(user.id)
                 embed.set_footer(text=f"{user.display_name}님이 기부를 진행 중이예요...")
                 await message.edit(embed=embed)
 
@@ -329,7 +329,7 @@ async def 강화내역(ctx):
     did, name = ctx.author.id, ctx.author.display_name
 
     # 강화설정이 안되어있는 경우
-    reinforce = Tool.getReinforce(did)
+    reinforce = Tool.c.getReinforce(did)
     if reinforce is None:
         await ctx.message.delete()
         embed = discord.Embed(title=f"{name}님의 강화 정보",
@@ -377,7 +377,7 @@ async def 강화랭킹(bot, ctx):
     await ctx.message.delete()
     message = await ctx.channel.send('> 강화 랭킹을 불러오는 중이예요...')
 
-    reinforces = Tool.getReinforces()
+    reinforces = Tool.c.getReinforces()
     embed = MAKE_EMBED(reinforces, 0)
     await message.edit(embed=embed, content=None)
     if len(reinforces) > 15: await message.add_reaction('▶️')

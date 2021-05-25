@@ -210,21 +210,33 @@ def getChrStatInfo(server, chrId):
     response = requests.get(url=url)
     return json.loads(response.text)
 
-def getChrTimeLine(server, chrId, *code):
+def getChrTimeLine(server, chrId, *codes):
     today = datetime.today()
-    startDate = str(today.year) + '-' + str(today.month) + '-01 00:00'
-    endDate   = str(today.year) + '-' + str(today.month) + '-' + str(today.day) + ' ' + str(today.hour) + ':' + str(today.minute)
+    startDate = f"{today.year}-{today.month}-01 00:00"
+    endDate   = f"{today.year}-{today.month}-{today.day} {today.hour}:{today.minute}"
 
-    codes = ''
-    for i in code:
-        codes += str(i)
-        if i!= code[-1]:
-            codes += ','
+    result = []
 
-    url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/timeline?limit=100&code=' + codes + '&startDate=' + startDate + '&endDate=' + endDate + '&apikey=' + dnf_token
-    response = requests.get(url=url)
-    data = json.loads(response.text)
-    return data['timeline']['rows']
+    url = f"https://api.neople.co.kr/df/servers/{SERVER_NAME_TO_ID[server]}/characters/{chrId}/timeline"
+    params = {
+        'startDate' : startDate,
+        'endDate' : endDate,
+        'limit' : 100,
+        'code' : ','.join(codes),
+        'apikey' : dnf_token
+    }
+
+    response = requests.get(url=url, params=params)
+    timeline = response.json()
+    result += timeline['timeline']['rows']
+
+    while timeline['timeline']['next'] is not None:
+        params['next'] = timeline['timeline']['next']
+        response = requests.get(url=url, params=params)
+        timeline = response.json()
+        result += timeline['timeline']['rows']
+
+    return result
 
 def getChrSkillStyle(server, chrId):
     url = 'https://api.neople.co.kr/df/servers/' + SERVER_NAME_TO_ID[server] + '/characters/' + chrId + '/skill/style?apikey=' + dnf_token

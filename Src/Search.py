@@ -5,7 +5,7 @@ from Src import Util, DNFAPI
 
 async def 등급(ctx):
     await ctx.message.delete()
-    waiting = await ctx.channel.send('> 오늘의 아이템 등급을 읽어오고있어요...')
+    waiting = await ctx.channel.send('> 오늘의 아이템 등급을 불러오고있어요...')
 
     itemIdList = ['8e0233bd504efc762b76a476d0e08de4', '52b3fac226cfa92cba9cffff516fb06e',
                   '7fae76b5a3fd513001a5d40716e1287f']
@@ -32,27 +32,27 @@ async def 등급(ctx):
         }
     }
 
-    shopItemInfo = [DNFAPI.getShopItemInfo(i) for i in itemIdList]
+    shopItemsInfo = [DNFAPI.getShopItemInfo(i) for i in itemIdList]
 
     embed = discord.Embed(title='오늘의 아이템 등급을 알려드릴게요!')
-    for i in shopItemInfo:
-        value = i['itemGradeName'] + '(' + str(i['itemGradeValue']) + '%)\r\n'
-        for j in i['itemStatus']:
-            if j['name'] in MAX_OPTION[i['itemId']].keys():
-                diff = j['value'] - MAX_OPTION[i['itemId']][j['name']]
-                value += j['name'] + ' : ' + str(j['value']) + '(' + str(diff) + ')\r\n'
-        embed.add_field(name='> ' + i['itemName'], value=value)
+    for shopItemInfo in shopItemsInfo:
+        value = f"{shopItemInfo['itemGradeName']} ({shopItemInfo['itemGradeValue']}%)\n"
+        for itemStatus in shopItemInfo['itemStatus']:
+            if itemStatus['name'] in MAX_OPTION[shopItemInfo['itemId']].keys():
+                diff = itemStatus['value'] - MAX_OPTION[shopItemInfo['itemId']][itemStatus['name']]
+                value += f"{itemStatus['name']} : {itemStatus['value']}({diff})\n"
+        embed.add_field(name=f"> {shopItemInfo['itemName']}", value=value)
 
-    if shopItemInfo[0]['itemGradeName'] == '최하급':
-        footer = '오늘 하루는 절대 정가 금지!'
-    elif shopItemInfo[0]['itemGradeName'] == '하급':
-        footer = '아무리 그래도 하급은 아니죠...'
-    elif shopItemInfo[0]['itemGradeName'] == '중급':
-        footer = '중급...도 조금 그래요.'
-    elif shopItemInfo[0]['itemGradeName'] == '상급':
-        footer = '조금 아쉬운데, 급하다면 어쩔 수 없어요!'
-    elif shopItemInfo[0]['itemGradeName'] == '최상급':
-        footer = '오늘만을 기다려왔어요!!'
+    if shopItemsInfo[0]['itemGradeName'] == '최하급':
+        footer = '최하급 : 오늘 하루는 절대 정가 금지!'
+    elif shopItemsInfo[0]['itemGradeName'] == '하급':
+        footer = '하급 : 아무리 그래도 하급은 아니죠...'
+    elif shopItemsInfo[0]['itemGradeName'] == '중급':
+        footer = '중급 : 중급...도 조금 그래요.'
+    elif shopItemsInfo[0]['itemGradeName'] == '상급':
+        footer = '상급 : 조금 아쉬운데, 급하다면 어쩔 수 없어요!'
+    elif shopItemsInfo[0]['itemGradeName'] == '최상급':
+        footer = '최상급 : 오늘만을 기다려왔어요!!'
     else:
         footer = '오류'
     embed.set_footer(text=footer)
@@ -60,7 +60,7 @@ async def 등급(ctx):
     await waiting.delete()
     await ctx.channel.send(embed=embed)
 
-async def 캐릭터(bot, ctx, *input):
+async def 캐릭터(bot, ctx, *chrName):
     def MAKE_EMBED(eChrName, eChrEquipItemInfo, eChrEquipSetInfo, eAvatar=None, eServer=None, eChrId=None):
         eEmbed = discord.Embed(title=f"{eChrName}님의 캐릭터 정보를 알려드릴게요.")
 
@@ -103,17 +103,17 @@ async def 캐릭터(bot, ctx, *input):
 
             return eEmbed
 
-    if not input:
+    if not chrName:
         await ctx.message.delete()
         await ctx.channel.send('> !캐릭터 <닉네임> 또는 !캐릭터 <서버> <닉네임> 의 형태로 적어야해요!')
         return
 
-    if len(input) == 2:
-        server  = input[0]
-        chrName = input[1]
+    if len(chrName) == 2:
+        server  = chrName[0]
+        chrName = chrName[1]
     else:
         server  = '전체'
-        chrName = input[0]
+        chrName = chrName[0]
 
     try:
         chrIdList = DNFAPI.getChrIdList(server, chrName)
@@ -155,7 +155,7 @@ async def 캐릭터(bot, ctx, *input):
             await message.edit(content=f"> 오류가 발생했습니다.\n> {e}")
             return
 
-async def 시세(bot, ctx, *input):
+async def 시세(bot, ctx, *itemName):
     def MAKE_EMBED(eItemName):
         eAuction = DNFAPI.getItemAuction(eItemName)
 
@@ -174,10 +174,10 @@ async def 시세(bot, ctx, *input):
                 ePrice = eSum // eCount
 
                 # 최신화
-                Tool.updateAuctionPrice(f"{eItemName} +{eUpgrade}", ePrice)
+                Tool.c.updateAuctionPrice(f"{eItemName} +{eUpgrade}", ePrice)
 
                 # 필드 추가
-                ePrev = Tool.getPrevPrice(f"{eItemName} +{eUpgrade}")
+                ePrev = Tool.c.getPrevPrice(f"{eItemName} +{eUpgrade}")
                 eEmbed.add_field(name=f"> {eUpgrade} 평균 가격", value=f"{format(ePrice, ',')}골드")
                 eEmbed.add_field(name='> 최근 판매량', value=f"{format(eCount, ',')}개")
                 if ePrev is None:
@@ -194,10 +194,10 @@ async def 시세(bot, ctx, *input):
             ePrice = eSum // eCount
 
             # 최신화
-            Tool.updateAuctionPrice(eItemName, ePrice)
+            Tool.c.updateAuctionPrice(eItemName, ePrice)
 
             # 필드 추가
-            ePrev = Tool.getPrevPrice(eItemName)
+            ePrev = Tool.c.getPrevPrice(eItemName)
             eEmbed.add_field(name='> 평균 가격', value=format(ePrice, ',') + '골드')
             eEmbed.add_field(name='> 최근 판매량', value=format(eCount, ',') + '개')
             if ePrev is None:
@@ -213,7 +213,7 @@ async def 시세(bot, ctx, *input):
     await ctx.message.delete()
     message = await ctx.channel.send('> 아이템 시세 정보를 불러오고 있어요...')
 
-    item = DNFAPI.getSimilarItemInfo(' '.join(input))
+    item = DNFAPI.getSimilarItemInfo(' '.join(itemName))
     if item is None:
         await message.delete()
         await ctx.channel.send('> 해당 아이템의 판매 정보를 얻어오지 못했어요.')
@@ -243,7 +243,7 @@ async def 시세(bot, ctx, *input):
             await message.edit(content=f"> 오류가 발생했어요.\n> {e}", embed=None)
             return
 
-async def 장비(bot, ctx, *itemName):
+async def 장비(bot, ctx, *equipName):
     def MAKE_EMBED(eItemInfo, eIsBuff):
         from Src import Measure
 
@@ -290,8 +290,7 @@ async def 장비(bot, ctx, *itemName):
             eEmbed.set_footer(text=eItemInfo['itemFlavorText'])
 
             # 아이콘
-            icon = DNFAPI.getItemImageUrl(eItemInfo['itemId'])
-            eEmbed.set_thumbnail(url=icon)
+            eEmbed.set_thumbnail(url=DNFAPI.getItemImageUrl(eItemInfo['itemId']))
 
             return eEmbed
         else:
@@ -332,35 +331,33 @@ async def 장비(bot, ctx, *itemName):
 
             # 플레이버 텍스트
             try:
-                eFlavorText = eItemInfo['itemFlavorText']
-                eEmbed.set_footer(text=eFlavorText)
+                eEmbed.set_footer(text=eItemInfo['itemFlavorText'])
             except: pass
 
             # 아이콘
-            eIcon = DNFAPI.getItemImageUrl(eItemInfo['itemId'])
-            eEmbed.set_thumbnail(url=eIcon)
+            eEmbed.set_thumbnail(url=DNFAPI.getItemImageUrl(eItemInfo['itemId']))
 
             return eEmbed
 
-    itemName = ' '.join(itemName)
-    if len(itemName) == 0:
+    equipName = ' '.join(equipName)
+    if len(equipName) == 0:
         await ctx.message.delete()
         await ctx.channel.send('> `!장비 <장비아이템이름>` 의 형태로 적어야해요.\n'
                                '> ex) `!장비 세계수의 요정`')
         return
 
-    itemsInfo = DNFAPI.getItemsInfo(itemName)
+    itemsInfo = DNFAPI.getItemsInfo(equipName)
     itemId = await Util.getItemIdFromItemsInfo(bot, ctx, itemsInfo)
     if itemId is None: return
 
     itemInfo = DNFAPI.getItemDetailInfo(itemId)
     message = await ctx.channel.send(f"> {itemInfo['itemName']}의 정보를 불러오고 있어요...")
 
-    isBuff = False
-    embed = MAKE_EMBED(itemInfo, isBuff)
+    embed = MAKE_EMBED(itemInfo, False)
     await message.edit(embed=embed, content=None)
     await message.add_reaction('🔄')
 
+    isBuff = False
     while True:
         try:
             def check(_reaction, _user):
@@ -428,17 +425,19 @@ async def 세트(bot, ctx, *setName):
 
     try:
         setItemIdList = DNFAPI.getSetItemIdList(name)
-        setItemId, setItemName = await Util.getSetItemIdFromSetsInfo(bot, ctx, setItemIdList)
+        result = await Util.getSetItemIdFromSetsInfo(bot, ctx, setItemIdList)
+        if result is None: return
+        else: setItemId, setItemName = result
     except: return
 
     message = await ctx.channel.send(f"> {setItemName}의 정보를 불러오고 있어요...")
 
-    isBuff = False
     setItemInfo = DNFAPI.getSetItemInfo(setItemId)
-    embed = MAKE_EMBED(setItemInfo, isBuff)
+    embed = MAKE_EMBED(setItemInfo, False)
     await message.edit(embed=embed, content=None)
     await message.add_reaction('🔄')
 
+    isBuff = False
     while True:
         try:
             def check(_reaction, _user):
@@ -455,7 +454,7 @@ async def 세트(bot, ctx, *setName):
             await message.edit(content=f"> 오류가 발생했어요\n> {e}", embed=None)
             return
 
-async def 에픽(bot, ctx, *input):
+async def 에픽(bot, ctx, *chrName):
     def MAKE_EMBED(eNickname, eTimeline, eChannel, ePage):
         if eChannel == '없음':
             eEmbed = discord.Embed(title=f'{eNickname} 님은 이번 달에 {len(eTimeline)}개의 에픽을 획득했어요.')
@@ -488,17 +487,17 @@ async def 에픽(bot, ctx, *input):
         else:
             return sorted(eChannels.items(), key=lambda x: x[1], reverse=True)[0][0]
 
-    if not input:
+    if not chrName:
         await ctx.message.delete()
         await ctx.channel.send('> `!에픽 <닉네임>` 또는 `!에픽 <서버> <닉네임>` 의 형태로 적어야해요!')
         return
 
-    if len(input) == 2:
-        server = input[0]
-        name   = input[1]
+    if len(chrName) == 2:
+        server = chrName[0]
+        name   = chrName[1]
     else:
         server = '전체'
-        name   = input[0]
+        name   = chrName[0]
 
     try:
         chrIdList = DNFAPI.getChrIdList(server, name)
@@ -508,7 +507,7 @@ async def 에픽(bot, ctx, *input):
     message = await ctx.channel.send(f"> {name}님의 타임라인을 불러오고 있어요...")
 
     # 획득한 에픽이 없는 경우
-    timeline = DNFAPI.getChrTimeLine(server, chrId, 505, 513)
+    timeline = DNFAPI.getChrTimeLine(server, chrId, '505', '513')
     if len(timeline) == 0:
         await message.edit(f'> {name}님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
         return
@@ -517,7 +516,7 @@ async def 에픽(bot, ctx, *input):
     channel = GET_LUCKY_CHANNEL(timeline)
 
     # 에픽랭킹 등록
-    Tool.updateEpicRank(server, name, len(timeline), channel)
+    Tool.c.updateEpicRank(server, name, len(timeline), channel)
 
     page = 0
     embed = MAKE_EMBED(name, timeline, channel, page)
@@ -549,24 +548,24 @@ async def 에픽(bot, ctx, *input):
             return
 
 async def 에픽랭킹(bot, ctx):
-    def MAKE_EMBED(eRank, ePage):
+    def MAKE_EMBED(eRanks, ePage):
         eToday = datetime.today()
-        eRank = eRank[ePage * 15:ePage * 15 + 15]
+        eRank = eRanks[ePage * 15:ePage * 15 + 15]
         eEmbed = discord.Embed(title=f"{eToday.year}년 {eToday.month}월 기린 랭킹을 알려드릴게요!")
         for idx, r in enumerate(eRank):
             eEmbed.add_field(name=f"> {ePage * 15 + idx + 1}등\n"
                                   f"> {r['server']} {r['name']}",
                              value=f"개수 : {r['count']}개\n"
                                    f"채널 : {r['channel']}")
-        eEmbed.set_footer(text=f"{ePage + 1}페이지 / {(len(eRank) - 1) // 15 + 1}페이지")
+        eEmbed.set_footer(text=f"{ePage + 1}페이지 / {(len(eRanks) - 1) // 15 + 1}페이지")
         return eEmbed
 
     await ctx.message.delete()
     message = await ctx.channel.send('> 에픽 랭킹을 불러오는 중이예요...')
 
-    rank = Tool.getEpicRanks()
-    rank = list(sorted(rank, key=lambda x: x['count'], reverse=True))
-    if not rank:
+    epicRanks = Tool.c.getEpicRanks()
+    epicRanks = list(sorted(epicRanks, key=lambda x: x['count'], reverse=True))
+    if not epicRanks:
         today = datetime.today()
         embed = discord.Embed(title=f'{today.year}년 {today.month}월 에픽 랭킹을 알려드릴게요!',
                               description='> 에픽 랭킹 데이터가 없어요.\n'
@@ -574,12 +573,12 @@ async def 에픽랭킹(bot, ctx):
         await message.edit(embed=embed, content=None)
         return
 
-    page = 0
-    embed = MAKE_EMBED(rank, page)
+    embed = MAKE_EMBED(epicRanks, 0)
     await message.edit(embed=embed, content=None)
-    if len(rank) > 15: await message.add_reaction('▶️')
+    if len(epicRanks) > 15: await message.add_reaction('▶️')
 
-    while len(rank) > 15:
+    page = 0
+    while len(epicRanks) > 15:
         try:
             def check(_reaction, _user):
                 return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == message.id
@@ -587,16 +586,16 @@ async def 에픽랭킹(bot, ctx):
 
             if str(reaction) == '◀️' and page > 0:
                 page -= 1
-            if str(reaction) == '▶️' and page < (len(rank) - 1) // 15:
+            if str(reaction) == '▶️' and page < (len(epicRanks) - 1) // 15:
                 page += 1
 
-            embed = MAKE_EMBED(rank, page)
+            embed = MAKE_EMBED(epicRanks, page)
             await message.edit(embed=embed)
             await message.clear_reactions()
 
             if page > 0:
                 await message.add_reaction('◀️')
-            if page < (len(rank) - 1) // 15:
+            if page < (len(epicRanks) - 1) // 15:
                 await message.add_reaction('▶️')
         except Exception as e:
             await message.edit(content=f"> 오류가 발생했습니다.\n> {e}", embed=None)
