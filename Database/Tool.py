@@ -54,7 +54,7 @@ class Connection:
         sql = f"SELECT * FROM auction WHERE date=%s and name=%s"
         self.cur.execute(sql, (date, name))
         rs = self.cur.fetchone()
-        return rs.get('price')
+        return None if rs is None else rs['price']
 
     def getLatestPrice(self, name):
         try:
