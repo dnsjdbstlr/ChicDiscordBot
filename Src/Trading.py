@@ -437,16 +437,16 @@ def updateMarketPrices():
                 p += i['price']
                 c += i['count']
             price = p // c
-            Tool.tc.updateAuctionPrice(itemName, price)
+            Tool.c.updateAuctionPrice(itemName, price)
 
         # 청산 체크
-        stocks = Tool.tc.getStocks()
+        stocks = Tool.c.getStocks()
         for stock in stocks:
             wallet = json.loads(stock['wallet'])
             for idx, w in enumerate(wallet['wallet']):
-                price = Tool.tc.getLatestPrice(w['stock'])['price']
+                price = Tool.c.getLatestPrice(w['stock'])['price']
                 if  (w['leverage'] > 0 and price <= w['margin']) or \
                     (w['leverage'] < 0 and price >= w['margin']):
-                    Tool.tc.delStock(stock['did'], idx, w['margin'])
+                    Tool.c.delStock(stock['did'], idx, w['margin'])
 
     threading.Thread(target=target).start()

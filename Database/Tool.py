@@ -246,8 +246,5 @@ class Connection:
         self.cur.execute(sql, (10000000, did))
         self.conn.commit()
 
-# 일반 커넥션
+# 글로벌 커넥션
 c = Connection()
-
-# 스레드에서 사용할 커넥션
-tc = Connection()
