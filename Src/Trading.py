@@ -378,7 +378,7 @@ async def 골드랭킹(bot, ctx):
         # 출력
         eEmbed = discord.Embed(title='보유금과 평가금의 합을 기준으로한 랭킹을 보여드릴게요.')
         for idx, i in enumerate(eData):
-            eName = f"> {idx + 1}등"
+            eName = f"> {ePage * 15 + idx + 1}등"
             if i['did'] == str(ctx.author.id):
                 eName += f"({ctx.author.display_name}님)\n"
             else:
