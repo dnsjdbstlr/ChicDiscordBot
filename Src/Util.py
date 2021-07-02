@@ -132,6 +132,30 @@ async def getSetItemIdFromSetsInfo(bot, ctx, setsInfo,
         await selection.edit(content='> 입력이 잘못됬어요. 다시 시도해주세요.', embed=None)
         return None
 
+async def getSelection(bot, ctx, items, title, description, footer, embedValueFunc, waitForCheckFunc, waitForTimeout):
+    if not items: return
+    if len(items) == 1: return items[0]
+
+    embed = discord.Embed(title=title, description=description)
+    if footer is not None: embed.set_footer(text=footer)
+    for idx, i in enumerate(items):
+        embed.add_field(name=f"> {idx + 1}", value=embedValueFunc(i))
+    selection = await ctx.channel.send(embed=embed)
+
+    try:
+        if waitForTimeout is None:
+            answer = await bot.wait_for('message', check=waitForCheckFunc)
+        else:
+            answer = await bot.wait_for('message', check=waitForCheckFunc, timeout=waitForTimeout)
+        await answer.delete()
+        await selection.delete()
+        return items[int(answer.content) - 1]
+    except asyncio.TimeoutError:
+        await selection.delete()
+        return
+    except:
+        return
+
 # # # 계 산 # # #
 def getFinalDamage(dmgInc, addDmgInc, criDmgInc, addCriDmgInc, addDmg, eleAddDmg,
                    allDmgInc, adApInInc, strIntInc, element, skillDmgInc, continueDmg):

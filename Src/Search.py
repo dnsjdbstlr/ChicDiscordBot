@@ -7,7 +7,8 @@ async def 등급(ctx):
     await ctx.message.delete()
     waiting = await ctx.channel.send('> 오늘의 아이템 등급을 불러오고있어요...')
 
-    itemIdList = ['8e0233bd504efc762b76a476d0e08de4', '52b3fac226cfa92cba9cffff516fb06e',
+    itemIdList = ['8e0233bd504efc762b76a476d0e08de4',
+                  '52b3fac226cfa92cba9cffff516fb06e',
                   '7fae76b5a3fd513001a5d40716e1287f']
 
     MAX_OPTION = {
@@ -43,117 +44,150 @@ async def 등급(ctx):
                 value += f"{itemStatus['name']} : {itemStatus['value']}({diff})\n"
         embed.add_field(name=f"> {shopItemInfo['itemName']}", value=value)
 
-    if shopItemsInfo[0]['itemGradeName'] == '최하급':
-        footer = '최하급 : 오늘 하루는 절대 정가 금지!'
-    elif shopItemsInfo[0]['itemGradeName'] == '하급':
-        footer = '하급 : 아무리 그래도 하급은 아니죠...'
-    elif shopItemsInfo[0]['itemGradeName'] == '중급':
-        footer = '중급 : 중급...도 조금 그래요.'
-    elif shopItemsInfo[0]['itemGradeName'] == '상급':
-        footer = '상급 : 조금 아쉬운데, 급하다면 어쩔 수 없어요!'
-    elif shopItemsInfo[0]['itemGradeName'] == '최상급':
-        footer = '최상급 : 오늘만을 기다려왔어요!!'
-    else:
-        footer = '오류'
-    embed.set_footer(text=footer)
+    # if shopItemsInfo[0]['itemGradeName'] == '최하급':
+    #     footer = '최하급 : 오늘 하루는 절대 정가 금지!'
+    # elif shopItemsInfo[0]['itemGradeName'] == '하급':
+    #     footer = '하급 : 아무리 그래도 하급은 아니죠...'
+    # elif shopItemsInfo[0]['itemGradeName'] == '중급':
+    #     footer = '중급 : 중급...도 조금 그래요.'
+    # elif shopItemsInfo[0]['itemGradeName'] == '상급':
+    #     footer = '상급 : 조금 아쉬운데, 급하다면 어쩔 수 없어요!'
+    # elif shopItemsInfo[0]['itemGradeName'] == '최상급':
+    #     footer = '최상급 : 오늘만을 기다려왔어요!!'
+    # else:
+    #     footer = '오류'
+    # embed.set_footer(text=footer)
 
     await waiting.delete()
     await ctx.channel.send(embed=embed)
 
-async def 캐릭터(bot, ctx, *chrName):
-    def MAKE_EMBED(eChrName, eChrEquipItemInfo, eChrEquipSetInfo, eAvatar=None, eServer=None, eChrId=None):
-        eEmbed = discord.Embed(title=f"{eChrName}님의 캐릭터 정보를 알려드릴게요.")
+async def 캐릭터(bot, ctx, *inputs):
+    def MAKE_EMBED_MAIN(eChrName, eChrEquipInfo, eChrStatInfo):
+        eEmbed = discord.Embed(title=f"{eChrName}님의 장착 장비를 알려드릴게요.")
 
-        if eAvatar is not None:
-            for a in eAvatar['avatar']:
-                if a['slotName'] == '오라 아바타': continue
-                eValue = f"{a['itemName']}\n"
-                if a['clone']['itemName'] is not None:
-                    eValue += f"{a['clone']['itemName']}"
-                eEmbed.add_field(name=f"> {a['slotName']}", value=eValue)
-            eEmbed.set_image(url=DNFAPI.getChrImageUrl(eServer, eChrId))
-            return eEmbed
-        else:
-            ### 장착중인 세트 ###
+        eValue = ''
+        for eSetInfo in eChrEquipInfo['setItemInfo']:
+            eValue += f"{eSetInfo['setItemName']}({eSetInfo['activeSetNo']})\n"
+        if eValue != '': eEmbed.add_field(name='> 장착중인 세트', value=eValue, inline=False)
+
+        # 장비 옵션
+        for eItemInfo in eChrEquipInfo['equipment']:
+            if eItemInfo['slotName'] in ['칭호', '보조무기']: continue
+
+            eName = f"> ★ {eItemInfo['slotName']}" if eItemInfo['itemRarity'] == '신화' else f"> {eItemInfo['slotName']}"
             eValue = ''
-            for eSetInfo in eChrEquipSetInfo['setItemInfo']:
-                eValue += f"{eSetInfo['setItemName']}({eSetInfo['activeSetNo']})\n"
-            if eValue != '': eEmbed.add_field(name='> 장착중인 세트', value=eValue, inline=False)
 
-            ### 장비 옵션 ###
-            for eItemInfo in eChrEquipItemInfo['equipment']:
-                if eItemInfo['slotName'] in ['칭호', '보조무기']: continue
+            # 강화, 재련 수치
+            if eItemInfo['reinforce'] != 0:
+                eValue += f"+{eItemInfo['reinforce']}"
+            if eItemInfo['refine'] != 0:
+                eValue += f"({eItemInfo['refine']})"
+            eValue += f" {eItemInfo['itemName']}\n"
 
-                eValue = ''
+            # 마법부여
+            try:
+                for eEnchant in eItemInfo['enchant']['status']:
+                    eValue += f"{eEnchant['name']} +{eEnchant['value']}\n"
+            except: pass
 
-                ### 강화, 재련 수치 ###
-                if eItemInfo['reinforce'] != 0:
-                    eValue += f"+{eItemInfo['reinforce']}"
-                if eItemInfo['refine'] != 0:
-                    eValue += f"({eItemInfo['refine']})"
-                eValue += f" {eItemInfo['itemName']}\n"
+            eEmbed.add_field(name=eName, value=eValue)
 
-                ### 마법부여 ###
-                try:
-                    for eEnchant in eItemInfo['enchant']['status']:
-                        eValue += f"{eEnchant['name']} +{eEnchant['value']}\n"
-                except: pass
+        # 스탯
+        eStats, eAtcks, eElems = '', '', ''
+        for i in eChrStatInfo['status']:
+            if i['name'] in ['힘', '지능', '체력', '정신력']:
+                eStats += f"{i['name']}({i['value']}) "
+            if i['name'] in ['물리 공격', '마법 공격', '독립 공격']:
+                eAtcks += f"{i['name']}({i['value']}) "
+            if i['name'] in ['화속성 강화', '수속성 강화', '명속성 강화', '암속성 강화']:
+                eElems += f"{i['name']}({i['value']}) "
+        eEmbed.add_field(name='> 스탯', value=f"{eStats}\n{eAtcks}\n{eElems}")
+        eEmbed.set_footer(text='[장착 장비] > 장착 아바타')
+        return eEmbed
 
-                eEmbed.add_field(name='> ' + eItemInfo['slotName'], value=eValue)
+    def MAKE_EMBED_AVATAR(eServer, eChrId, eChrName, eAvatar):
+        eEmbed = discord.Embed(title=f"{eChrName}님의 장착 아바타를 알려드릴게요.")
+        for avatar in eAvatar['avatar']:
+            eValue = f"{avatar['itemName']}\n"
+            if avatar['clone']['itemName'] is not None:
+                eValue += f"{avatar['clone']['itemName']}"
+            eEmbed.add_field(name=f"> {avatar['slotName']}", value=eValue)
+        eEmbed.set_image(url=DNFAPI.getChrImageUrl(eServer, eChrId))
+        eEmbed.set_footer(text='장착 장비 < [장착 아바타]')
+        return eEmbed
 
-            return eEmbed
-
-    if not chrName:
+    if not inputs:
         await ctx.message.delete()
         await ctx.channel.send('> !캐릭터 <닉네임> 또는 !캐릭터 <서버> <닉네임> 의 형태로 적어야해요!')
         return
 
-    if len(chrName) == 2:
-        server  = chrName[0]
-        chrName = chrName[1]
+    if len(inputs) == 2:
+        server = inputs[0]
+        inputs = inputs[1]
     else:
-        server  = '전체'
-        chrName = chrName[0]
+        server = '전체'
+        inputs = inputs[0]
 
-    try:
-        chrIdList = DNFAPI.getChrIdList(server, chrName)
-        server, chrId, chrName = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
-    except: return False
+    #--------------------------
 
+    await ctx.message.delete()
+    items = DNFAPI.getChrIdList(server, inputs)
+    title = '원하는 캐릭터의 번호를 입력해주세요.'
+    description = '15초 안에 입력하지 않으면 자동으로 취소되요.'
+    footer = None
+    def embedValueFunc(item):
+        value =  f"Lv.{item['level']} {item['characterName']}\n"
+        value += f"서버 : {item['serverId']}\n"
+        value += f"직업 : {item['jobGrowName']}"
+        return value
+    def waitForCheckFunc(msg):
+        return ctx.channel.id == msg.channel.id and ctx.author.id == msg.author.id and msg.content.isnumeric()
+    waitForTimeout = 15
+    character = await Util.getSelection(bot, ctx, items, title, description, footer, embedValueFunc, waitForCheckFunc, waitForTimeout)
+
+    if character is None:
+        await ctx.channel.send('오류가 발생했어요. 다시 시도해주세요.')
+        return
+
+    #--------------------------
+
+    server, chrId, chrName = character['serverId'], character['characterId'], character['characterName']
     message = await ctx.channel.send(f"> {chrName} 캐릭터의 정보를 불러오고 있어요...")
+    chrEquipEquipment = DNFAPI.getChrEquipInfo(server, chrId)
+    chrStatus = DNFAPI.getChrStatInfo(server, chrId)
+    chrEquipAvatar = None
 
-    chrEquipItemInfo = DNFAPI.getChrEquipItems(server, chrId)
-    chrEquipItemIds  = []
-    for i in chrEquipItemInfo['equipment']:
-        if i['slotName'] in ['칭호', '보조무기']: continue
-        chrEquipItemIds.append(i['itemId'])
-    chrEquipSetInfo = DNFAPI.getEquipActiveSet(','.join(chrEquipItemIds))
-
-    isAvatar = False
-    avatar = None
-    embed = MAKE_EMBED(chrName, chrEquipItemInfo, chrEquipSetInfo)
+    embed = MAKE_EMBED_MAIN(chrName, chrEquipEquipment, chrStatus)
     await message.edit(embed=embed, content=None)
-    await message.add_reaction('🔄')
-    
+    await message.add_reaction('▶️')
+
+    # 0 : 본템
+    # 1 : 아바타
+    page = 0
     while True:
-        try:
-            def check(_reaction, _user):
-                return str(_reaction) == '🔄' and _user == ctx.author and _reaction.message.id == message.id
-            reaction, user = await bot.wait_for('reaction_add', check=check)
+        def check(_reaction, _user):
+            return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == message.id
+        reaction, user = await bot.wait_for('reaction_add', check=check)
 
-            isAvatar = not isAvatar
-            if isAvatar:
-                if avatar is None: avatar = DNFAPI.getChrEquipAvatar(server, chrId)
-                embed = MAKE_EMBED(chrName, chrEquipItemInfo, chrEquipSetInfo, avatar, server, chrId)
-            else:
-                embed = MAKE_EMBED(chrName, chrEquipItemInfo, chrEquipSetInfo)
-            await message.edit(embed=embed)
-            await message.clear_reactions()
-            await message.add_reaction('🔄')
+        # 페이지 이동
+        if str(reaction) == '◀️':
+            page = max(page - 1, 0)
+        elif str(reaction) == '▶️':
+            page = min(page + 1, 1)
 
-        except Exception as e:
-            await message.edit(content=f"> 오류가 발생했습니다.\n> {e}")
-            return
+        # 페이지에 따른 정보 출력
+        if page == 0:
+            embed = MAKE_EMBED_MAIN(chrName, chrEquipEquipment, chrStatus)
+        elif page == 1:
+            if chrEquipAvatar is None:
+                chrEquipAvatar = DNFAPI.getChrEquipAvatar(server, chrId)
+            embed = MAKE_EMBED_AVATAR(server, chrId, chrName, chrEquipAvatar)
+        else: return
+
+        await message.edit(embed=embed, content=None)
+        await message.clear_reactions()
+        if page > 0: await message.add_reaction('◀️')
+        if page < 1: await message.add_reaction('▶️')
 
 async def 시세(bot, ctx, *itemName):
     def MAKE_EMBED(eItemName):
@@ -509,7 +543,7 @@ async def 에픽(bot, ctx, *chrName):
     # 획득한 에픽이 없는 경우
     timeline = DNFAPI.getChrTimeLine(server, chrId, '505', '513')
     if len(timeline) == 0:
-        await message.edit(f'> {name}님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
+        await message.edit(content=f'> {name}님은 이번 달 획득한 에픽이 없어요.. ㅠㅠ')
         return
 
     # 에픽을 가장 많이 획득한 채널
@@ -616,7 +650,7 @@ async def 에픽랭킹(bot, ctx):
 #     ### 계산에 필요한 데이터 불러오기 ###
 #     chrStatInfo     = dnfAPI.getChrStatInfo(server, chrId)
 #     chrSkillStyle   = dnfAPI.getChrSkillStyle(server, chrId)
-#     equip    = dnfAPI.getChrEquipItems(server, chrId)
+#     equip    = dnfAPI.getChrEquipInfo(server, chrId)
 #     avatar   = dnfAPI.getChrEquipAvatar(server, chrId)
 #     chrBuffEquip    = dnfAPI.getChrBuffEquip(server, chrId)
 #     allItemOption   = util.getAllItemOptions(equip, avatar)

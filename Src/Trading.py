@@ -342,7 +342,7 @@ async def 파산(bot, ctx):
 
 async def 골드랭킹(bot, ctx):
     def MAKE_EMBED(eAccounts, ePage):
-        eData = []      
+        eData = []
 
         for eAccount in eAccounts:
             eStock = Tool.c.getStock(eAccount['did'])
@@ -373,12 +373,12 @@ async def 골드랭킹(bot, ctx):
                 })
 
         eData.sort(key=lambda x: x['sum'], reverse=True)
-        eData = eData[ePage * 15:ePage * 15 + 15]
+        eData = eData[ePage * 9:ePage * 9 + 9]
         
         # 출력
         eEmbed = discord.Embed(title='보유금과 평가금의 합을 기준으로한 랭킹을 보여드릴게요.')
         for idx, i in enumerate(eData):
-            eName = f"> {ePage * 15 + idx + 1}등"
+            eName = f"> {ePage * 9 + idx + 1}등"
             if i['did'] == str(ctx.author.id):
                 eName += f"({ctx.author.display_name}님)\n"
             else:
@@ -389,7 +389,7 @@ async def 골드랭킹(bot, ctx):
                      f"보유 종목 : {', '.join(i['stocks']) if i['stocks'] else '없음'}\n" \
                      f"파산 횟수 : {format(i['liquidate'], ',')}회"
             eEmbed.add_field(name=eName, value=eValue)
-        eEmbed.set_footer(text=f"{ePage + 1}페이지 / {(len(eAccounts) - 1) // 15 + 1}페이지")
+        eEmbed.set_footer(text=f"{ePage + 1}페이지 / {(len(eAccounts) - 1) // 9 + 1}페이지")
         return eEmbed
 
     await ctx.message.delete()
@@ -401,7 +401,7 @@ async def 골드랭킹(bot, ctx):
     if len(accounts) > 15: await message.add_reaction('▶️')
 
     page = 0
-    while len(accounts) > 15:
+    while len(accounts) > 9:
         try:
             def check(_reaction, _user):
                 return str(_reaction) in ['◀️', '▶️'] and _user == ctx.author and _reaction.message.id == message.id
@@ -409,7 +409,7 @@ async def 골드랭킹(bot, ctx):
 
             if str(reaction) == '◀️' and page > 0:
                 page -= 1
-            if str(reaction) == '▶️' and page < (len(accounts) - 1) // 15:
+            if str(reaction) == '▶️' and page < (len(accounts) - 1) // 9:
                 page += 1
 
             embed = MAKE_EMBED(accounts, page)
@@ -417,7 +417,7 @@ async def 골드랭킹(bot, ctx):
             await message.clear_reactions()
             if page > 0:
                 await message.add_reaction('◀️')
-            if page < (len(accounts) - 1) // 15:
+            if page < (len(accounts) - 1) // 9:
                 await message.add_reaction('▶️')
 
         except Exception as e:

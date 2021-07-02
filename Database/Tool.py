@@ -5,12 +5,12 @@ from datetime import datetime
 
 class Connection:
     def __init__(self):
-        self.host    = '127.0.0.1'
-        self.user    = os.environ['db_user']
-        self.pw      = os.environ['db_pw']
-        self.db      = os.environ['db']
-        self.conn    = pymysql.connect(host=self.host, user=self.user, password=self.pw, database=self.db)
-        self.cur     = self.conn.cursor(pymysql.cursors.DictCursor)
+        self.host = '127.0.0.1'
+        self.user = os.environ['db_user']
+        self.pw = os.environ['db_pw']
+        self.db = os.environ['db']
+        self.conn = pymysql.connect(host=self.host, user=self.user, password=self.pw, database=self.db)
+        self.cur = self.conn.cursor(pymysql.cursors.DictCursor)
         print('[알림][DB에 성공적으로 연결되었습니다.]')
 
     def __del__(self):

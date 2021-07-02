@@ -67,16 +67,20 @@ async def 강화(bot, ctx, *inputs):
     # 강화 재설정
     if inputs:
         itemName = ' '.join(inputs)
-        itemsInfo = DNFAPI.getItemsInfo(itemName, itemType='무기')
-        itemId = await Util.getItemIdFromItemsInfo(bot, ctx, itemsInfo,
-                                                   title=f"{name}님의 강화 설정",
-                                                   description='강화에 사용할 무기를 선택해주세요. 15초 안에 선택해야해요.',
-                                                   footer=f"무기를 선택하면 `+{reinforce['value']} {reinforce['itemName']}`는 사라져요." if reinforce is not None else None,
-                                                   skip=False)
-        if itemId is None: return
+        itemList = DNFAPI.getItemsInfo(itemName, itemType='무기')
 
-        itemDetailInfo = DNFAPI.getItemDetailInfo(itemId)
-        Tool.c.setReinforce(did, itemId=itemDetailInfo['itemId'], itemName=itemDetailInfo['itemName'], value=0)
+        title = f"{name}님의 강화 설정"
+        description = '강화에 사용할 무기를 선택해주세요. 15초 안에 선택해야해요.'
+        footer = f"무기를 선택하면 `+{reinforce['value']} {reinforce['itemName']}`는 사라져요." if reinforce is not None else None
+        def embedValueFunc(item): return item['itemName']
+        def waitForCheckFunc(msg): return ctx.channel.id == msg.channel.id and ctx.author.id == msg.author.id and msg.content.isnumeric()
+        waitForTimeout = 15
+
+        selectItem = await Util.getSelection(bot, ctx, itemList, title, description, footer, embedValueFunc, waitForCheckFunc, waitForTimeout)
+        if selectItem is None: return
+
+        itemDetailInfo = DNFAPI.getItemDetailInfo(selectItem['itemId'])
+        Tool.c.setReinforce(did, itemDetailInfo['itemId'], itemDetailInfo['itemName'], 0)
         reinforce = Tool.c.getReinforce(did)
 
     # 강화설정이 안되어있는 경우

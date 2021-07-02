@@ -24,7 +24,7 @@ async def 버프력(bot, ctx, *input):
         return False
 
     # 아이템 옵션 계산
-    equip     = DNFAPI.getChrEquipItems(server, chrId)
+    equip     = DNFAPI.getChrEquipInfo(server, chrId)
     avatar    = DNFAPI.getChrEquipAvatar(server, chrId)
     creature  = DNFAPI.getChrEquipCreature(server, chrId)
     allItemOptions = getAllItemOptions(equip, avatar)
