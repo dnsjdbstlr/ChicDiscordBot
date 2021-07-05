@@ -488,7 +488,7 @@ async def 세트(bot, ctx, *setName):
             await message.edit(content=f"> 오류가 발생했어요\n> {e}", embed=None)
             return
 
-async def 에픽(bot, ctx, *chrName):
+async def 에픽(bot, ctx, *inputs):
     def MAKE_EMBED(eNickname, eTimeline, eChannel, ePage):
         if eChannel == '없음':
             eEmbed = discord.Embed(title=f'{eNickname} 님은 이번 달에 {len(eTimeline)}개의 에픽을 획득했어요.')
@@ -521,23 +521,42 @@ async def 에픽(bot, ctx, *chrName):
         else:
             return sorted(eChannels.items(), key=lambda x: x[1], reverse=True)[0][0]
 
-    if not chrName:
+    if not inputs:
         await ctx.message.delete()
         await ctx.channel.send('> `!에픽 <닉네임>` 또는 `!에픽 <서버> <닉네임>` 의 형태로 적어야해요!')
         return
 
-    if len(chrName) == 2:
-        server = chrName[0]
-        name   = chrName[1]
+    if len(inputs) == 2:
+        server = inputs[0]
+        name   = inputs[1]
     else:
         server = '전체'
-        name   = chrName[0]
+        name   = inputs[0]
 
-    try:
-        chrIdList = DNFAPI.getChrIdList(server, name)
-        server, chrId, name = await Util.getSelectionFromChrIdList(bot, ctx, chrIdList)
-    except: return False
+    #--------------------------
 
+    await ctx.message.delete()
+    items = DNFAPI.getChrIdList(server, inputs)
+    title = '원하는 캐릭터의 번호를 입력해주세요.'
+    description = '15초 안에 입력하지 않으면 자동으로 취소되요.'
+    footer = None
+    def embedValueFunc(item):
+        value =  f"Lv.{item['level']} {item['characterName']}\n"
+        value += f"서버 : {item['serverId']}\n"
+        value += f"직업 : {item['jobGrowName']}"
+        return value
+    def waitForCheckFunc(msg):
+        return ctx.channel.id == msg.channel.id and ctx.author.id == msg.author.id and msg.content.isnumeric()
+    waitForTimeout = 15
+    character = await Util.getSelection(bot, ctx, items, title, description, footer, embedValueFunc, waitForCheckFunc, waitForTimeout)
+
+    if character is None:
+        await ctx.channel.send('오류가 발생했어요. 다시 시도해주세요.')
+        return
+
+    #--------------------------
+
+    server, chrId, chrName = character['serverId'], character['characterId'], character['characterName']
     message = await ctx.channel.send(f"> {name}님의 타임라인을 불러오고 있어요...")
 
     # 획득한 에픽이 없는 경우
